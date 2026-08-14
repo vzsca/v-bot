@@ -128,12 +128,6 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python main.py
-
-## 1. Cloner le projet
-
-```bash
-git clone https://github.com/vzsca/v-bot.git
-cd v-bot
 ```
 
 Le script :
