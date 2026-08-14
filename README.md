@@ -1,171 +1,709 @@
-# v-bot
+# 🤖 v-bot
 
-## Structure du projet
+Bot Discord polyvalent développé en **Python avec discord.py**, pensé pour la modération, la gestion des serveurs et l'administration sécurisée du bot.
 
-```
+Le projet possède également un **panel de contrôle local** permettant de gérer le processus du bot, la configuration `.env`, les owners, les logs et les fonctionnalités sensibles.
+
+---
+
+## ✨ Fonctionnalités
+
+* 🛡️ Modération complète
+* ℹ️ Commandes d'information
+* 👑 Système d'owners permanents et temporaires
+* 🔐 Kill Switch global
+* 🧹 Snipe des messages supprimés
+* 🌐 Gestion de plusieurs serveurs
+* ⚙️ Panel de contrôle local
+* 📋 Logs classiques et logs de sécurité
+* 🔒 Commandes sensibles désactivées par défaut
+* 🔄 Gestion automatique du démarrage et de l'arrêt
+* 🧩 Architecture modulaire avec des Cogs
+* ⚡ Commandes préfixées et commandes slash/hybrides pour les commandes compatibles
+
+---
+
+# 📁 Structure du projet
+
+```text
 v-bot/
-├── main.py            # Point d'entrée du BOT : crée le bot, charge les cogs, démarre la connexion
-├── panel.py           # Panel de contrôle interactif (start/stop/restart/uptime/.env/...)
-├── deps.py            # Installation des dépendances avec affichage propre (nom + statut)
-├── bootstrap.py       # Première installation des dépendances, appelé une fois par start_bot.bat
-├── config.py          # Chargement de la config (.env) : token, owners, limites, version
-├── state.py           # État en mémoire centralisé (kill switch, snipe, owners temp, commandes en cours...)
-├── checks.py          # Toute la logique de permission (owner permanent/temp, kill switch...)
-├── exceptions.py      # Exceptions typées pour les checks (KillSwitchEnabled, NotPermanentOwner...)
-├── views.py           # Composants UI (menu serveurs, boutons)
-├── requirements.txt
-├── start_bot.bat       # Prépare l'environnement (venv + install) puis lance panel.py
-├── .env                # Token + IDs owner (NE JAMAIS PARTAGER CE FICHIER)
-├── .env.example        # Modèle vide pour partager le projet sans données sensibles
+├── main.py                  # Point d'entrée du bot
+├── panel.py                 # Panel de contrôle local
+├── bootstrap.py             # Installation initiale
+├── deps.py                  # Gestion des dépendances
+├── config.py                # Configuration du bot
+├── checks.py                # Système de permissions
+├── state.py                 # État interne du bot
+├── exceptions.py            # Exceptions personnalisées
+├── security_log.py          # Journal de sécurité
+│
+├── start_bot.bat            # Lance le panel
+├── requirements.txt         # Dépendances Python
+├── .env                     # Configuration privée
+├── .env.example             # Exemple de configuration
+│
+├── bot.log                  # Logs du bot
+├── security.log             # Logs de sécurité
+├── servers.txt              # Liste des serveurs
+│
 └── cogs/
-    ├── events.py        # on_ready, on_message (mention), on_message_delete (snipe), erreurs, tâche de fond
-    ├── moderation.py    # mute, unmute, kick, ban, unban, give_role, lock, unlock, slowmode, clear
-    ├── info.py          # user_info, server_info, avatar, snipe
-    ├── owner.py         # servers, add_temp, owner_list, killswitch, toggle_guild, say
-    ├── dangerous.py     # spam, dmall, raid, remove_raid (chargé seulement si DANGEROUS_COMMANDS_ENABLED=true)
-    └── help_cog.py       # v!help
+    ├── events.py            # Événements Discord
+    ├── moderation.py        # Modération
+    ├── info.py              # Informations
+    ├── owner.py             # Administration du bot
+    ├── dangerous.py         # Commandes sensibles
+    └── help_cog.py          # Système d'aide
 ```
 
-### Pourquoi panel.py plutôt que tout en .bat ?
+> ⚠️ Le dossier `venv/` est généré localement et ne devrait pas être envoyé sur GitHub.
 
-Le `.bat` ne fait plus que créer le venv, installer les dépendances une fois, puis lancer `panel.py` — toute la logique (gérer le process du bot, éditer `.env`, calculer l'uptime...) vit en Python. Concrètement : pas de jonglage de guillemets/carets fragile, pas de relancer un process PowerShell à chaque commande (le panel reste en mémoire, donc `uptime` est instantané), et un vrai suivi de process via `psutil` au lieu de parser la sortie texte de `tasklist`/`taskkill`. L'interface (les commandes que tu tapes) reste strictement identique.
+---
 
-## Ce qui a changé par rapport au script original
+# 🚀 Installation
 
-- **Code éclaté en modules** : chaque thème (modération, info, owner, événements, aide) a son propre fichier, et les commandes sont organisées en `Cog` discord.py au lieu d'un seul script de 600+ lignes.
-- **Permissions centralisées** (`checks.py`) : il n'y a plus de `if ctx.author.id not in AUTHORIZED_USER_ID` recopié à la main dans chaque commande (`servers`, `add_temp`, `killswitch`, `toggle_guild`, `raid`, `spam`, `dmall`...). Tout passe maintenant par une poignée de décorateurs réutilisables :
-  - `checks.owner_check()` → owner permanent ou temporaire
-  - `checks.permanent_owner_check()` → owner permanent uniquement
-  - `checks.owner_or_permission(...)` → owner ou permission Discord précise
-  - `checks.owner_or_guild_owner()` → owner ou propriétaire du serveur (utilisé par `spam`/`dmall`)
-  - `checks.kill_switch_required()` → bloque si le kill switch est actif
-- **IDs owner sortis du code source** : `OWNER_PRINCIPAL_ID` (1 seul ID) et `OWNERS_SECONDARY_IDS` (liste séparée par des virgules) vivent dans `.env`, pas dans `config.py`. Le `.env` est dans `.gitignore` : si tu partages ou versionnes le projet, ces IDs ne sont jamais exposés. `config.PERMANENT_OWNERS` reconstruit la liste complète (principal en premier) pour `owner_list`, qui affiche exactement comme avant.
-- **État centralisé** (`state.py`) : `KILL_SWITCH`, `sniped_messages`, `temp_authorized_users`, `disabled_guilds`, `created_raid_channels/roles`, `running_commands` (protection anti-double-exécution) sont maintenant des attributs d'une seule instance `state`, au lieu de variables globales éparpillées.
-- **Petites optimisations** :
-  - IDs owner stockés dans un `frozenset` → vérification en O(1) au lieu d'un parcours de liste.
-  - Le texte des intents (affiché quand on mentionne le bot) est calculé une seule fois et mis en cache, au lieu d'être reconstruit à chaque mention.
-  - Suppression d'un appel `bot.fetch_user()` inutile dans `owner_list` (le résultat n'était jamais utilisé) — ça évite une requête HTTP superflue à chaque appel de la commande.
-  - Les listeners (`on_message`, `on_message_delete`, `on_command_error`, `on_ready`) sont maintenant des listeners de Cog plutôt que des `@bot.event` : `process_commands` reste géré automatiquement par discord.py, sans code dupliqué.
+## Prérequis
 
-⚠️ Une petite différence de comportement assumée par la centralisation : certains messages d'erreur "non autorisé" qui étaient légèrement différents d'une commande à l'autre (`"❌ Non autorisé."`, `"❌ Tu n'as pas la permission d'utiliser cette commande !"`, etc.) sont maintenant unifiés selon le type de check utilisé. Le comportement (qui peut faire quoi) reste identique.
+* Windows
+* Python **3.13 recommandé**
+* Un bot Discord créé sur le [Discord Developer Portal](https://discord.com/developers/applications)
+* Les intents nécessaires activés sur le bot Discord
 
-## Commandes sensibles (raid, remove_raid, dmall, spam)
+Les dépendances sont installées automatiquement lors du premier lancement.
 
-Isolées dans `cogs/dangerous.py`, qui n'est chargé par `main.py` **que si** `DANGEROUS_COMMANDS_ENABLED=true` dans `.env` (faux par défaut). Quand c'est désactivé, ces commandes n'existent tout simplement pas dans l'arbre de commandes du bot — pas juste bloquées par un check, vraiment absentes, impossibles à invoquer ou découvrir même en testant à l'aveugle.
+---
 
-Bascule via le panel `start_bot.bat`, commande `toggle_dangerous` :
-- **Désactivation** : immédiate, pas de confirmation nécessaire (sens "sûr").
-- **Activation** : demande de taper `ACTIVER` en majuscules pour confirmer, avec un rappel du risque (token/compte owner compromis = dégâts possibles).
-- Dans les deux cas : nécessite un **redémarrage du bot** pour prendre effet (le choix des cogs à charger se fait une seule fois, au démarrage de `main.py` — pas de rechargement à chaud).
+## 1. Cloner le projet
 
-`v!help owner` affiche l'état actuel (🟢 ACTIVÉES / 🔴 DÉSACTIVÉES) et n'affiche les 4 commandes elles-mêmes que si elles sont actives.
-
-### Journal de sécurité (security.log)
-
-Fichier séparé de `bot.log`, dédié uniquement aux événements sensibles : bascule du kill switch, octroi d'un owner temporaire (`add_temp`), ajout d'un owner secondaire permanent, changement d'owner principal, activation/désactivation des commandes sensibles, changement de token (sans jamais logger sa valeur — seulement l'événement "token modifié"). Chaque ligne est horodatée avec l'auteur de l'action (`utilisateur (id)` côté bot, `panel` côté `.bat`).
-
-Implémenté dans `security_log.py`, un module minimal sans dépendance au logger Python standard : comme `main.py` (le bot) et `panel.py` tournent dans deux process séparés, ils ne peuvent pas partager un objet logger — `security_log.log_security_event()` écrit directement dans le fichier, ce qui marche pareil des deux côtés.
-
-Consultable via la commande `security_logs` du panel (affiche les 30 dernières lignes directement dans le terminal, pas besoin d'ouvrir Notepad).
-
-### Exceptions personnalisées
-
-`exceptions.py` définit des classes dédiées (`KillSwitchEnabled`, `NotPermanentOwner`, `NotOwnerOrTemp`, `NotOwnerOrGuildOwner`, `CommandAlreadyRunning`) au lieu de `commands.CheckFailure` générique avec un message en dur. Toutes restent des `CheckFailure` (donc `on_command_error` continue de fonctionner pour les cas génériques), mais permettent un traitement différencié sans avoir à analyser le texte du message : `on_command_error` loggue maintenant les refus de permission en warning (qui a tenté quoi), sans loguer les blocages routiniers (kill switch, commande déjà en cours).
-
-### Centralisation complète des erreurs
-
-`on_command_error` (dans `cogs/events.py`) couvre déjà toutes les erreurs de **commandes**. Mais discord.py a un cas spécial pour les erreurs qui se produisent ailleurs : une exception levée dans `on_message`, `on_guild_join`, ou n'importe quel autre event handler ne passe **pas** par `on_command_error`, et plus surprenant, ne passe même pas par le système normal de `@commands.Cog.listener()` non plus — `on_error` est appelé directement par discord.py en interne (`self.on_error(...)`), pas via `dispatch()`. Un `@commands.Cog.listener()` pour `on_error` ne se déclencherait donc jamais (vérifié dans le code source de discord.py).
-
-`main.py` surcharge `bot.on_error` directement sur l'instance (sans avoir besoin de subclasser `commands.Bot`) pour combler ce trou : toute exception dans un event handler est maintenant capturée avec son traceback complet dans `bot.log`, exactement comme les erreurs de commandes. Testé avec un event handler cassé volontairement pour confirmer que le traceback complet remonte bien.
-
-### Protection anti-double-exécution
-
-`raid`, `remove_raid`, `dmall`, `spam` (dans `cogs/dangerous.py`) refusent désormais d'être lancées une deuxième fois sur le même serveur tant qu'une instance précédente n'est pas terminée — évite les salons/rôles dupliqués ou les DM envoyés deux fois si la commande est retapée trop vite ou lancée par deux owners en même temps. Implémenté via `cog_before_invoke`/`cog_after_invoke` (hooks natifs de discord.py, appelés respectivement avant et après chaque commande du cog, y compris en cas d'erreur). Le verrou est par `(commande, serveur)` : un `raid` sur un serveur n'empêche pas un `raid` sur un autre.
-
-### `@commands.guild_only()`
-
-Ajouté sur toutes les commandes qui touchent directement à un serveur (`ctx.guild.xxx`) et qui plantaient auparavant avec une erreur peu claire si invoquées en message privé : `mute`, `unmute`, `kick`, `ban`, `unban`, `give_role`, `lock`, `unlock`, `slowmode`, `clear`, `user_info`, `server_info`, `toggle_guild`, `raid`, `remove_raid`, `dmall`. Le message d'erreur par défaut de discord.py étant en anglais, `on_command_error` le remplace par `"❌ Cette commande ne peut pas être utilisée en message privé."`. Pas ajouté sur `avatar`/`snipe`/`say`/`spam` (fonctionnent légitimement sans serveur) ni sur les commandes du panel (`servers`, `add_temp`, `owner_list`, `killswitch`) qui n'en ont pas besoin.
-
-### Vérifications de robustesse dans start_bot.bat
-
-- **Version de Python** : le script essaie de créer le venv avec `py -3.13` en premier (recommandé), puis replie automatiquement sur `py -3` puis `python` si la tentative précédente échoue **réellement** (vérifié en regardant si `venv\Scripts\python.exe` existe vraiment après coup, pas juste en faisant confiance au code de sortie — le lanceur `py` de Windows peut garder une entrée enregistrée pour une version dont l'exécutable a été supprimé du disque, auquel cas un simple test préalable peut sembler réussir puis échouer à l'usage). Si aucune des trois tentatives n'aboutit, message clair avec la marche à suivre (`py -0p` pour lister les Python installés et leurs chemins réels, lien vers python.org pour réinstaller).
-- **`bootstrap.py` et `panel.py`** : vérifiés avant d'être exécutés (`if not exist ...`), pour éviter un crash incompréhensible si l'un de ces fichiers a été déplacé ou supprimé par erreur.
-
-
-
-## Gestion des owners
-
-- **`v!owner_list`** est réservée aux owners permanents (principal + secondaires). Avant, n'importe qui pouvait l'utiliser.
-- **Ajouter un owner secondaire** ne se fait pas par une commande Discord, mais via le panel `start_bot.bat` (commande `add_secondary_owner`, voir plus bas) : elle demande l'ID Discord du nouvel owner et l'ajoute à `OWNERS_SECONDARY_IDS` dans `.env`. Il faut ensuite taper `restart` pour que le bot recharge la config et en tienne compte (le bot ne lit `.env` qu'au démarrage).
-- Pas de commande de suppression pour l'instant (retrait manuel de l'ID dans `.env` puis `restart`) — je peux ajouter une commande `remove_secondary_owner` côté `.bat` sur le même principe si besoin.
-
-## Accélérer le démarrage
-
-La création du venv + l'installation des dépendances ne se fait qu'**une seule fois** (grâce au marqueur `venv\.installed`) — les lancements suivants sautent direct au démarrage du bot. Si c'est lent à *chaque* lancement (pas juste le premier), c'est anormal, dis-le-moi.
-
-Pour ce premier lancement (et pour `update`), deux pistes :
-
-1. **[`uv`](https://docs.astral.sh/uv/)** — un remplaçant de `venv`/`pip` écrit en Rust, nettement plus rapide (création de venv quasi instantanée, installs parallélisés). Le script le détecte automatiquement (`where uv`) et l'utilise s'il est présent, sinon il retombe sur `venv`+`pip` comme avant — aucune installation requise pour profiter du script tel quel. Pour l'installer : `pip install uv`, ou voir [la doc officielle](https://docs.astral.sh/uv/getting-started/installation/).
-2. **Exclusion Windows Defender** — la cause la plus fréquente d'une création de venv lente sous Windows est l'antivirus qui scanne chaque fichier copié en temps réel. Ajouter le dossier du projet aux exclusions de Windows Security (Protection contre les virus et menaces → Gérer les paramètres → Ajouter ou supprimer des exclusions) peut accélérer ça drastiquement. Je ne l'automatise pas dans le script car ça demande les droits administrateur.
-
-## Configuration
-
-1. Copie `.env.example` vers `.env` si tu repars de zéro (ici, `.env` est déjà pré-rempli avec les IDs trouvés dans ton script original — vérifie qu'ils sont corrects).
-2. Renseigne `DISCORD_TOKEN` dans `.env`.
-3. Vérifie/ajuste `OWNER_PRINCIPAL_ID` (ton ID, owner principal unique) et `OWNERS_SECONDARY_IDS` (liste optionnelle, séparée par des virgules).
-4. `DANGEROUS_COMMANDS_ENABLED` reste à `false` par défaut (recommandé) — voir [Commandes sensibles](#commandes-sensibles-raid-remove_raid-dmall-spam) plus bas si besoin de les activer.
-
-## Lancer le bot (Windows)
-
-Double-clique sur `start_bot.bat`, ou en ligne de commande :
-
+```bash
+git clone https://github.com/vzsca/v-bot.git
+cd v-bot
 ```
+
+---
+
+## 2. Configurer `.env`
+
+Copiez `.env.example` vers `.env` :
+
+```bash
+copy .env.example .env
+```
+
+Puis configurez :
+
+```env
+DISCORD_TOKEN=VOTRE_TOKEN
+
+BOT_NAME=v-bot
+BOT_PREFIX=v!
+BOT_VERSION=3.7.5
+
+OWNER_PRINCIPAL_ID=VOTRE_ID_DISCORD
+OWNERS_SECONDARY_IDS=
+
+DANGEROUS_COMMANDS_ENABLED=false
+```
+
+### 🔑 Variables
+
+| Variable                     | Description                                 |
+| ---------------------------- | ------------------------------------------- |
+| `DISCORD_TOKEN`              | Token du bot Discord                        |
+| `BOT_NAME`                   | Nom du bot                                  |
+| `BOT_PREFIX`                 | Préfixe des commandes                       |
+| `BOT_VERSION`                | Version affichée par le bot                 |
+| `OWNER_PRINCIPAL_ID`         | Owner principal                             |
+| `OWNERS_SECONDARY_IDS`       | Owners secondaires séparés par des virgules |
+| `DANGEROUS_COMMANDS_ENABLED` | Active ou non les commandes sensibles       |
+
+> 🔒 **Ne partagez jamais votre `.env` ou votre token Discord.**
+
+---
+
+# ▶️ Lancement
+
+Le lancement recommandé se fait avec :
+
+```text
 start_bot.bat
 ```
 
-Le script crée un environnement virtuel (`venv`) avec Python 3.13, installe les dépendances une seule fois (marqueur `venv\.installed`, pas de réinstallation à chaque lancement — affichage propre, juste le nom de chaque paquet et son statut, pas le flot verbeux de pip/uv), puis lance `panel.py`, qui démarre le bot dans sa propre fenêtre et garde son PID en mémoire (plus de parsing de `tasklist`, suivi via `psutil`).
+Le script :
 
-La fenêtre du `.bat` devient le panel de contrôle (en Python) qui reste ouvert. La liste complète des commandes ne s'affiche **que** via `help` (juste un rappel d'une ligne au tout premier lancement pour que la commande reste découvrable) :
+1. Vérifie Python
+2. Crée le `venv` si nécessaire
+3. Installe les dépendances
+4. Lance le panel
+5. Le panel permet ensuite de démarrer le bot
 
-| Commande  | Effet |
-|-----------|-------|
-| `start`   | démarre le bot s'il n'est pas déjà lancé |
-| `stop`    | arrête le bot |
-| `restart` | arrête puis relance le bot |
-| `status`  | indique si le bot tourne actuellement |
-| `uptime`  | depuis combien de temps il tourne, au format `Xh Ym Zs` (calcul instantané, plus de spawn PowerShell) |
-| `update`  | met à jour les dépendances (même affichage propre que l'installation initiale) |
-| `logs`    | ouvre `bot.log` dans Notepad |
-| `security_logs` | affiche les 30 dernières lignes de `security.log` (kill switch, octroi d'owner, ...) directement dans le terminal |
-| `servers` | liste les serveurs Discord sur lesquels le bot est présent (lu depuis `servers.txt`, écrit par le bot à la connexion) |
-| `add_secondary_owner` | demande un ID Discord et l'ajoute à `OWNERS_SECONDARY_IDS` dans `.env` |
-| `set_token` | définit ou change le `DISCORD_TOKEN` dans `.env` (fonctionne qu'il y en ait déjà un ou pas) |
-| `set_principal_owner` | définit ou change l'`OWNER_PRINCIPAL_ID` dans `.env` (fonctionne qu'il y en ait déjà un ou pas) |
-| `toggle_dangerous` | active/désactive raid, remove_raid, dmall, spam (confirmation requise pour activer) |
-| `help`    | réaffiche la liste des commandes |
-| `exit`    | ferme ce panel — le bot continue de tourner |
+---
 
-⚠️ Au démarrage, si `OWNER_PRINCIPAL_ID` **ou** `DISCORD_TOKEN` est vide/absent dans `.env`, le panel te demande directement de coller la valeur manquante et l'enregistre, **avant** de tenter de lancer le bot — il n'essaie plus de démarrer puis d'échouer.
+# 🖥️ Panel de contrôle
 
-La fenêtre s'ouvre en 120x25 caractères (plus large, moins haute que la version précédente). Pas de `chcp 65001` : tout le texte affiché est en ASCII simple, donc ça n'apportait aucun bénéfice visuel et ça forçait parfois un changement de police pas franchement esthétique sur la console Windows classique — retiré. Si la police par défaut de ta console ne te plaît toujours pas, le plus efficace reste d'ajuster ça depuis les propriétés de la fenêtre (clic droit sur la barre de titre → Propriétés → onglet Police), ou encore mieux, d'utiliser [Windows Terminal](https://apps.microsoft.com/detail/9n0dx20hk701) à la place de la console `cmd.exe` classique — bien plus confortable à lire et à personnaliser (zoom au Ctrl+molette, polices modernes comme Cascadia Code).
+Le panel affiche :
 
-## Statut Discord
-
-Le bot affiche sa version comme statut personnalisé Discord ("Version 3.7.4", sans verbe devant — via `discord.CustomActivity`, le même type de statut que celui qu'un humain définit manuellement), défini dans `on_ready` à partir de `config.VERSION`. À incrémenter manuellement dans `config.py` à chaque changement notable — pas de lien automatique avec git ou un quelconque système de versioning, c'est une simple constante texte.
-
-## Message de ping
-
-Quand on mentionne le bot (`@bot`), le message affiché dépend de qui demande :
-- **Owner (permanent ou temporaire)** : embed détaillé avec statut admin, kill switch, intents activés.
-- **Tout le monde d'autre** : message générique ("Salut, utilise `v!help`"), pour ne pas exposer ces infos opérationnelles à n'importe qui.
-
-Le bot écrit ses logs à la fois dans la console et dans `bot.log` (à la racine du projet), pour que la commande `logs` ait quelque chose à ouvrir.
-
-## Lancer le bot manuellement (autre OS)
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+```text
+v-bot>
 ```
+
+Commandes disponibles :
+
+| Commande              | Fonction                                       |
+| --------------------- | ---------------------------------------------- |
+| `start`               | Démarrer le bot                                |
+| `stop`                | Arrêter le bot                                 |
+| `restart`             | Redémarrer le bot                              |
+| `status`              | Voir l'état du bot                             |
+| `uptime`              | Voir depuis combien de temps le bot fonctionne |
+| `update`              | Mettre à jour les dépendances                  |
+| `logs`                | Ouvrir `bot.log`                               |
+| `security_logs`       | Afficher les derniers événements de sécurité   |
+| `servers`             | Afficher les serveurs du bot                   |
+| `add_secondary_owner` | Ajouter un owner secondaire                    |
+| `set_token`           | Modifier le token Discord                      |
+| `set_principal_owner` | Modifier l'owner principal                     |
+| `toggle_dangerous`    | Activer/désactiver les commandes sensibles     |
+| `set_name`            | Modifier le nom du bot                         |
+| `set_prefix`          | Modifier le préfixe                            |
+
+Utilisez :
+
+```text
+help
+```
+
+pour afficher la liste directement dans le panel.
+
+---
+
+# 📜 Commandes Discord
+
+Le préfixe par défaut est :
+
+```text
+v!
+```
+
+Vous pouvez le modifier depuis le panel avec :
+
+```text
+set_prefix
+```
+
+---
+
+## 🛡️ Modération
+
+### `v!mute`
+
+Mute temporairement un membre.
+
+```text
+v!mute @membre 10 raison
+```
+
+### `v!unmute`
+
+Retire le mute d'un membre.
+
+```text
+v!unmute @membre
+```
+
+### `v!kick`
+
+Expulse un membre.
+
+```text
+v!kick @membre raison
+```
+
+### `v!ban`
+
+Bannit un membre.
+
+```text
+v!ban @membre raison
+```
+
+### `v!unban`
+
+Débannit un utilisateur avec son ID.
+
+```text
+v!unban 123456789012345678
+```
+
+### `v!give_role`
+
+Donne un rôle à un membre.
+
+```text
+v!give_role @membre @role
+```
+
+### `v!lock`
+
+Verrouille le salon actuel.
+
+```text
+v!lock
+```
+
+### `v!unlock`
+
+Déverrouille le salon actuel.
+
+```text
+v!unlock
+```
+
+### `v!slowmode`
+
+Configure le mode lent.
+
+```text
+v!slowmode 10
+```
+
+### `v!clear`
+
+Supprime des messages.
+
+```text
+v!clear 50
+```
+
+Les commandes de modération vérifient les permissions Discord correspondantes ou les droits d'owner.
+
+---
+
+# ℹ️ Informations
+
+### `v!help`
+
+Affiche l'aide du bot.
+
+```text
+v!help
+```
+
+Des catégories peuvent également être utilisées.
+
+```text
+v!help owner
+```
+
+### `v!user_info`
+
+Affiche les informations d'un membre.
+
+```text
+v!user_info @membre
+```
+
+### `v!server_info`
+
+Affiche les informations du serveur.
+
+```text
+v!server_info
+```
+
+### `v!avatar`
+
+Affiche l'avatar d'un utilisateur.
+
+```text
+v!avatar @membre
+```
+
+### `v!snipe`
+
+Affiche un message récemment supprimé.
+
+```text
+v!snipe
+```
+
+Il est également possible de sélectionner un message précédent :
+
+```text
+v!snipe 2
+```
+
+---
+
+# 👑 Système d'owners
+
+v-bot possède plusieurs niveaux d'accès.
+
+### Owner principal
+
+Un seul owner principal est défini avec :
+
+```env
+OWNER_PRINCIPAL_ID=123456789
+```
+
+### Owners secondaires
+
+Plusieurs owners secondaires peuvent être définis :
+
+```env
+OWNERS_SECONDARY_IDS=123456789,987654321
+```
+
+Ils sont ajoutés depuis le panel avec :
+
+```text
+add_secondary_owner
+```
+
+### Owners temporaires
+
+Un owner permanent peut temporairement donner des permissions à un utilisateur :
+
+```text
+v!add_temp @utilisateur 3600
+```
+
+Ici, l'autorisation dure **3600 secondes**.
+
+### Liste des owners
+
+```text
+v!owner_list
+```
+
+Affiche les owners permanents et temporaires.
+
+---
+
+# 🔐 Kill Switch
+
+Le bot possède un système de **Kill Switch** permettant de bloquer les commandes protégées.
+
+Vérifier son état :
+
+```text
+v!killswitch
+```
+
+Activer :
+
+```text
+v!killswitch on
+```
+
+Désactiver :
+
+```text
+v!killswitch off
+```
+
+Le Kill Switch est particulièrement utile en cas de problème de sécurité ou de comportement inattendu du bot.
+
+---
+
+# 🌐 Gestion des serveurs
+
+Les owners peuvent utiliser :
+
+```text
+v!servers
+```
+
+pour accéder au panneau de gestion des serveurs.
+
+Le panel local possède également :
+
+```text
+servers
+```
+
+qui affiche la liste des serveurs auxquels le bot est connecté.
+
+La liste est enregistrée automatiquement dans :
+
+```text
+servers.txt
+```
+
+---
+
+# 🗣️ Commande `say`
+
+Les owners peuvent faire envoyer un message par le bot :
+
+```text
+v!say Bonjour tout le monde !
+```
+
+Le message contenant la commande est ensuite supprimé.
+
+---
+
+# ⚠️ Commandes sensibles
+
+Les commandes suivantes sont volontairement séparées dans :
+
+```text
+cogs/dangerous.py
+```
+
+* `spam`
+* `dmall`
+* `raid`
+* `remove_raid`
+
+Elles sont **désactivées par défaut**.
+
+```env
+DANGEROUS_COMMANDS_ENABLED=false
+```
+
+Lorsqu'elles sont désactivées, le Cog `dangerous` n'est même pas chargé par le bot.
+
+---
+
+## Activation
+
+Depuis le panel :
+
+```text
+toggle_dangerous
+```
+
+Le panel demande une confirmation explicite :
+
+```text
+ACTIVER
+```
+
+Après activation, un redémarrage est nécessaire :
+
+```text
+restart
+```
+
+---
+
+## `v!spam`
+
+Permet l'envoi contrôlé de plusieurs messages.
+
+```text
+v!spam <nombre> <message>
+```
+
+La quantité maximale est limitée par la configuration du bot.
+
+---
+
+## `v!dmall`
+
+Envoie un message privé aux membres du serveur.
+
+```text
+v!dmall <message>
+```
+
+Cette commande est protégée et doit être utilisée avec précaution.
+
+---
+
+## `v!raid`
+
+Fonction de test contrôlée créant des salons et rôles temporaires.
+
+```text
+v!raid 10
+```
+
+Les éléments créés sont enregistrés afin de pouvoir être supprimés avec :
+
+```text
+v!remove_raid
+```
+
+---
+
+# 🛡️ Sécurité
+
+v-bot possède plusieurs protections.
+
+### Permissions centralisées
+
+Les permissions sont gérées dans :
+
+```text
+checks.py
+```
+
+avec différents niveaux :
+
+* Owner permanent
+* Owner permanent ou temporaire
+* Owner ou propriétaire du serveur
+* Owner ou permission Discord spécifique
+* Kill Switch
+
+---
+
+### Protection anti-double-exécution
+
+Les commandes sensibles ne peuvent pas être exécutées plusieurs fois simultanément sur le même serveur.
+
+Cela évite notamment :
+
+* créations multiples de salons/rôles ;
+* doubles opérations ;
+* exécutions simultanées accidentelles.
+
+---
+
+### Logs de sécurité
+
+Les actions sensibles sont enregistrées dans :
+
+```text
+security.log
+```
+
+Exemples :
+
+* changement de token ;
+* changement d'owner principal ;
+* ajout d'un owner secondaire ;
+* ajout d'un owner temporaire ;
+* activation/désactivation des commandes sensibles ;
+* activation/désactivation du Kill Switch.
+
+Le token lui-même n'est **jamais écrit dans les logs**.
+
+---
+
+# 📝 Logs
+
+## `bot.log`
+
+Contient les événements et erreurs du bot.
+
+Depuis le panel :
+
+```text
+logs
+```
+
+ouvre directement le fichier.
+
+## `security.log`
+
+Contient uniquement les événements sensibles.
+
+Depuis le panel :
+
+```text
+security_logs
+```
+
+affiche les dernières entrées.
+
+---
+
+# ⚙️ Architecture
+
+Le bot est organisé en plusieurs **Cogs** afin de garder le projet modulaire.
+
+### `cogs/moderation.py`
+
+Toutes les commandes de modération.
+
+### `cogs/info.py`
+
+Commandes d'informations et système de snipe.
+
+### `cogs/owner.py`
+
+Administration du bot et gestion des owners.
+
+### `cogs/events.py`
+
+Gestion des événements Discord :
+
+* connexion ;
+* arrivée/départ de serveur ;
+* mentions du bot ;
+* messages supprimés ;
+* erreurs ;
+* nettoyage des owners temporaires.
+
+### `cogs/dangerous.py`
+
+Commandes sensibles, chargées uniquement lorsqu'elles sont activées.
+
+### `cogs/help_cog.py`
+
+Système d'aide.
+
+---
+
+# 🔧 Configuration Discord
+
+Le bot utilise notamment les intents :
+
+```text
+guilds
+members
+messages
+message_content
+reactions
+```
+
+Les intents nécessaires doivent être activés dans le **Discord Developer Portal**.
+
+Le bot synchronise également ses commandes lors de sa connexion à Discord.
+
+---
+
+# 🧰 Technologies
+
+* **Python 3.13**
+* **discord.py**
+* **python-dotenv**
+* **psutil**
+* **asyncio**
+* **Windows Batch**
+
+---
+
+# 🔒 Fichiers à ne jamais publier
+
+Ne publiez jamais :
+
+```text
+.env
+```
+
+ou un fichier contenant votre token Discord.
+
+Le projet utilise `.env.example` pour fournir uniquement le modèle de configuration.
+
+---
+
+# 📌 Version
+
+Version actuelle :
+
+```text
+3.7.5
+```
+
+---
+
+# 📄 Licence
+
+Projet personnel.
+
+Toute utilisation, modification ou redistribution du projet doit respecter les conditions définies par son propriétaire.
