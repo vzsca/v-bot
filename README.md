@@ -72,6 +72,14 @@ Les dépendances sont installées automatiquement lors du premier lancement.
 
 ---
 
+## Lancer le bot manuellement (autre OS)
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+
 ## 1. Cloner le projet
 
 ```bash
