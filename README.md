@@ -121,7 +121,7 @@ Le lancement recommandé se fait avec :
 ```text
 start_bot.bat
 ```
-Lancer le bot manuellement (autre OS)
+Lancer le bot manuellement :
 
 ```bash
 python -m venv venv
