@@ -14,21 +14,6 @@ class GuildActionsView(View):
     def __init__(self, guild: discord.Guild):
         super().__init__(timeout=120)
         self.guild = guild
-    """
-    @discord.ui.button(label="🔴 Toggle Bot", style=discord.ButtonStyle.red)
-    async def toggle(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not checks.is_permanent_owner(interaction.user.id):
-            return await interaction.response.send_message("❌ Non autorisé", ephemeral=True)
-
-        if self.guild.id in state.disabled_guilds:
-            state.disabled_guilds.discard(self.guild.id)
-            msg = "🟢 Bot réactivé sur ce serveur"
-        else:
-            state.disabled_guilds.add(self.guild.id)
-            msg = "🔴 Bot désactivé sur ce serveur"
-
-        await interaction.response.send_message(msg, ephemeral=True)
-    """
     @discord.ui.button(label="📩 Invite", style=discord.ButtonStyle.green)
     async def invite(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not checks.is_permanent_owner(interaction.user.id):
