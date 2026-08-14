@@ -72,6 +72,12 @@ Les dépendances sont installées automatiquement lors du premier lancement.
 
 ---
 
+## 1. Cloner le projet
+
+```bash
+git clone https://github.com/vzsca/v-bot.git
+cd v-bot
+```
 
 ---
 
