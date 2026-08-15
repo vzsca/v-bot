@@ -1,9 +1,5 @@
 """
 Point d'entrée du bot.
-
-Ce fichier ne contient plus aucune logique métier : il assemble juste les
-intents, le bot, le check global et charge les cogs (modération, info, owner,
-help, events). Toute la logique vit dans les modules dédiés.
 """
 
 import asyncio
