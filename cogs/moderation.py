@@ -1,7 +1,7 @@
 """
 Commandes de modération. Toutes utilisent checks.owner_or_permission(...)
 pour l'autorisation : owner (permanent/temporaire) OU permission Discord
-adéquate sur le serveur. Plus aucune logique de permission dupliquée ici.
+adéquate sur le serveur.
 
 Toutes ces commandes sont des "hybrid commands" : elles fonctionnent à la
 fois en commande slash (/) et en commande prefix (v!), avec une seule
