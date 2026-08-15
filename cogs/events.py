@@ -1,10 +1,5 @@
 """
 Événements globaux du bot + tâche de fond.
-
-Regroupés ici plutôt que dans main.py pour garder le point d'entrée minimal.
-Comme ce sont des listeners de Cog (et non des @bot.event), le traitement des
-commandes par défaut de discord.py continue de fonctionner sans appel manuel
-à process_commands().
 """
 
 import logging
