@@ -1,14 +1,5 @@
 """
 Panel de contrôle interactif pour v-bot.
-
-Remplace l'ancienne logique tout-en-batch : gestion du process bot, édition
-de .env, calcul d'uptime, etc. vivent ici en Python, où c'est plus simple,
-plus rapide (pas de spawn PowerShell à chaque commande) et plus fiable que
-l'équivalent batch (pas de jonglage de guillemets/carets, vraies exceptions).
-
-start_bot.bat ne fait plus que créer le venv, installer les dépendances une
-fois, puis lancer ce script. L'interface (commandes tapées au prompt
-"v-bot>") reste strictement la même qu'avant.
 """
 
 import os
