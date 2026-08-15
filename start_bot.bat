@@ -89,7 +89,7 @@ if not exist panel.py (
 )
 
 REM Toute la logique du panel (start/stop/restart/uptime/.env/...) vit dans
-REM panel.py : ce .bat ne fait plus que preparer l'environnement et le lancer.
+REM panel.py : ce .bat ne fait que preparer l'environnement et le lancer.
 venv\Scripts\python.exe panel.py
 
 pause
