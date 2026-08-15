@@ -63,7 +63,7 @@ v-bot/
 
 ## Prérequis
 
-* Windows
+* Windows **recommandé**
 * Python **3.13 recommandé**
 * Un bot Discord créé sur le [Discord Developer Portal](https://discord.com/developers/applications)
 * Les intents nécessaires activés sur le bot Discord
