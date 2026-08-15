@@ -1,9 +1,7 @@
 """
 Toute la logique de permission du bot, centralisée ici.
 
-Avant, chaque commande sensible refaisait son propre `if ctx.author.id not in
-AUTHORIZED_USER_ID: ...` à la main, avec des messages d'erreur différents selon
-l'endroit. Désormais une seule source de vérité par type de vérification :
+Une seule source de vérité par type de vérification :
 
 - is_permanent_owner / is_owner_or_temp : fonctions de bas niveau réutilisables
   partout (commandes ET vues/boutons).
