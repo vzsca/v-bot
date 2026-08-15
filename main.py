@@ -62,11 +62,6 @@ async def on_error(event_method: str, *args, **kwargs) -> None:
     (`self.on_error(...)` dans _run_event). Un @commands.Cog.listener()
     pour "on_error" ne serait donc JAMAIS déclenché ; il faut l'overrider
     ici, sur l'instance du bot, pour que ce filet existe vraiment.
-
-    Avec ça, on_command_error couvre les erreurs de commandes et celle-ci
-    couvre tout le reste -- la gestion d'erreurs est centralisée à 100%,
-    plus aucune exception ne peut juste se logger toute seule en silence
-    dans le logger "discord" générique sans qu'on le sache.
     """
     logger.exception(f"Erreur non gérée dans l'event handler '{event_method}' (args={args!r})")
 
