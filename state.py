@@ -1,9 +1,5 @@
 """
 Conteneur centralisé pour toutes les données en mémoire partagées entre les cogs.
-
-Avant, ces variables (KILL_SWITCH, sniped_messages, temp_authorized_users, ...)
-étaient des globales éparpillées dans un seul fichier. Elles vivent maintenant
-ici, dans une instance unique importée partout où c'est nécessaire.
 """
 
 import time
