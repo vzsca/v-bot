@@ -885,6 +885,7 @@ The bot also synchronizes its commands when connecting to Discord.
 * **psutil**
 * **asyncio**
 * **Windows Batch**
+* **Bash**
 
 ---
 
