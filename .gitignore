@@ -7,3 +7,4 @@ bot.start
 bot.log
 security.log
 servers.txt
+twitch_config.json
