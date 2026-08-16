@@ -98,11 +98,11 @@ v-bot/
 
 ---
 
-# 🚀 Installation
+# 🚀 Self-Hosting
 
 ## Requirements
 
-* Windows **recommended**
+* Windows, Linux, or macOS 
 * Python **3.13 recommended**
 * A Discord bot created through the [Discord Developer Portal](https://discord.com/developers/applications)
 * The required intents enabled for the Discord bot
@@ -122,10 +122,16 @@ cd v-bot
 
 ## 2. Configure `.env`
 
-Copy `.env.example` to `.env`:
+Create a `.env` file from `.env.example.`
 
-```bash
+### Windows
+```text
 copy .env.example .env
+```
+
+### Linux / macOS
+```text
+cp .env.example .env
 ```
 
 Then configure:
@@ -133,7 +139,6 @@ Then configure:
 ```env
 DISCORD_TOKEN=YOUR_TOKEN
 
-BOT_NAME=v-bot
 BOT_PREFIX=v!
 BOT_VERSION=3.7.5
 
@@ -165,13 +170,52 @@ TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
 
 # ▶️ Launch
 
-The recommended way to launch the bot is:
+v-bot includes platform-specific launchers that automatically prepare the Python environment and start the local control panel.
 
+### 🪟 Windows
+
+The recommended way to launch v-bot is:
 ```text
 start_bot.bat
 ```
+The launcher:
 
-To launch the bot manually:
+-Checks Python
+-Creates the `venv` if necessary
+-Installs dependencies
+-Starts the control panel
+
+### 🐧 Linux / 🍎 macOS
+
+The recommended way to launch v-bot is:
+
+```text
+./start_bot.sh
+```
+
+If the script does not have execution permissions:
+
+```bash
+chmod +x start_bot.sh
+```
+Then:
+
+```bash
+./start_bot.sh
+```
+The launcher:
+
+Checks Python
+Creates the `venv` if necessary
+Installs dependencies
+Starts the control panel
+
+
+## Manual launch
+
+If you prefer to launch v-bot manually, create and activate the virtual environment first.
+
+### Windows
 
 ```bash
 python -m venv venv
@@ -179,6 +223,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
+## Linux / macOS
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python panel.py
+```
+The control panel can then be used to start the bot.
 
 The script:
 
