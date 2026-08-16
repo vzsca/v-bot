@@ -69,6 +69,9 @@ PERMANENT_OWNERS: list[int] = [OWNER_PRINCIPAL] + OWNERS_SECONDARY
 # from .env.
 PERMANENT_OWNERS_SET: frozenset[int] = frozenset(PERMANENT_OWNERS)
 
+# --- Twitch API ---
+TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID", "").strip()
+TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET", "").strip()
 
 # --- Bot identity ---
 BOT_NAME = os.getenv("BOT_NAME", "v-bot").strip()
