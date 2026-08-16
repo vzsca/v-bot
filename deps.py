@@ -1,10 +1,10 @@
 """
-Installation des dépendances avec un affichage propre : juste le nom du
-paquet et son statut (OK/ECHEC), au lieu du flot verbeux de pip/uv (résolution
-de versions, téléchargement, etc.).
+Dependency installation with clean output: only the package name and its
+status (OK/FAILED), instead of pip/uv's verbose output (version resolution,
+downloads, etc.).
 
-Utilisé par bootstrap.py (toute première installation, appelée une seule fois
-par start_bot.bat) et par panel.py (commande "update").
+Used by bootstrap.py (initial installation, called only once by
+start_bot.bat) and by panel.py (the "update" command).
 """
 
 import shutil
@@ -17,7 +17,7 @@ REQUIREMENTS_FILE = ROOT / "requirements.txt"
 
 
 def _package_name(requirement_line: str) -> str:
-    """Extrait juste le nom du paquet d'une ligne requirements.txt (sans la contrainte de version)."""
+    """Extracts only the package name from a requirements.txt line (without the version constraint)."""
     for sep in (">=", "==", "<=", "~=", "<", ">"):
         if sep in requirement_line:
             return requirement_line.split(sep)[0].strip()
@@ -30,12 +30,13 @@ def _has_uv() -> bool:
 
 def install_requirements(upgrade: bool = False) -> bool:
     """
-    Installe chaque paquet de requirements.txt un par un, avec un statut clair
-    par ligne plutôt que la sortie complète de pip/uv. Retourne True si tout
-    s'est bien passé, False sinon (et affiche l'erreur du paquet en échec).
+    Installs each package from requirements.txt one by one, with a clear
+    status for each line instead of the full pip/uv output. Returns True if
+    everything succeeds, False otherwise (and displays the error from the
+    failed package).
     """
     if not REQUIREMENTS_FILE.exists():
-        print("[ERREUR] requirements.txt introuvable.")
+        print("[ERROR] requirements.txt not found.")
         return False
 
     requirements = [
@@ -61,7 +62,7 @@ def install_requirements(upgrade: bool = False) -> bool:
         if result.returncode == 0:
             print("OK")
         else:
-            print("ECHEC")
+            print("FAILED")
             print(result.stderr.strip()[-800:])
             all_ok = False
 
