@@ -8,11 +8,33 @@ The project also includes a **local control panel** for managing the bot process
 
 ## 🤖 Installation
 
-Add **v-bot** to your Discord server:
+You have two options to use v-bot:
+
+### Option 1 — Use the official v-bot instance
+
+You can add the official v-bot instance directly to your Discord server:
 
 [**➜ Add v-bot to your server**](https://discord.com/oauth2/authorize?client_id=1335588735794024499)
 
 > **PS:** v-bot may not be hosted 24/7 and may be offline for an undetermined period of time. During these periods, only the public source code and documentation will remain available.
+
+### Option 2 — Run your own v-bot instance
+
+You can also run your own instance of v-bot using the public source code.
+
+You **do not need to use the invitation link above**. Simply create your own Discord bot through the [Discord Developer Portal](https://discord.com/developers/applications), configure its token and owner settings in `.env`, then follow the installation steps below.
+
+This allows you to:
+
+* Run your own independent instance
+* Use your own Discord bot
+* Configure your own prefix and owners
+* Manage your own Twitch API credentials
+* Enable or disable sensitive features
+* Keep your bot and configuration under your own control
+
+The invitation link is only for the hosted v-bot instance. **If you install v-bot yourself, you must create and configure your own Discord bot.**
+
 
 ## ✨ Features
 
