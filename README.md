@@ -20,6 +20,8 @@ The project also includes a **local control panel** for managing the bot process
 * 🔄 Automatic startup and shutdown management
 * 🧩 Modular architecture with Cogs
 * ⚡ Prefix commands and slash/hybrid commands for compatible commands
+* 📺 Automatic Twitch stream announcements
+* 💬 Custom Discord embeds
 
 ---
 
@@ -172,7 +174,6 @@ Available commands:
 | `set_token`           | Change the Discord token               |
 | `set_principal_owner` | Change the principal owner             |
 | `toggle_dangerous`    | Enable/disable sensitive commands      |
-| `set_name`            | Change the bot name                    |
 | `set_prefix`          | Change the command prefix              |
 
 Use:
@@ -450,6 +451,42 @@ v!say Hello everyone!
 ```
 
 The message containing the command is then deleted.
+
+---
+
+# 💬 `embed` Command
+
+Owners can make the bot send a custom Discord embed.
+
+```text
+v!embed <title> | <description>
+v!embed Server Update | The server will be updated tonight.
+```
+
+The | character separates the embed title from its description.
+The command is restricted to authorized owners.
+
+---
+
+# 📺 Twitch Announcements
+
+v-bot can automatically announce when a configured Twitch channel starts a stream.
+
+Twitch announcements are managed through the Twitch Cog:
+
+```text
+cogs/twitch.py
+```
+
+Each announcement configuration contains:
+
+Twitch channel URL
+Announcement message
+Discord channel
+
+The bot periodically checks the configured Twitch channels and automatically sends the configured announcement when a stream starts.
+
+
 
 ---
 
