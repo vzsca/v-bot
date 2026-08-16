@@ -530,7 +530,7 @@ v!delete_annonce
 ```
 The corresponding Twitch announcement configuration is removed from the local configuration.
 
-# Twitch API Configuration
+## Twitch API Configuration
 
 Twitch announcements require Twitch API credentials.
 The credentials are stored in `.env`:
@@ -544,7 +544,7 @@ set_twitch_api
 ```
 The Twitch API credentials are private and should never be published or committed to GitHub.
 
-# Twitch Configuration File
+## Twitch Configuration File
 
 Twitch announcement configurations are automatically stored locally in:
 ```text
