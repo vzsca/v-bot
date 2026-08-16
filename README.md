@@ -12,7 +12,7 @@ Add **v-bot** to your Discord server:
 
 [**➜ Add v-bot to your server**](https://discord.com/oauth2/authorize?client_id=1335588735794024499)
 
-> **PS:** v-bot may not be hosted 24/7 and may be offline for an undetermined period of time. Only public commands will be available.
+> **PS:** v-bot may not be hosted 24/7 and may be offline for an undetermined period of time. During these periods, only the public source code and documentation will remain available.
 
 ## ✨ Features
 
@@ -46,7 +46,7 @@ v-bot/
 ├── state.py                 # Internal bot state
 ├── exceptions.py            # Custom exceptions
 ├── security_log.py          # Security logging
-├──twitch_api.py             # Twitch API integration
+├── twitch_api.py             # Twitch API integration
 │
 ├── start_bot.bat            # Launches the panel
 ├── requirements.txt         # Python dependencies
@@ -56,6 +56,7 @@ v-bot/
 ├── bot.log                  # Bot logs
 ├── security.log             # Security logs
 ├── servers.txt              # Server list
+├── twitch_config.json      # Local Twitch announcement configuration
 │
 ├── cogs/
     ├── events.py            # Discord events
