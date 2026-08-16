@@ -38,6 +38,7 @@ v-bot/
 ├── state.py                 # Internal bot state
 ├── exceptions.py            # Custom exceptions
 ├── security_log.py          # Security logging
+├──twitch_api.py             # Twitch API integration
 │
 ├── start_bot.bat            # Launches the panel
 ├── requirements.txt         # Python dependencies
@@ -49,13 +50,14 @@ v-bot/
 ├── servers.txt              # Server list
 │
 ├── cogs/
-    ├── events.py
-    ├── moderation.py
-    ├── info.py
-    ├── owner.py
-    ├── dangerous.py
-    ├── twitch.py
-    └── help_cog.py
+    ├── events.py            # Discord events
+    ├── moderation.py        # Moderation
+    ├── info.py              # Information
+    ├── owner.py             # Bot administration
+    ├── dangerous.py         # Sensitive commands
+    ├── twitch.py            # Twitch commands and stream monitoring
+    └── help_cog.py          # Help system
+
 ```
 
 > ⚠️ The `venv/` folder is generated locally and should not be uploaded to GitHub.
@@ -485,9 +487,9 @@ cogs/twitch.py
 
 Each announcement configuration contains:
 
-Twitch channel URL
-Announcement message
-Discord channel
+* Twitch channel URL
+* Announcement message
+* Discord channel
 
 The bot periodically checks the configured Twitch channels and automatically sends the configured announcement when a stream starts.
 
