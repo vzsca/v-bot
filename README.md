@@ -4,6 +4,8 @@ Versatile Discord bot developed in **Python with discord.py**, designed for mode
 
 The project also includes a **local control panel** for managing the bot process, `.env` configuration, owners, logs, and sensitive features.
 
+v-bot is designed to be **cross-platform** and can be self-hosted on **Windows, Linux, or macOS**.
+
 ---
 
 ## 🤖 Installation
