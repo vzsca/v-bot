@@ -112,12 +112,13 @@ DANGEROUS_COMMANDS_ENABLED=false
 | Variable                     | Description                            |
 | ---------------------------- | -------------------------------------- |
 | `DISCORD_TOKEN`              | Discord bot token                      |
-| `BOT_NAME`                   | Bot name                               |
 | `BOT_PREFIX`                 | Command prefix                         |
 | `BOT_VERSION`                | Version displayed by the bot           |
 | `OWNER_PRINCIPAL_ID`         | Principal owner                        |
 | `OWNERS_SECONDARY_IDS`       | Secondary owners separated by commas   |
 | `DANGEROUS_COMMANDS_ENABLED` | Enables or disables sensitive commands |
+| `TWITCH_CLIENT_ID`            | Twitch API Client ID                   |
+| `TWITCH_CLIENT_SECRET`        | Twitch API Client Secret               |
 
 > 🔒 **Never share your `.env` file or Discord bot token.**
 
