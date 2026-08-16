@@ -859,7 +859,7 @@ The project uses `.env.example` to provide only the configuration template.
 Current version:
 
 ```text
-3.7.5
+3.8.1
 ```
 
 ---
