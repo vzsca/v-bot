@@ -110,4 +110,4 @@ DANGEROUS_COMMANDS_ENABLED: bool = _parse_bool(
 # and available elsewhere if needed. Must be manually incremented after each
 # notable change -- it is not automatically linked to git or anything else.
 
-VERSION = os.getenv("BOT_VERSION", "v-bot").strip()
+VERSION = 3.8.1
