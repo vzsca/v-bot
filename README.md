@@ -217,11 +217,11 @@ If you prefer to launch v-bot manually, create and activate the virtual environm
 
 ### Windows
 
-```bash
+```powershell
 python -m venv venv
-source venv/bin/activate
+venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
+python panel.py
 ```
 ## Linux / macOS
 
