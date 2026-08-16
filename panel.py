@@ -325,6 +325,35 @@ def cmd_set_prefix() -> None:
     print("The change will take effect on the next bot restart.")
 
 
+def cmd_set_twitch_api() -> None:
+    """Configure the Twitch Client ID and Client Secret in .env."""
+    print()
+    print("=== Twitch API Configuration ===")
+
+    client_id = input("Twitch Client ID: ").strip()
+
+    if not client_id:
+        print("[ERROR] No Client ID entered, nothing was changed.")
+        return
+
+    client_secret = input("Twitch Client Secret: ").strip()
+
+    if not client_secret:
+        print("[ERROR] No Client Secret entered, nothing was changed.")
+        return
+
+    set_env_value("TWITCH_CLIENT_ID", client_id)
+    set_env_value("TWITCH_CLIENT_SECRET", client_secret)
+
+    security_log.log_security_event(
+        "Twitch API credentials changed",
+        actor="panel",
+    )
+
+    print("Twitch API credentials saved to .env.")
+    print("The change will take effect on the next bot restart.")
+
+
 COMMANDS = [
     ("start", "start the bot", cmd_start),
     ("stop", "stop the bot", cmd_stop),
@@ -341,6 +370,7 @@ COMMANDS = [
     ("toggle_dangerous", "enable/disable raid, remove_raid, dmall, spam", cmd_toggle_dangerous),
     ("set_name", "set or change the bot name in .env", cmd_set_name),
     ("set_prefix", "set or change the prefix in .env", cmd_set_prefix),
+    ("set_twitch_api", "set or change the Twitch API credentials in .env", cmd_set_twitch_api),
 ]
 
 COMMAND_MAP = {name: func for name, _, func in COMMANDS}
