@@ -12,7 +12,7 @@ Add **v-bot** to your Discord server:
 
 [**➜ Add v-bot to your server**](https://discord.com/oauth2/authorize?client_id=1335588735794024499)
 
-> **PS:** v-bot may not be hosted 24/7 and may be offline for an undetermined period of time.
+> **PS:** v-bot may not be hosted 24/7 and may be offline for an undetermined period of time. Only public commands will be available.
 
 ## ✨ Features
 
