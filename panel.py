@@ -347,7 +347,6 @@ COMMANDS = [
     ("set_token", "set or change the Discord token in .env", cmd_set_token),
     ("set_principal_owner", "set or change the principal owner in .env", cmd_set_principal_owner),
     ("toggle_dangerous", "enable/disable raid, remove_raid, dmall, spam", cmd_toggle_dangerous),
-    ("set_name", "set or change the bot name in .env", cmd_set_name),
     ("set_prefix", "set or change the prefix in .env", cmd_set_prefix),
     ("set_twitch_api", "set or change the Twitch API credentials in .env", cmd_set_twitch_api),
 ]
