@@ -864,6 +864,24 @@ Current version:
 
 ---
 
+# 🐛 Bug Reports & Feedback
+
+If you encounter a bug, have a suggestion, or would like to recommend an improvement for v-bot, you can report it through either of the following methods:
+
+* 📧 **Email:** `support.v.bot@gmail.com`
+* 💬 **Discord:** Open a support ticket in the [official Discord server](https://discord.gg/vgvFA7NJHg)
+
+When reporting a bug, please provide as much information as possible, including:
+
+* What happened
+* What you expected to happen
+* Steps to reproduce the issue
+* Relevant error messages or logs
+
+Your feedback and suggestions are welcome and can help improve v-bot.
+
+---
+
 # 📄 License
 
 Personal project.
