@@ -233,14 +233,6 @@ python panel.py
 ```
 The control panel can then be used to start the bot.
 
-The script:
-
-1. Checks Python
-2. Creates the `venv` if necessary
-3. Installs dependencies
-4. Launches the panel
-5. The panel can then be used to start the bot
-
 ---
 
 # 🖥️ Control Panel
