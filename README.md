@@ -1,78 +1,78 @@
 # 🤖 v-bot
 
-Bot Discord polyvalent développé en **Python avec discord.py**, pensé pour la modération, la gestion des serveurs et l'administration sécurisée du bot.
+Versatile Discord bot developed in **Python with discord.py**, designed for moderation, server management, and secure bot administration.
 
-Le projet possède également un **panel de contrôle local** permettant de gérer le processus du bot, la configuration `.env`, les owners, les logs et les fonctionnalités sensibles.
-
----
-
-## ✨ Fonctionnalités
-
-* 🛡️ Modération complète
-* ℹ️ Commandes d'information
-* 👑 Système d'owners permanents et temporaires
-* 🔐 Kill Switch global
-* 🧹 Snipe des messages supprimés
-* 🌐 Gestion de plusieurs serveurs
-* ⚙️ Panel de contrôle local
-* 📋 Logs classiques et logs de sécurité
-* 🔒 Commandes sensibles désactivées par défaut
-* 🔄 Gestion automatique du démarrage et de l'arrêt
-* 🧩 Architecture modulaire avec des Cogs
-* ⚡ Commandes préfixées et commandes slash/hybrides pour les commandes compatibles
+The project also includes a **local control panel** for managing the bot process, `.env` configuration, owners, logs, and sensitive features.
 
 ---
 
-# 📁 Structure du projet
+## ✨ Features
+
+* 🛡️ Full moderation
+* ℹ️ Information commands
+* 👑 Permanent and temporary owner system
+* 🔐 Global Kill Switch
+* 🧹 Deleted message snipe
+* 🌐 Multi-server management
+* ⚙️ Local control panel
+* 📋 Standard and security logs
+* 🔒 Sensitive commands disabled by default
+* 🔄 Automatic startup and shutdown management
+* 🧩 Modular architecture with Cogs
+* ⚡ Prefix commands and slash/hybrid commands for compatible commands
+
+---
+
+# 📁 Project Structure
 
 ```text
 v-bot/
-├── main.py                  # Point d'entrée du bot
-├── panel.py                 # Panel de contrôle local
-├── bootstrap.py             # Installation initiale
-├── deps.py                  # Gestion des dépendances
-├── config.py                # Configuration du bot
-├── checks.py                # Système de permissions
-├── state.py                 # État interne du bot
-├── exceptions.py            # Exceptions personnalisées
-├── security_log.py          # Journal de sécurité
+├── main.py                  # Bot entry point
+├── panel.py                 # Local control panel
+├── bootstrap.py             # Initial setup
+├── deps.py                  # Dependency management
+├── config.py                # Bot configuration
+├── checks.py                # Permission system
+├── state.py                 # Internal bot state
+├── exceptions.py            # Custom exceptions
+├── security_log.py          # Security logging
 │
-├── start_bot.bat            # Lance le panel
-├── requirements.txt         # Dépendances Python
-├── .env                     # Configuration privée
-├── .env.example             # Exemple de configuration
+├── start_bot.bat            # Launches the panel
+├── requirements.txt         # Python dependencies
+├── .env                     # Private configuration
+├── .env.example             # Configuration example
 │
-├── bot.log                  # Logs du bot
-├── security.log             # Logs de sécurité
-├── servers.txt              # Liste des serveurs
+├── bot.log                  # Bot logs
+├── security.log             # Security logs
+├── servers.txt              # Server list
 │
 └── cogs/
-    ├── events.py            # Événements Discord
-    ├── moderation.py        # Modération
-    ├── info.py              # Informations
-    ├── owner.py             # Administration du bot
-    ├── dangerous.py         # Commandes sensibles
-    └── help_cog.py          # Système d'aide
+    ├── events.py            # Discord events
+    ├── moderation.py        # Moderation
+    ├── info.py              # Information
+    ├── owner.py             # Bot administration
+    ├── dangerous.py         # Sensitive commands
+    └── help_cog.py          # Help system
 ```
 
-> ⚠️ Le dossier `venv/` est généré localement et ne devrait pas être envoyé sur GitHub.
+> ⚠️ The `venv/` folder is generated locally and should not be uploaded to GitHub.
 
 ---
 
 # 🚀 Installation
 
-## Prérequis
+## Requirements
 
-* Windows **recommandé**
-* Python **3.13 recommandé**
-* Un bot Discord créé sur le [Discord Developer Portal](https://discord.com/developers/applications)
-* Les intents nécessaires activés sur le bot Discord
+* Windows **recommended**
+* Python **3.13 recommended**
+* A Discord bot created through the [Discord Developer Portal](https://discord.com/developers/applications)
+* The required intents enabled for the Discord bot
 
-Les dépendances sont installées automatiquement lors du premier lancement.
+Dependencies are installed automatically during the first launch.
 
 ---
 
-## 1. Cloner le projet
+## 1. Clone the project
 
 ```bash
 git clone https://github.com/vzsca/v-bot.git
@@ -81,24 +81,24 @@ cd v-bot
 
 ---
 
-## 2. Configurer `.env`
+## 2. Configure `.env`
 
-Copiez `.env.example` vers `.env` :
+Copy `.env.example` to `.env`:
 
 ```bash
 copy .env.example .env
 ```
 
-Puis configurez :
+Then configure:
 
 ```env
-DISCORD_TOKEN=VOTRE_TOKEN
+DISCORD_TOKEN=YOUR_TOKEN
 
 BOT_NAME=v-bot
 BOT_PREFIX=v!
 BOT_VERSION=3.7.5
 
-OWNER_PRINCIPAL_ID=VOTRE_ID_DISCORD
+OWNER_PRINCIPAL_ID=YOUR_DISCORD_ID
 OWNERS_SECONDARY_IDS=
 
 DANGEROUS_COMMANDS_ENABLED=false
@@ -106,28 +106,29 @@ DANGEROUS_COMMANDS_ENABLED=false
 
 ### 🔑 Variables
 
-| Variable                     | Description                                 |
-| ---------------------------- | ------------------------------------------- |
-| `DISCORD_TOKEN`              | Token du bot Discord                        |
-| `BOT_NAME`                   | Nom du bot                                  |
-| `BOT_PREFIX`                 | Préfixe des commandes                       |
-| `BOT_VERSION`                | Version affichée par le bot                 |
-| `OWNER_PRINCIPAL_ID`         | Owner principal                             |
-| `OWNERS_SECONDARY_IDS`       | Owners secondaires séparés par des virgules |
-| `DANGEROUS_COMMANDS_ENABLED` | Active ou non les commandes sensibles       |
+| Variable                     | Description                            |
+| ---------------------------- | -------------------------------------- |
+| `DISCORD_TOKEN`              | Discord bot token                      |
+| `BOT_NAME`                   | Bot name                               |
+| `BOT_PREFIX`                 | Command prefix                         |
+| `BOT_VERSION`                | Version displayed by the bot           |
+| `OWNER_PRINCIPAL_ID`         | Principal owner                        |
+| `OWNERS_SECONDARY_IDS`       | Secondary owners separated by commas   |
+| `DANGEROUS_COMMANDS_ENABLED` | Enables or disables sensitive commands |
 
-> 🔒 **Ne partagez jamais votre `.env` ou votre token Discord.**
+> 🔒 **Never share your `.env` file or Discord bot token.**
 
 ---
 
-# ▶️ Lancement
+# ▶️ Launch
 
-Le lancement recommandé se fait avec :
+The recommended way to launch the bot is:
 
 ```text
 start_bot.bat
 ```
-Lancer le bot manuellement :
+
+To launch the bot manually:
 
 ```bash
 python -m venv venv
@@ -136,63 +137,63 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Le script :
+The script:
 
-1. Vérifie Python
-2. Crée le `venv` si nécessaire
-3. Installe les dépendances
-4. Lance le panel
-5. Le panel permet ensuite de démarrer le bot
+1. Checks Python
+2. Creates the `venv` if necessary
+3. Installs dependencies
+4. Launches the panel
+5. The panel can then be used to start the bot
 
 ---
 
-# 🖥️ Panel de contrôle
+# 🖥️ Control Panel
 
-Le panel affiche :
+The panel displays:
 
 ```text
 v-bot>
 ```
 
-Commandes disponibles :
+Available commands:
 
-| Commande              | Fonction                                       |
-| --------------------- | ---------------------------------------------- |
-| `start`               | Démarrer le bot                                |
-| `stop`                | Arrêter le bot                                 |
-| `restart`             | Redémarrer le bot                              |
-| `status`              | Voir l'état du bot                             |
-| `uptime`              | Voir depuis combien de temps le bot fonctionne |
-| `update`              | Mettre à jour les dépendances                  |
-| `logs`                | Ouvrir `bot.log`                               |
-| `security_logs`       | Afficher les derniers événements de sécurité   |
-| `servers`             | Afficher les serveurs du bot                   |
-| `add_secondary_owner` | Ajouter un owner secondaire                    |
-| `set_token`           | Modifier le token Discord                      |
-| `set_principal_owner` | Modifier l'owner principal                     |
-| `toggle_dangerous`    | Activer/désactiver les commandes sensibles     |
-| `set_name`            | Modifier le nom du bot                         |
-| `set_prefix`          | Modifier le préfixe                            |
+| Command               | Function                               |
+| --------------------- | -------------------------------------- |
+| `start`               | Start the bot                          |
+| `stop`                | Stop the bot                           |
+| `restart`             | Restart the bot                        |
+| `status`              | View the bot status                    |
+| `uptime`              | View how long the bot has been running |
+| `update`              | Update dependencies                    |
+| `logs`                | Open `bot.log`                         |
+| `security_logs`       | Display the latest security events     |
+| `servers`             | Display the bot's servers              |
+| `add_secondary_owner` | Add a secondary owner                  |
+| `set_token`           | Change the Discord token               |
+| `set_principal_owner` | Change the principal owner             |
+| `toggle_dangerous`    | Enable/disable sensitive commands      |
+| `set_name`            | Change the bot name                    |
+| `set_prefix`          | Change the command prefix              |
 
-Utilisez :
+Use:
 
 ```text
 help
 ```
 
-pour afficher la liste directement dans le panel.
+to display the list directly in the panel.
 
 ---
 
-# 📜 Commandes Discord
+# 📜 Discord Commands
 
-Le préfixe par défaut est :
+The default prefix is:
 
 ```text
 v!
 ```
 
-Vous pouvez le modifier depuis le panel avec :
+You can change it from the panel using:
 
 ```text
 set_prefix
@@ -200,43 +201,43 @@ set_prefix
 
 ---
 
-## 🛡️ Modération
+## 🛡️ Moderation
 
 ### `v!mute`
 
-Mute temporairement un membre.
+Temporarily mutes a member.
 
 ```text
-v!mute @membre 10 raison
+v!mute @member 10 reason
 ```
 
 ### `v!unmute`
 
-Retire le mute d'un membre.
+Removes a member's mute.
 
 ```text
-v!unmute @membre
+v!unmute @member
 ```
 
 ### `v!kick`
 
-Expulse un membre.
+Kicks a member.
 
 ```text
-v!kick @membre raison
+v!kick @member reason
 ```
 
 ### `v!ban`
 
-Bannit un membre.
+Bans a member.
 
 ```text
-v!ban @membre raison
+v!ban @member reason
 ```
 
 ### `v!unban`
 
-Débannit un utilisateur avec son ID.
+Unbans a user by ID.
 
 ```text
 v!unban 123456789012345678
@@ -244,15 +245,15 @@ v!unban 123456789012345678
 
 ### `v!give_role`
 
-Donne un rôle à un membre.
+Gives a role to a member.
 
 ```text
-v!give_role @membre @role
+v!give_role @member @role
 ```
 
 ### `v!lock`
 
-Verrouille le salon actuel.
+Locks the current channel.
 
 ```text
 v!lock
@@ -260,7 +261,7 @@ v!lock
 
 ### `v!unlock`
 
-Déverrouille le salon actuel.
+Unlocks the current channel.
 
 ```text
 v!unlock
@@ -268,7 +269,7 @@ v!unlock
 
 ### `v!slowmode`
 
-Configure le mode lent.
+Configures slow mode.
 
 ```text
 v!slowmode 10
@@ -276,27 +277,27 @@ v!slowmode 10
 
 ### `v!clear`
 
-Supprime des messages.
+Deletes messages.
 
 ```text
 v!clear 50
 ```
 
-Les commandes de modération vérifient les permissions Discord correspondantes ou les droits d'owner.
+Moderation commands check the corresponding Discord permissions or owner privileges.
 
 ---
 
-# ℹ️ Informations
+# ℹ️ Information
 
 ### `v!help`
 
-Affiche l'aide du bot.
+Displays the bot's help menu.
 
 ```text
 v!help
 ```
 
-Des catégories peuvent également être utilisées.
+Categories can also be used.
 
 ```text
 v!help owner
@@ -304,15 +305,15 @@ v!help owner
 
 ### `v!user_info`
 
-Affiche les informations d'un membre.
+Displays information about a member.
 
 ```text
-v!user_info @membre
+v!user_info @member
 ```
 
 ### `v!server_info`
 
-Affiche les informations du serveur.
+Displays information about the server.
 
 ```text
 v!server_info
@@ -320,21 +321,21 @@ v!server_info
 
 ### `v!avatar`
 
-Affiche l'avatar d'un utilisateur.
+Displays a user's avatar.
 
 ```text
-v!avatar @membre
+v!avatar @member
 ```
 
 ### `v!snipe`
 
-Affiche un message récemment supprimé.
+Displays a recently deleted message.
 
 ```text
 v!snipe
 ```
 
-Il est également possible de sélectionner un message précédent :
+You can also select a previous message:
 
 ```text
 v!snipe 2
@@ -342,97 +343,97 @@ v!snipe 2
 
 ---
 
-# 👑 Système d'owners
+# 👑 Owner System
 
-v-bot possède plusieurs niveaux d'accès.
+v-bot has multiple access levels.
 
-### Owner principal
+### Principal Owner
 
-Un seul owner principal est défini avec :
+A single principal owner is defined with:
 
 ```env
 OWNER_PRINCIPAL_ID=123456789
 ```
 
-### Owners secondaires
+### Secondary Owners
 
-Plusieurs owners secondaires peuvent être définis :
+Multiple secondary owners can be defined:
 
 ```env
 OWNERS_SECONDARY_IDS=123456789,987654321
 ```
 
-Ils sont ajoutés depuis le panel avec :
+They can also be added from the panel using:
 
 ```text
 add_secondary_owner
 ```
 
-### Owners temporaires
+### Temporary Owners
 
-Un owner permanent peut temporairement donner des permissions à un utilisateur :
+A permanent owner can temporarily grant permissions to a user:
 
 ```text
-v!add_temp @utilisateur 3600
+v!add_temp @user 3600
 ```
 
-Ici, l'autorisation dure **3600 secondes**.
+Here, the permission lasts for **3600 seconds**.
 
-### Liste des owners
+### Owner List
 
 ```text
 v!owner_list
 ```
 
-Affiche les owners permanents et temporaires.
+Displays permanent and temporary owners.
 
 ---
 
 # 🔐 Kill Switch
 
-Le bot possède un système de **Kill Switch** permettant de bloquer les commandes protégées.
+The bot includes a **Kill Switch** system that can block protected commands.
 
-Vérifier son état :
+Check its status:
 
 ```text
 v!killswitch
 ```
 
-Activer :
+Enable:
 
 ```text
 v!killswitch on
 ```
 
-Désactiver :
+Disable:
 
 ```text
 v!killswitch off
 ```
 
-Le Kill Switch est particulièrement utile en cas de problème de sécurité ou de comportement inattendu du bot.
+The Kill Switch is particularly useful in case of a security issue or unexpected bot behavior.
 
 ---
 
-# 🌐 Gestion des serveurs
+# 🌐 Server Management
 
-Les owners peuvent utiliser :
+Owners can use:
 
 ```text
 v!servers
 ```
 
-pour accéder au panneau de gestion des serveurs.
+to access the server management panel.
 
-Le panel local possède également :
+The local panel also provides:
 
 ```text
 servers
 ```
 
-qui affiche la liste des serveurs auxquels le bot est connecté.
+which displays the list of servers the bot is connected to.
 
-La liste est enregistrée automatiquement dans :
+The list is automatically saved to:
 
 ```text
 servers.txt
@@ -440,21 +441,21 @@ servers.txt
 
 ---
 
-# 🗣️ Commande `say`
+# 🗣️ `say` Command
 
-Les owners peuvent faire envoyer un message par le bot :
+Owners can make the bot send a message:
 
 ```text
-v!say Bonjour tout le monde !
+v!say Hello everyone!
 ```
 
-Le message contenant la commande est ensuite supprimé.
+The message containing the command is then deleted.
 
 ---
 
-# ⚠️ Commandes sensibles
+# ⚠️ Sensitive Commands
 
-Les commandes suivantes sont volontairement séparées dans :
+The following commands are intentionally separated into:
 
 ```text
 cogs/dangerous.py
@@ -465,31 +466,31 @@ cogs/dangerous.py
 * `raid`
 * `remove_raid`
 
-Elles sont **désactivées par défaut**.
+They are **disabled by default**.
 
 ```env
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
-Lorsqu'elles sont désactivées, le Cog `dangerous` n'est même pas chargé par le bot.
+When disabled, the `dangerous` Cog is not even loaded by the bot.
 
 ---
 
 ## Activation
 
-Depuis le panel :
+From the panel:
 
 ```text
 toggle_dangerous
 ```
 
-Le panel demande une confirmation explicite :
+The panel requires explicit confirmation:
 
 ```text
-ACTIVER
+ENABLE
 ```
 
-Après activation, un redémarrage est nécessaire :
+After activation, a restart is required:
 
 ```text
 restart
@@ -499,37 +500,37 @@ restart
 
 ## `v!spam`
 
-Permet l'envoi contrôlé de plusieurs messages.
+Allows controlled sending of multiple messages.
 
 ```text
-v!spam <nombre> <message>
+v!spam <amount> <message>
 ```
 
-La quantité maximale est limitée par la configuration du bot.
+The maximum amount is limited by the bot configuration.
 
 ---
 
 ## `v!dmall`
 
-Envoie un message privé aux membres du serveur.
+Sends a direct message to server members.
 
 ```text
 v!dmall <message>
 ```
 
-Cette commande est protégée et doit être utilisée avec précaution.
+This command is protected and should be used with caution.
 
 ---
 
 ## `v!raid`
 
-Fonction de test contrôlée créant des salons et rôles temporaires.
+A controlled test function that creates temporary channels and roles.
 
 ```text
 v!raid 10
 ```
 
-Les éléments créés sont enregistrés afin de pouvoir être supprimés avec :
+Created elements are tracked so they can later be removed with:
 
 ```text
 v!remove_raid
@@ -537,58 +538,58 @@ v!remove_raid
 
 ---
 
-# 🛡️ Sécurité
+# 🛡️ Security
 
-v-bot possède plusieurs protections.
+v-bot includes several security protections.
 
-### Permissions centralisées
+### Centralized Permissions
 
-Les permissions sont gérées dans :
+Permissions are managed in:
 
 ```text
 checks.py
 ```
 
-avec différents niveaux :
+with different access levels:
 
-* Owner permanent
-* Owner permanent ou temporaire
-* Owner ou propriétaire du serveur
-* Owner ou permission Discord spécifique
+* Permanent owner
+* Permanent or temporary owner
+* Owner or server owner
+* Owner or specific Discord permission
 * Kill Switch
 
 ---
 
-### Protection anti-double-exécution
+### Anti-Double-Execution Protection
 
-Les commandes sensibles ne peuvent pas être exécutées plusieurs fois simultanément sur le même serveur.
+Sensitive commands cannot be executed multiple times simultaneously on the same server.
 
-Cela évite notamment :
+This helps prevent:
 
-* créations multiples de salons/rôles ;
-* doubles opérations ;
-* exécutions simultanées accidentelles.
+* Multiple channel/role creations
+* Duplicate operations
+* Accidental simultaneous executions
 
 ---
 
-### Logs de sécurité
+### Security Logs
 
-Les actions sensibles sont enregistrées dans :
+Sensitive actions are recorded in:
 
 ```text
 security.log
 ```
 
-Exemples :
+Examples:
 
-* changement de token ;
-* changement d'owner principal ;
-* ajout d'un owner secondaire ;
-* ajout d'un owner temporaire ;
-* activation/désactivation des commandes sensibles ;
-* activation/désactivation du Kill Switch.
+* Token changes
+* Principal owner changes
+* Secondary owner additions
+* Temporary owner additions
+* Sensitive command activation/deactivation
+* Kill Switch activation/deactivation
 
-Le token lui-même n'est **jamais écrit dans les logs**.
+The token itself is **never written to the logs**.
 
 ---
 
@@ -596,70 +597,70 @@ Le token lui-même n'est **jamais écrit dans les logs**.
 
 ## `bot.log`
 
-Contient les événements et erreurs du bot.
+Contains bot events and errors.
 
-Depuis le panel :
+From the panel:
 
 ```text
 logs
 ```
 
-ouvre directement le fichier.
+opens the file directly.
 
 ## `security.log`
 
-Contient uniquement les événements sensibles.
+Contains sensitive events only.
 
-Depuis le panel :
+From the panel:
 
 ```text
 security_logs
 ```
 
-affiche les dernières entrées.
+displays the latest entries.
 
 ---
 
 # ⚙️ Architecture
 
-Le bot est organisé en plusieurs **Cogs** afin de garder le projet modulaire.
+The bot is organized into multiple **Cogs** to keep the project modular.
 
 ### `cogs/moderation.py`
 
-Toutes les commandes de modération.
+All moderation commands.
 
 ### `cogs/info.py`
 
-Commandes d'informations et système de snipe.
+Information commands and the snipe system.
 
 ### `cogs/owner.py`
 
-Administration du bot et gestion des owners.
+Bot administration and owner management.
 
 ### `cogs/events.py`
 
-Gestion des événements Discord :
+Discord event handling:
 
-* connexion ;
-* arrivée/départ de serveur ;
-* mentions du bot ;
-* messages supprimés ;
-* erreurs ;
-* nettoyage des owners temporaires.
+* Connection
+* Server join/leave
+* Bot mentions
+* Deleted messages
+* Errors
+* Temporary owner cleanup
 
 ### `cogs/dangerous.py`
 
-Commandes sensibles, chargées uniquement lorsqu'elles sont activées.
+Sensitive commands, loaded only when enabled.
 
 ### `cogs/help_cog.py`
 
-Système d'aide.
+Help system.
 
 ---
 
-# 🔧 Configuration Discord
+# 🔧 Discord Configuration
 
-Le bot utilise notamment les intents :
+The bot uses the following intents:
 
 ```text
 guilds
@@ -669,9 +670,9 @@ message_content
 reactions
 ```
 
-Les intents nécessaires doivent être activés dans le **Discord Developer Portal**.
+The required intents must be enabled in the **Discord Developer Portal**.
 
-Le bot synchronise également ses commandes lors de sa connexion à Discord.
+The bot also synchronizes its commands when connecting to Discord.
 
 ---
 
@@ -686,23 +687,23 @@ Le bot synchronise également ses commandes lors de sa connexion à Discord.
 
 ---
 
-# 🔒 Fichiers à ne jamais publier
+# 🔒 Files That Should Never Be Published
 
-Ne publiez jamais :
+Never publish:
 
 ```text
 .env
 ```
 
-ou un fichier contenant votre token Discord.
+or any file containing your Discord token.
 
-Le projet utilise `.env.example` pour fournir uniquement le modèle de configuration.
+The project uses `.env.example` to provide only the configuration template.
 
 ---
 
 # 📌 Version
 
-Version actuelle :
+Current version:
 
 ```text
 3.7.5
@@ -710,8 +711,8 @@ Version actuelle :
 
 ---
 
-# 📄 Licence
+# 📄 License
 
-Projet personnel.
+Personal project.
 
-Toute utilisation, modification ou redistribution du projet doit respecter les conditions définies par son propriétaire.
+Any use, modification, or redistribution of the project must comply with the conditions defined by its owner.
