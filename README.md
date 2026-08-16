@@ -48,13 +48,14 @@ v-bot/
 ├── security.log             # Security logs
 ├── servers.txt              # Server list
 │
-└── cogs/
-    ├── events.py            # Discord events
-    ├── moderation.py        # Moderation
-    ├── info.py              # Information
-    ├── owner.py             # Bot administration
-    ├── dangerous.py         # Sensitive commands
-    └── help_cog.py          # Help system
+├── cogs/
+    ├── events.py
+    ├── moderation.py
+    ├── info.py
+    ├── owner.py
+    ├── dangerous.py
+    ├── twitch.py
+    └── help_cog.py
 ```
 
 > ⚠️ The `venv/` folder is generated locally and should not be uploaded to GitHub.
@@ -161,21 +162,21 @@ Available commands:
 
 | Command               | Function                               |
 | --------------------- | -------------------------------------- |
-| `start`               | Start the bot                          |
-| `stop`                | Stop the bot                           |
-| `restart`             | Restart the bot                        |
-| `status`              | View the bot status                    |
+| `start`               | Start the bot                           |
+| `stop`                | Stop the bot                            |
+| `restart`             | Restart the bot                         |
+| `status`              | View the bot status                     |
 | `uptime`              | View how long the bot has been running |
-| `update`              | Update dependencies                    |
-| `logs`                | Open `bot.log`                         |
-| `security_logs`       | Display the latest security events     |
-| `servers`             | Display the bot's servers              |
-| `add_secondary_owner` | Add a secondary owner                  |
-| `set_token`           | Change the Discord token               |
-| `set_principal_owner` | Change the principal owner             |
-| `toggle_dangerous`    | Enable/disable sensitive commands      |
-| `set_prefix`          | Change the command prefix              |
-
+| `update`              | Update dependencies                     |
+| `logs`                | Open `bot.log`                          |
+| `security_logs`       | Display the latest security events      |
+| `servers`             | Display the bot's servers               |
+| `add_secondary_owner` | Add a secondary owner                   |
+| `set_token`           | Change the Discord token                |
+| `set_principal_owner` | Change the principal owner              |
+| `toggle_dangerous`    | Enable/disable sensitive commands       |
+| `set_prefix`          | Change the command prefix               |
+| `set_twitch_api`      | Configure the Twitch API credentials    |
 Use:
 
 ```text
@@ -486,6 +487,71 @@ Discord channel
 
 The bot periodically checks the configured Twitch channels and automatically sends the configured announcement when a stream starts.
 
+# Twitch Commands
+
+### v!create_annonce
+
+Creates a new Twitch announcement configuration.
+```text
+v!create_annonce
+```
+
+The bot will interactively ask for:
+
+The Twitch channel URL
+The announcement message
+The Discord channel where the announcement should be sent
+
+Each step has a 1-minute timeout.
+
+If no response is received within 1 minute, the setup is cancelled.
+
+### v!annonces
+
+Displays the Twitch announcement configurations currently registered.
+```text
+v!annonces
+```
+
+### v!test_annonce
+
+Tests a configured Twitch announcement without waiting for the Twitch channel to start streaming.
+```text
+v!test_annonce
+```
+This can be used to verify that the announcement message and Discord channel are correctly configured.
+
+### v!delete_annonce
+
+Deletes an existing Twitch announcement configuration.
+```text
+v!delete_annonce
+```
+The corresponding Twitch announcement configuration is removed from the local configuration.
+
+# Twitch API Configuration
+
+Twitch announcements require Twitch API credentials.
+The credentials are stored in `.env`:
+```text
+TWITCH_CLIENT_ID=YOUR_CLIENT_ID
+TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
+```
+They can be configured from the local control panel using:
+```text
+set_twitch_api
+```
+The Twitch API credentials are private and should never be published or committed to GitHub.
+
+# Twitch Configuration File
+
+Twitch announcement configurations are automatically stored locally in:
+```text
+twitch_config.json
+```
+This file is created automatically when Twitch announcement functionality is used.
+
+It should not be committed to GitHub if it contains private server configuration.
 
 
 ---
@@ -688,6 +754,19 @@ Discord event handling:
 ### `cogs/dangerous.py`
 
 Sensitive commands, loaded only when enabled.
+
+### `cogs/twitch.py`
+
+Twitch integration and stream announcement system.
+
+Handles:
+
+* Twitch API integration
+* Twitch announcement configuration
+* Automatic stream detection
+* Announcement testing
+* Announcement deletion
+* Announcement listing
 
 ### `cogs/help_cog.py`
 
