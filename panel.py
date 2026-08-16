@@ -379,7 +379,6 @@ def main() -> None:
         check_principal_owner()
         check_token()
 
-    cmd_start()
     print('Tape "help" pour la liste des commandes du panel.')
 
     while True:
