@@ -41,6 +41,7 @@ class HelpCog(commands.Cog, name="Help"):
             description="Commands restricted to owners/authorized users.",
             color=discord.Color.gold(),
         )
+        owner_embed.add_field(name="📝 `embed <title> | <description>`", value="Sends a custom embed message.", inline=False)
         owner_embed.add_field(name="📌 `add_temp @user duration`", value="Grants temporary authorization.", inline=False)
         owner_embed.add_field(name="📄 `owner_list`", value="Lists the bot owners.", inline=False)
         owner_embed.add_field(name="⚙️ `servers`", value="Server panel (selection + actions).", inline=False)
