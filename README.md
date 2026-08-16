@@ -73,6 +73,7 @@ v-bot/
 ├── twitch_api.py             # Twitch API integration
 │
 ├── start_bot.bat            # Launches the panel
+├── start_bot.sh             # Linux/macOS launcher
 ├── requirements.txt         # Python dependencies
 ├── .env                     # Private configuration
 ├── .env.example             # Configuration example
