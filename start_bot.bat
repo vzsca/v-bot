@@ -6,7 +6,7 @@ cd /d "%~dp0"
 set "PYTHONUTF8=1"
 
 echo ============================
-echo   Demarrage de v-bot
+echo   Starting v-bot
 echo ============================
 
 where uv >nul 2>&1
@@ -14,21 +14,22 @@ if errorlevel 1 (
     set "USE_UV=0"
 ) else (
     set "USE_UV=1"
-    echo uv detecte : utilisation pour un demarrage plus rapide.
+    echo uv detected: using it for faster startup.
 )
 
-REM --- Creation du venv, avec repli automatique si un Python "detecte" par
-REM     le lanceur s'avere en realite casse (entree registre obsolete du
-REM     lanceur "py" qui pointe vers un .exe qui n'existe plus sur le disque -
-REM     un simple "py -3.13 -c exit(0)" peut reussir alors que l'usage reel
-REM     echoue ensuite). On verifie donc le resultat sur disque a chaque
-REM     tentative plutot que de faire confiance a un seul test prealable. ---
+REM --- Virtual environment creation, with automatic fallback if a Python
+REM     installation detected by the launcher turns out to be broken
+REM     (an outdated registry entry from the "py" launcher pointing to an
+REM     .exe that no longer exists on disk - a simple "py -3.13 -c exit(0)"
+REM     may succeed while actual usage fails afterward). We therefore check
+REM     the result on disk after each attempt instead of relying on a single
+REM     preliminary test. ---
 set "VENV_OK=0"
 
 if exist venv\Scripts\python.exe set "VENV_OK=1"
 
 if "!VENV_OK!"=="0" if "!USE_UV!"=="1" (
-    echo Creation de l'environnement virtuel...
+    echo Creating virtual environment...
     if exist venv rmdir /s /q venv >nul 2>&1
     uv venv --python 3.13 venv >nul 2>&1
     if exist venv\Scripts\python.exe set "VENV_OK=1"
@@ -38,11 +39,11 @@ if "!VENV_OK!"=="0" (
     for %%P in ("py -3.13" "py -3" "python") do (
         if "!VENV_OK!"=="0" (
             if exist venv rmdir /s /q venv >nul 2>&1
-            echo Creation de l'environnement virtuel avec %%P...
+            echo Creating virtual environment with %%P...
             %%~P -m venv venv >nul 2>&1
             if exist venv\Scripts\python.exe (
                 set "VENV_OK=1"
-                echo Environnement virtuel cree avec succes ^(%%P^).
+                echo Virtual environment created successfully ^(%%P^).
             )
         )
     )
@@ -50,12 +51,12 @@ if "!VENV_OK!"=="0" (
 
 if "!VENV_OK!"=="0" (
     echo.
-    echo [ERREUR] Impossible de creer l'environnement virtuel : aucune installation Python utilisable n'a ete trouvee.
-    echo v-bot a besoin de Python 3.10 ou plus recent ^(3.13 recommande^).
+    echo [ERROR] Unable to create the virtual environment: no usable Python installation was found.
+    echo v-bot requires Python 3.10 or newer ^(3.13 recommended^).
     echo.
-    echo Verifications possibles :
-    echo   1. Tape "py -0p" dans une invite de commande pour voir les versions Python connues et leurs chemins.
-    echo   2. Si Python 3.13 apparait avec un chemin qui n'existe plus, reinstalle-le ^(ou Repair^) :
+    echo Possible checks:
+    echo   1. Run "py -0p" in a command prompt to see the known Python versions and their paths.
+    echo   2. If Python 3.13 appears with a path that no longer exists, reinstall it ^(or Repair^) :
     echo      https://www.python.org/downloads/
     echo.
     pause
@@ -66,7 +67,7 @@ call venv\Scripts\activate.bat
 
 if not exist venv\.installed (
     if not exist bootstrap.py (
-        echo [ERREUR] bootstrap.py introuvable. Le fichier a peut-etre ete deplace ou supprime.
+        echo [ERROR] bootstrap.py not found. The file may have been moved or deleted.
         pause
         exit /b 1
     )
@@ -74,7 +75,7 @@ if not exist venv\.installed (
     venv\Scripts\python.exe bootstrap.py
 
     if errorlevel 1 (
-        echo [ERREUR] Installation des dependances impossible.
+        echo [ERROR] Unable to install dependencies.
         pause
         exit /b 1
     )
@@ -83,13 +84,13 @@ if not exist venv\.installed (
 )
 
 if not exist panel.py (
-    echo [ERREUR] panel.py introuvable. Le fichier a peut-etre ete deplace ou supprime.
+    echo [ERROR] panel.py not found. The file may have been moved or deleted.
     pause
     exit /b 1
 )
 
-REM Toute la logique du panel (start/stop/restart/uptime/.env/...) vit dans
-REM panel.py : ce .bat ne fait que preparer l'environnement et le lancer.
+REM All panel logic (start/stop/restart/uptime/.env/...) is handled by
+REM panel.py: this .bat only prepares the environment and launches it.
 venv\Scripts\python.exe panel.py
 
 pause
