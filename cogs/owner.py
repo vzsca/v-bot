@@ -135,6 +135,37 @@ class OwnerCog(commands.Cog, name="Owner"):
         except Exception as e:
             await ctx.send(f"An error occurred: {e}")
 
+    @commands.command(name="embed")
+    @checks.owner_check()
+    @checks.kill_switch_required()
+    async def embed(self, ctx, *, content: str):
+        """Sends an embed with a title and description."""
+        if "|" not in content:
+            await ctx.send("❌ Usage: `v!embed title | description`")
+            return
+    
+        title, description = content.split("|", 1)
+        title = title.strip()
+        description = description.strip()
+    
+        if not title or not description:
+            await ctx.send("❌ The title and description cannot be empty.")
+            return
+    
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=discord.Color.blue(),
+        )
+    
+        try:
+            await ctx.send(embed=embed)
+            await ctx.message.delete()
+        except discord.Forbidden:
+            await ctx.send("❌ I don't have permission to send messages here.")
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {e}")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(OwnerCog(bot))
