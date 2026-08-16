@@ -1,8 +1,16 @@
 """
-Twitch live announcement system.
+Twitch integration and automatic stream announcements.
 
-Owners can create, list, delete, and test Twitch announcements.
-Each announcement is configured interactively and stored in twitch_config.json.
+This cog handles:
+- Twitch API authentication
+- Automatic live detection
+- Automatic stream announcements
+- Creating announcements
+- Listing announcements
+- Testing announcements
+- Deleting announcements
+
+Configuration is stored in twitch_config.json.
 """
 
 import json
@@ -10,105 +18,318 @@ import logging
 from pathlib import Path
 from urllib.parse import urlparse
 
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 
 import checks
-from twitch_api import TwitchAPI
-
+import config
 
 logger = logging.getLogger("v-bot")
 
-CONFIG_FILE = Path(__file__).resolve().parent.parent / "twitch_config.json"
+TWITCH_CONFIG_FILE = (
+    Path(__file__).resolve().parent.parent / "twitch_config.json"
+)
 
 
 class TwitchCog(commands.Cog, name="Twitch"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.twitch = TwitchAPI()
-        self.config = self._load_config()
-        self.previous_states: dict[str, bool] = {}
+        self.twitch_access_token: str | None = None
 
-        self.check_streams.start()
+        self._ensure_config_file()
+        self.twitch_task.start()
 
     def cog_unload(self):
-        self.check_streams.cancel()
+        self.twitch_task.cancel()
 
-    # --- Configuration ---
+    # ==========================================================
+    # Configuration
+    # ==========================================================
 
-    def _load_config(self) -> dict:
-        if not CONFIG_FILE.exists():
-            try:
-                CONFIG_FILE.write_text("{}", encoding="utf-8")
-            except OSError:
-                logger.exception("Could not create twitch_config.json")
-            return {}
+    def _ensure_config_file(self) -> None:
+        """Create twitch_config.json if it does not exist."""
+        if TWITCH_CONFIG_FILE.exists():
+            return
 
         try:
-            with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+            with open(TWITCH_CONFIG_FILE, "w", encoding="utf-8") as file:
+                json.dump(
+                    {"announcements": []},
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+        except OSError:
+            logger.exception("Unable to create twitch_config.json.")
+
+    def _load_config(self) -> dict:
+        """Load Twitch configuration."""
+        self._ensure_config_file()
+
+        try:
+            with open(TWITCH_CONFIG_FILE, "r", encoding="utf-8") as file:
                 data = json.load(file)
 
             if not isinstance(data, dict):
-                return {}
+                return {"announcements": []}
+
+            if not isinstance(data.get("announcements"), list):
+                data["announcements"] = []
 
             return data
 
-        except (json.JSONDecodeError, OSError):
-            logger.exception("Could not load twitch_config.json")
-            return {}
+        except (OSError, json.JSONDecodeError):
+            logger.exception("Unable to load twitch_config.json.")
+            return {"announcements": []}
 
-    def _save_config(self) -> None:
+    def _save_config(self, data: dict) -> bool:
+        """Save Twitch configuration."""
         try:
-            with open(CONFIG_FILE, "w", encoding="utf-8") as file:
-                json.dump(self.config, file, indent=4, ensure_ascii=False)
+            with open(TWITCH_CONFIG_FILE, "w", encoding="utf-8") as file:
+                json.dump(
+                    data,
+                    file,
+                    indent=4,
+                    ensure_ascii=False,
+                )
+            return True
+
         except OSError:
-            logger.exception("Could not save twitch_config.json")
+            logger.exception("Unable to save twitch_config.json.")
+            return False
 
-    def _get_guild_announcements(self, guild_id: int) -> list:
-        return self.config.setdefault(str(guild_id), [])
-
-    # --- Twitch URL ---
+    # ==========================================================
+    # Twitch URL
+    # ==========================================================
 
     @staticmethod
-    def _extract_username(url: str) -> str | None:
+    def _extract_twitch_login(twitch_url: str) -> str | None:
+        """Extract the Twitch username from a Twitch channel URL."""
         try:
-            parsed = urlparse(url.strip())
+            parsed = urlparse(twitch_url.strip())
 
             if parsed.scheme not in ("http", "https"):
                 return None
 
-            if parsed.netloc.lower() not in (
+            if parsed.netloc.lower() not in {
                 "twitch.tv",
                 "www.twitch.tv",
-            ):
+            }:
                 return None
 
-            path_parts = parsed.path.strip("/").split("/")
+            path = parsed.path.strip("/")
 
-            if not path_parts or not path_parts[0]:
+            if not path:
                 return None
 
-            username = path_parts[0].strip()
+            login = path.split("/")[0].lower()
 
-            if not username:
+            # Avoid accepting Twitch special pages.
+            if login in {
+                "directory",
+                "downloads",
+                "jobs",
+                "p",
+                "search",
+                "settings",
+                "subscriptions",
+                "videos",
+            }:
                 return None
 
-            return username.lower()
+            return login
 
         except Exception:
             return None
 
-    # --- Interactive input ---
+    # ==========================================================
+    # Twitch API
+    # ==========================================================
 
-    async def _wait_for_message(
+    async def _get_access_token(
         self,
-        ctx: commands.Context,
-        prompt: str,
-    ) -> discord.Message | None:
-        await ctx.send(
-            f"{prompt}\n"
-            "⏱️ You have **1 minute** to respond."
+        session: aiohttp.ClientSession,
+    ) -> str | None:
+        """Get an application access token from Twitch."""
+
+        if (
+            not config.TWITCH_CLIENT_ID
+            or not config.TWITCH_CLIENT_SECRET
+        ):
+            logger.warning(
+                "Twitch API credentials are missing. "
+                "Set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env."
+            )
+            return None
+
+        try:
+            async with session.post(
+                "https://id.twitch.tv/oauth2/token",
+                params={
+                    "client_id": config.TWITCH_CLIENT_ID,
+                    "client_secret": config.TWITCH_CLIENT_SECRET,
+                    "grant_type": "client_credentials",
+                },
+            ) as response:
+
+                if response.status != 200:
+                    logger.error(
+                        "Unable to obtain Twitch access token "
+                        f"(HTTP {response.status})."
+                    )
+                    return None
+
+                data = await response.json()
+                token = data.get("access_token")
+
+                if not token:
+                    logger.error(
+                        "Twitch did not return an access token."
+                    )
+                    return None
+
+                self.twitch_access_token = token
+                return token
+
+        except aiohttp.ClientError:
+            logger.exception(
+                "Twitch authentication request failed."
+            )
+            return None
+
+    async def _is_live(
+        self,
+        session: aiohttp.ClientSession,
+        twitch_login: str,
+    ) -> bool:
+        """Return True if a Twitch channel is currently live."""
+
+        if not self.twitch_access_token:
+            self.twitch_access_token = await self._get_access_token(
+                session
+            )
+
+        if not self.twitch_access_token:
+            return False
+
+        headers = {
+            "Client-Id": config.TWITCH_CLIENT_ID,
+            "Authorization": (
+                f"Bearer {self.twitch_access_token}"
+            ),
+        }
+
+        try:
+            async with session.get(
+                "https://api.twitch.tv/helix/streams",
+                headers=headers,
+                params={
+                    "user_login": twitch_login,
+                },
+            ) as response:
+
+                if response.status == 401:
+                    self.twitch_access_token = None
+                    return False
+
+                if response.status != 200:
+                    logger.warning(
+                        f"Twitch API returned HTTP {response.status} "
+                        f"for channel {twitch_login}."
+                    )
+                    return False
+
+                data = await response.json()
+
+                return bool(data.get("data"))
+
+        except aiohttp.ClientError:
+            logger.exception(
+                f"Unable to check Twitch channel: {twitch_login}"
+            )
+            return False
+
+    # ==========================================================
+    # Announcement helpers
+    # ==========================================================
+
+    @staticmethod
+    def _format_message(
+        message: str,
+        twitch_login: str,
+        twitch_url: str,
+    ) -> str:
+        """Replace supported placeholders in an announcement."""
+        return (
+            message
+            .replace("{channel}", twitch_login)
+            .replace("{link}", twitch_url)
         )
+
+    async def _send_announcement(
+        self,
+        announcement: dict,
+    ) -> bool:
+        """Send an announcement to its configured Discord channel."""
+
+        channel_id = announcement.get("channel_id")
+        message = announcement.get("message")
+        twitch_url = announcement.get("twitch_url")
+
+        if not channel_id or not message or not twitch_url:
+            return False
+
+        twitch_login = self._extract_twitch_login(twitch_url)
+
+        if not twitch_login:
+            return False
+
+        channel = self.bot.get_channel(int(channel_id))
+
+        if channel is None:
+            return False
+
+        formatted_message = self._format_message(
+            message,
+            twitch_login,
+            twitch_url,
+        )
+
+        try:
+            await channel.send(formatted_message)
+            return True
+
+        except discord.Forbidden:
+            logger.warning(
+                f"Missing permission to send messages in channel "
+                f"{channel_id}."
+            )
+            return False
+
+        except discord.HTTPException:
+            logger.exception(
+                f"Failed to send Twitch announcement for "
+                f"{twitch_login}."
+            )
+            return False
+
+    # ==========================================================
+    # create_annonce
+    # ==========================================================
+
+    @commands.command(name="create_annonce")
+    @checks.permanent_owner_check()
+    @checks.kill_switch_required()
+    async def create_annonce(self, ctx):
+        """
+        Create a Twitch stream announcement.
+
+        The bot asks for:
+        1. Twitch channel URL
+        2. Announcement message
+        3. Discord channel
+        """
 
         def check(message: discord.Message) -> bool:
             return (
@@ -116,388 +337,392 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 and message.channel.id == ctx.channel.id
             )
 
+        # ------------------------------------------------------
+        # Twitch URL
+        # ------------------------------------------------------
+
+        await ctx.send(
+            "📺 **Create Twitch announcement**\n\n"
+            "Send the Twitch channel URL.\n"
+            "You have **1 minute**."
+        )
+
         try:
-            return await self.bot.wait_for(
+            response = await self.bot.wait_for(
                 "message",
                 timeout=60,
                 check=check,
             )
-
         except TimeoutError:
             await ctx.send("⏰ Time expired.")
-            return None
-
-    async def _ask_channel(
-        self,
-        ctx: commands.Context,
-    ) -> discord.TextChannel | None:
-        message = await self._wait_for_message(
-            ctx,
-            "📢 Send the channel where the Twitch announcement should be sent "
-            "(mention the channel).",
-        )
-
-        if message is None:
-            return None
-
-        channel = None
-
-        if message.channel_mentions:
-            channel = message.channel_mentions[0]
-
-        if channel is None:
-            await ctx.send(
-                "❌ I couldn't find a channel in your message.\n"
-                "Use a channel mention such as `#announcements`."
-            )
-            return None
-
-        if not isinstance(channel, discord.TextChannel):
-            await ctx.send("❌ Please select a text channel.")
-            return None
-
-        permissions = channel.permissions_for(ctx.guild.me)
-
-        if not permissions.send_messages:
-            await ctx.send(
-                f"❌ I cannot send messages in {channel.mention}."
-            )
-            return None
-
-        return channel
-
-    # --- Create announcement ---
-
-    @commands.command(name="create_annonce")
-    @commands.guild_only()
-    @checks.permanent_owner_check()
-    @checks.kill_switch_required()
-    async def create_annonce(self, ctx):
-        """Creates a Twitch live announcement interactively."""
-
-        twitch_message = await self._wait_for_message(
-            ctx,
-            "📺 Send the Twitch channel URL.\n"
-            "Example: `https://twitch.tv/streamer`",
-        )
-
-        if twitch_message is None:
             return
 
-        username = self._extract_username(twitch_message.content)
+        twitch_url = response.content.strip()
+        twitch_login = self._extract_twitch_login(twitch_url)
 
-        if not username:
+        if not twitch_login:
             await ctx.send(
-                "❌ Invalid Twitch URL.\n"
-                "Use: `https://twitch.tv/channel`"
+                "❌ Invalid Twitch channel URL.\n"
+                "Example: `https://www.twitch.tv/example`"
             )
             return
 
-        announcement_message = await self._wait_for_message(
-            ctx,
-            "📝 Send the announcement message.\n\n"
-            "Available variables:\n"
-            "`{streamer}` — Twitch username\n"
-            "`{title}` — stream title\n"
-            "`{game}` — category\n"
-            "`{viewers}` — viewer count\n"
-            "`{url}` — Twitch stream URL",
+        # ------------------------------------------------------
+        # Announcement message
+        # ------------------------------------------------------
+
+        await ctx.send(
+            "💬 **Send the announcement message.**\n"
+            "You have **1 minute**.\n\n"
+            "Available placeholders:\n"
+            "`{channel}` → Twitch channel name\n"
+            "`{link}` → Twitch channel link"
         )
 
-        if announcement_message is None:
+        try:
+            response = await self.bot.wait_for(
+                "message",
+                timeout=60,
+                check=check,
+            )
+        except TimeoutError:
+            await ctx.send("⏰ Time expired.")
             return
 
-        message_template = announcement_message.content.strip()
+        announcement_message = response.content.strip()
 
-        if not message_template:
+        if not announcement_message:
             await ctx.send("❌ The announcement message cannot be empty.")
             return
 
-        channel = await self._ask_channel(ctx)
-
-        if channel is None:
-            return
-
-        announcement = {
-            "twitch_username": username,
-            "channel_id": channel.id,
-            "message": message_template,
-        }
-
-        announcements = self._get_guild_announcements(ctx.guild.id)
-        announcements.append(announcement)
-
-        self._save_config()
-
-        announcement_id = len(announcements)
+        # ------------------------------------------------------
+        # Discord channel
+        # ------------------------------------------------------
 
         await ctx.send(
-            "✅ **Twitch announcement created!**\n\n"
-            f"🆔 ID: `{announcement_id}`\n"
-            f"📺 Twitch: **{username}**\n"
-            f"📢 Channel: {channel.mention}\n"
-            f"📝 Message: `{message_template}`"
+            "📢 **Mention the Discord channel where the announcement "
+            "should be sent.**\n"
+            "You have **1 minute**.\n\n"
+            "Example: `#announcements`"
         )
 
-    # --- List announcements ---
+        def channel_check(message: discord.Message) -> bool:
+            return (
+                message.author.id == ctx.author.id
+                and message.channel.id == ctx.channel.id
+                and bool(message.channel_mentions)
+            )
 
-    @commands.command(name="annonces")
-    @commands.guild_only()
-    @checks.permanent_owner_check()
-    @checks.kill_switch_required()
-    async def annonces(self, ctx):
-        """Lists Twitch announcements configured for this server."""
+        try:
+            response = await self.bot.wait_for(
+                "message",
+                timeout=60,
+                check=channel_check,
+            )
+        except TimeoutError:
+            await ctx.send("⏰ Time expired.")
+            return
 
-        announcements = self._get_guild_announcements(ctx.guild.id)
+        target_channel = response.channel_mentions[0]
 
-        if not announcements:
-            await ctx.send("📭 No Twitch announcements are configured.")
+        # ------------------------------------------------------
+        # Save announcement
+        # ------------------------------------------------------
+
+        twitch_config = self._load_config()
+
+        announcement_id = 1
+
+        existing_ids = [
+            announcement.get("id")
+            for announcement in twitch_config["announcements"]
+            if isinstance(announcement.get("id"), int)
+        ]
+
+        if existing_ids:
+            announcement_id = max(existing_ids) + 1
+
+        announcement = {
+            "id": announcement_id,
+            "twitch_url": twitch_url,
+            "message": announcement_message,
+            "channel_id": target_channel.id,
+            "was_live": False,
+        }
+
+        twitch_config["announcements"].append(announcement)
+
+        if not self._save_config(twitch_config):
+            await ctx.send(
+                "❌ Failed to save the Twitch announcement."
+            )
             return
 
         embed = discord.Embed(
-            title="📺 Twitch Announcements",
+            title="✅ Twitch announcement created",
+            color=discord.Color.green(),
+        )
+
+        embed.add_field(
+            name="ID",
+            value=f"`{announcement_id}`",
+            inline=True,
+        )
+
+        embed.add_field(
+            name="Twitch",
+            value=twitch_url,
+            inline=True,
+        )
+
+        embed.add_field(
+            name="Discord channel",
+            value=target_channel.mention,
+            inline=True,
+        )
+
+        embed.add_field(
+            name="Message",
+            value=announcement_message,
+            inline=False,
+        )
+
+        await ctx.send(embed=embed)
+
+    # ==========================================================
+    # annonces
+    # ==========================================================
+
+    @commands.command(name="annonces")
+    @checks.permanent_owner_check()
+    @checks.kill_switch_required()
+    async def annonces(self, ctx):
+        """List all configured Twitch announcements."""
+
+        twitch_config = self._load_config()
+        announcements = twitch_config.get("announcements", [])
+
+        if not announcements:
+            await ctx.send(
+                "📭 No Twitch announcements are configured."
+            )
+            return
+
+        embed = discord.Embed(
+            title="📺 Twitch announcements",
+            description=(
+                f"**{len(announcements)}** announcement(s) configured."
+            ),
             color=discord.Color.purple(),
         )
 
-        for index, announcement in enumerate(announcements, start=1):
-            channel = ctx.guild.get_channel(
-                announcement["channel_id"]
+        for announcement in announcements:
+            announcement_id = announcement.get("id", "?")
+            twitch_url = announcement.get(
+                "twitch_url",
+                "Unknown",
+            )
+            channel_id = announcement.get("channel_id")
+            message = announcement.get(
+                "message",
+                "No message",
             )
 
-            channel_text = (
-                channel.mention
-                if channel
-                else f"`{announcement['channel_id']}`"
+            discord_channel = (
+                f"<#{channel_id}>"
+                if channel_id
+                else "Unknown"
+            )
+
+            twitch_login = self._extract_twitch_login(
+                twitch_url
+            )
+
+            status = (
+                "🟢 LIVE"
+                if announcement.get("was_live", False)
+                else "⚫ Offline"
             )
 
             embed.add_field(
-                name=f"#{index} — {announcement['twitch_username']}",
+                name=f"#{announcement_id} — {twitch_login or 'Unknown'}",
                 value=(
-                    f"📢 Channel: {channel_text}\n"
-                    f"📝 `{announcement['message'][:500]}`"
+                    f"**Twitch:** {twitch_url}\n"
+                    f"**Channel:** {discord_channel}\n"
+                    f"**Status:** {status}\n"
+                    f"**Message:** {message}"
                 ),
                 inline=False,
             )
 
         await ctx.send(embed=embed)
 
-    # --- Delete announcement ---
-
-    @commands.command(name="delete_annonce")
-    @commands.guild_only()
-    @checks.permanent_owner_check()
-    @checks.kill_switch_required()
-    async def delete_annonce(self, ctx, announcement_id: int):
-        """Deletes a Twitch announcement."""
-
-        announcements = self._get_guild_announcements(ctx.guild.id)
-
-        if announcement_id < 1 or announcement_id > len(announcements):
-            await ctx.send("❌ Invalid announcement ID.")
-            return
-
-        deleted = announcements.pop(announcement_id - 1)
-
-        self._save_config()
-
-        await ctx.send(
-            "🗑️ Twitch announcement deleted.\n"
-            f"📺 Twitch: **{deleted['twitch_username']}**"
-        )
-
-    # --- Test announcement ---
+    # ==========================================================
+    # test_annonce
+    # ==========================================================
 
     @commands.command(name="test_annonce")
-    @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
     async def test_annonce(self, ctx, announcement_id: int):
-        """Tests a Twitch announcement."""
+        """Test a Twitch announcement."""
 
-        announcements = self._get_guild_announcements(ctx.guild.id)
+        twitch_config = self._load_config()
 
-        if announcement_id < 1 or announcement_id > len(announcements):
-            await ctx.send("❌ Invalid announcement ID.")
-            return
-
-        announcement = announcements[announcement_id - 1]
-
-        channel = ctx.guild.get_channel(
-            announcement["channel_id"]
+        announcement = next(
+            (
+                item
+                for item in twitch_config["announcements"]
+                if item.get("id") == announcement_id
+            ),
+            None,
         )
 
-        if not channel:
-            await ctx.send("❌ The configured channel no longer exists.")
+        if announcement is None:
+            await ctx.send(
+                f"❌ Announcement `{announcement_id}` not found."
+            )
             return
 
-        stream = await self.twitch.get_stream(
-            announcement["twitch_username"]
+        success = await self._send_announcement(
+            announcement
         )
 
-        if stream:
-            data = self._build_message_data(stream)
+        if success:
+            await ctx.send(
+                f"✅ Test announcement `{announcement_id}` sent."
+            )
         else:
-            data = {
-                "streamer": announcement["twitch_username"],
-                "title": "Test stream",
-                "game": "Test category",
-                "viewers": "0",
-                "url": (
-                    "https://twitch.tv/"
-                    f"{announcement['twitch_username']}"
-                ),
-            }
+            await ctx.send(
+                "❌ Unable to send the test announcement.\n"
+                "Check the configured Discord channel and bot permissions."
+            )
 
-        message = self._format_message(
-            announcement["message"],
-            data,
+    # ==========================================================
+    # delete_annonce
+    # ==========================================================
+
+    @commands.command(name="delete_annonce")
+    @checks.permanent_owner_check()
+    @checks.kill_switch_required()
+    async def delete_annonce(
+        self,
+        ctx,
+        announcement_id: int,
+    ):
+        """Delete a Twitch announcement."""
+
+        twitch_config = self._load_config()
+
+        announcements = twitch_config["announcements"]
+
+        announcement = next(
+            (
+                item
+                for item in announcements
+                if item.get("id") == announcement_id
+            ),
+            None,
         )
 
-        await channel.send(message)
+        if announcement is None:
+            await ctx.send(
+                f"❌ Announcement `{announcement_id}` not found."
+            )
+            return
 
-        await ctx.send("✅ Test announcement sent.")
+        announcements.remove(announcement)
 
-    # --- Twitch monitoring ---
+        if not self._save_config(twitch_config):
+            await ctx.send(
+                "❌ Failed to save the configuration."
+            )
+            return
+
+        await ctx.send(
+            f"🗑️ Twitch announcement `{announcement_id}` deleted."
+        )
+
+    # ==========================================================
+    # Twitch background task
+    # ==========================================================
 
     @tasks.loop(seconds=60)
-    async def check_streams(self):
-        for guild_id, announcements in list(self.config.items()):
-            for index, announcement in enumerate(announcements):
-                username = announcement.get("twitch_username")
+    async def twitch_task(self):
+        """
+        Check all configured Twitch channels every 60 seconds.
 
-                if not username:
+        An announcement is sent only when the channel changes from
+        offline to live.
+        """
+
+        twitch_config = self._load_config()
+        announcements = twitch_config.get("announcements", [])
+
+        if not announcements:
+            return
+
+        if (
+            not config.TWITCH_CLIENT_ID
+            or not config.TWITCH_CLIENT_SECRET
+        ):
+            return
+
+        config_changed = False
+
+        async with aiohttp.ClientSession() as session:
+
+            for announcement in announcements:
+
+                twitch_url = announcement.get("twitch_url")
+
+                if not twitch_url:
                     continue
 
-                state_key = f"{guild_id}:{index}:{username}"
+                twitch_login = self._extract_twitch_login(
+                    twitch_url
+                )
 
-                try:
-                    stream = await self.twitch.get_stream(username)
-                    is_live = stream is not None
+                if not twitch_login:
+                    logger.warning(
+                        f"Invalid Twitch URL: {twitch_url}"
+                    )
+                    continue
 
-                    previous = self.previous_states.get(
-                        state_key
+                is_live = await self._is_live(
+                    session,
+                    twitch_login,
+                )
+
+                was_live = announcement.get(
+                    "was_live",
+                    False,
+                )
+
+                # Offline -> Live
+                if is_live and not was_live:
+
+                    success = await self._send_announcement(
+                        announcement
                     )
 
-                    self.previous_states[state_key] = is_live
+                    if success:
+                        announcement["was_live"] = True
+                        config_changed = True
 
-                    # First check only initializes the state.
-                    if previous is None:
-                        continue
+                # Live -> Offline
+                elif not is_live and was_live:
 
-                    # Only announce when going from offline -> online.
-                    if not previous and is_live:
-                        await self._send_announcement(
-                            guild_id,
-                            announcement,
-                            stream,
-                        )
+                    announcement["was_live"] = False
+                    config_changed = True
 
-                except Exception:
-                    logger.exception(
-                        f"Error checking Twitch channel '{username}'."
-                    )
+        if config_changed:
+            self._save_config(twitch_config)
 
-    @check_streams.before_loop
-    async def before_check_streams(self):
+    @twitch_task.before_loop
+    async def before_twitch_task(self):
+        """Wait until the Discord bot is ready."""
         await self.bot.wait_until_ready()
-
-    # --- Announcement ---
-
-    async def _send_announcement(
-        self,
-        guild_id: str,
-        announcement: dict,
-        stream: dict,
-    ):
-        guild = self.bot.get_guild(int(guild_id))
-
-        if not guild:
-            return
-
-        channel = guild.get_channel(
-            announcement["channel_id"]
-        )
-
-        if not channel:
-            return
-
-        data = self._build_message_data(stream)
-
-        message = self._format_message(
-            announcement["message"],
-            data,
-        )
-
-        embed = discord.Embed(
-            title=f"🔴 {stream['user_name']} is now live!",
-            description=stream["title"],
-            url=data["url"],
-            color=discord.Color.purple(),
-        )
-
-        game = stream.get("game_name") or "Unknown"
-
-        embed.add_field(
-            name="🎮 Category",
-            value=game,
-            inline=True,
-        )
-
-        embed.add_field(
-            name="👀 Viewers",
-            value=str(stream["viewer_count"]),
-            inline=True,
-        )
-
-        thumbnail = stream.get("thumbnail_url")
-
-        if thumbnail:
-            thumbnail = thumbnail.replace(
-                "{width}",
-                "1280",
-            ).replace(
-                "{height}",
-                "720",
-            )
-
-            embed.set_image(url=thumbnail)
-
-        embed.set_footer(text="Twitch")
-
-        view = discord.ui.View()
-
-        view.add_item(
-            discord.ui.Button(
-                label="Watch stream",
-                style=discord.ButtonStyle.link,
-                url=data["url"],
-            )
-        )
-
-        await channel.send(
-            content=message,
-            embed=embed,
-            view=view,
-        )
-
-    @staticmethod
-    def _build_message_data(stream: dict) -> dict:
-        username = stream["user_name"]
-
-        return {
-            "streamer": username,
-            "title": stream.get("title") or "",
-            "game": stream.get("game_name") or "Unknown",
-            "viewers": str(stream.get("viewer_count", 0)),
-            "url": f"https://twitch.tv/{username}",
-        }
-
-    @staticmethod
-    def _format_message(template: str, data: dict) -> str:
-        try:
-            return template.format(**data)
-        except (KeyError, ValueError):
-            return template
 
 
 async def setup(bot: commands.Bot):
