@@ -488,7 +488,7 @@ Discord channel
 
 The bot periodically checks the configured Twitch channels and automatically sends the configured announcement when a stream starts.
 
-# Twitch Commands
+## Twitch Commands
 
 ### v!create_annonce
 
