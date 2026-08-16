@@ -74,7 +74,6 @@ TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID", "").strip()
 TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET", "").strip()
 
 # --- Bot identity ---
-BOT_NAME = os.getenv("BOT_NAME", "v-bot").strip()
 BOT_PREFIX = os.getenv("BOT_PREFIX", "v!").strip()
 
 if not BOT_PREFIX:
