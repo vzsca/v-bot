@@ -48,6 +48,7 @@ class HelpCog(commands.Cog, name="Help"):
         owner_embed.add_field(name="📩 « Invite » button (in `v!servers`)", value="Generates a temporary invite for the selected server.", inline=False)
         owner_embed.add_field(name="🔁 `toggle_guild`", value="Enables/disables the bot on the current server.", inline=False)
         owner_embed.add_field(name="💬 `say <message>`", value="Makes the bot send a message.", inline=False)
+        owner_embed.add_field(name="📺 `create_annonce`", value="Creates an automatic Twitch live announcement.", inline=False)
 
         if config.DANGEROUS_COMMANDS_ENABLED:
             owner_embed.add_field(name="💣 `spam <amount> <message>`", value="Controlled message spam.", inline=False)
