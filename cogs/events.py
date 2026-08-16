@@ -24,6 +24,14 @@ SERVERS_FILE = os.path.join(
 )
 
 
+GITHUB_URL = "https://github.com/vzsca/v-bot"
+DOCS_URL = "https://github.com/vzsca/v-bot/blob/main/README.md"
+TERMS_URL = "https://github.com/vzsca/v-bot/blob/main/TERMS_OF_USE.md"
+PRIVACY_URL = "https://github.com/vzsca/v-bot/blob/main/PRIVACY_POLICY.md"
+OFFICIAL_SERVER_URL = "https://discord.gg/vgvFA7NJHg"
+OFFICIAL_BOT_URL = "https://discord.com/oauth2/authorize?client_id=1335588735794024499"
+
+
 class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -51,6 +59,65 @@ class EventsCog(commands.Cog):
             logger.warning(f"Unable to write {SERVERS_FILE}: {e}")
 
     # --- Events ---
+    class Events(commands.Cog):
+        def __init__(self, bot):
+            self.bot = bot
+    
+        @commands.Cog.listener()
+        async def on_guild_join(self, guild: discord.Guild):
+            embed = discord.Embed(
+                title="🤖 Thanks for adding v-bot!",
+                description=(
+                    f"**v-bot** has successfully joined **{guild.name}**!\n\n"
+                    "v-bot is a personal, modular, and security-focused Discord bot "
+                    "designed for moderation, server management, owner controls, "
+                    "security systems, and more.\n\n"
+                    "You can find the source code, documentation, legal information, "
+                    "and official support below."
+                ),
+                color=discord.Color.blurple(),
+            )
+    
+            embed.add_field(
+                name="🔗 Useful Links",
+                value=(
+                    f"[🤖 Add v-bot]({OFFICIAL_BOT_URL}) • "
+                    f"[💻 GitHub]({GITHUB_URL}) • "
+                    f"[📖 Documentation]({DOCS_URL})\n"
+                    f"[📜 Terms of Use]({TERMS_URL}) • "
+                    f"[🔒 Privacy Policy]({PRIVACY_URL})"
+                ),
+                inline=False,
+            )
+    
+            embed.add_field(
+                name="💬 Support",
+                value=(
+                    f"Need help with v-bot?\n"
+                    f"Join our [official Discord server]({OFFICIAL_SERVER_URL}) "
+                    "or contact **support.v.bot@gmail.com**."
+                ),
+                inline=False,
+            )
+    
+            embed.set_footer(
+                text=f"v-bot • Version {getattr(self.bot, 'version', '3.7.5')}"
+            )
+    
+            # Find the first text channel where the bot can send messages
+            for channel in guild.text_channels:
+                permissions = channel.permissions_for(guild.me)
+    
+                if permissions.view_channel and permissions.send_messages:
+                    try:
+                        await channel.send(embed=embed)
+                        break
+                    except discord.Forbidden:
+                        continue
+                    except discord.HTTPException:
+                        continue
+
+    
     @commands.Cog.listener()
     async def on_ready(self):
         logger.info(f"Connected as {self.bot.user} (ID: {self.bot.user.id})")
