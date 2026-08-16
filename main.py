@@ -75,6 +75,7 @@ EXTENSIONS = [
     "cogs.info",
     "cogs.owner",
     "cogs.help_cog",
+    "cogs.twitch",
 ]
 
 if config.DANGEROUS_COMMANDS_ENABLED:
