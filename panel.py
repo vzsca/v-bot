@@ -279,27 +279,6 @@ def cmd_toggle_dangerous() -> None:
     print("The change will take effect when the bot is (re)started.")
 
 
-def cmd_set_name() -> None:
-    new_name = input("New bot name: ").strip()
-
-    if not new_name:
-        print("[ERROR] No name entered, nothing was changed.")
-        return
-
-    if len(new_name) > 32:
-        print("[ERROR] The bot name cannot exceed 32 characters.")
-        return
-
-    set_env_value("BOT_NAME", new_name)
-    security_log.log_security_event(
-        f"Bot name changed: {new_name}",
-        actor="panel",
-    )
-
-    print(f"Bot name saved to .env: {new_name}")
-    print("The change will take effect on the next bot restart.")
-
-
 def cmd_set_prefix() -> None:
     new_prefix = input("New prefix: ").strip()
 
