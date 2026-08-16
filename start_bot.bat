@@ -1,5 +1,5 @@
 @echo off
-mode con: cols=120 lines=25
+mode con: cols=80  lines=25
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
