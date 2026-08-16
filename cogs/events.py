@@ -122,13 +122,7 @@ class EventsCog(commands.Cog):
     async def on_ready(self):
         logger.info(f"Connected as {self.bot.user} (ID: {self.bot.user.id})")
 
-        if self.bot.user.name != config.BOT_NAME:
-            try:
-                await self.bot.user.edit(username=config.BOT_NAME)
-                logger.info(f"Bot name changed: {config.BOT_NAME}")
-            except Exception as e:
-                logger.warning(f"Unable to change bot name: {e}")
-
+        
         try:
             synced = await self.bot.tree.sync()
             logger.info(f"Commands synchronized: {len(synced)}")
