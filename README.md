@@ -633,7 +633,7 @@ cogs/
 `annonce.py` handles announcement management and commands.
 `twitch.py` handles Twitch API requests, live detection and Twitch
 announcements.
-`youtube.py`handles YouTube API requests, new video detection and YouTube
+`youtube.py` handles YouTube API requests, new video detection and YouTube
 announcements.
 
 This structure makes it easier to add support for additional platforms in
