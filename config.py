@@ -73,6 +73,9 @@ PERMANENT_OWNERS_SET: frozenset[int] = frozenset(PERMANENT_OWNERS)
 TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID", "").strip()
 TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET", "").strip()
 
+# --- Youtube API ---
+YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY", "").strip()
+
 # --- Bot identity ---
 BOT_PREFIX = os.getenv("BOT_PREFIX", "v!").strip()
 
