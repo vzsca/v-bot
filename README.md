@@ -588,10 +588,9 @@ platform has its own integration and background task.
 
 These commands are available to:
 
-- Permanent bot owners
+- Permanent and temporary bot owners
 - Discord server administrators
 
-Temporary owners do not have access to announcement management.
 
 ### Twitch placeholders
 
