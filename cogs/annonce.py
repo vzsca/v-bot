@@ -191,7 +191,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     # ==========================================================
 
     @commands.command(name="create_annonce")
-    @checks.permanent_owner_check()
+    @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
     async def create_annonce(
         self,
@@ -417,7 +417,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     # ==========================================================
 
     @commands.command(name="annonces")
-    @checks.permanent_owner_check()
+    @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
     async def annonces(
         self,
@@ -519,7 +519,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     # ==========================================================
 
     @commands.command(name="test_annonce")
-    @checks.permanent_owner_check()
+    @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
     async def test_annonce(
         self,
@@ -621,7 +621,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     # ==========================================================
 
     @commands.command(name="delete_annonce")
-    @checks.permanent_owner_check()
+    @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
     async def delete_annonce(
         self,
