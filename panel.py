@@ -721,6 +721,46 @@ def cmd_set_twitch_api() -> None:
         "the next bot restart."
     )
 
+# ============================================================
+# YouTube API
+# ============================================================
+
+def cmd_set_youtube_api() -> None:
+    """Configure the YouTube API key."""
+
+    print()
+    print("=== YouTube API Configuration ===")
+
+    api_key = input(
+        "YouTube API Key: "
+    ).strip()
+
+    if not api_key:
+        print(
+            "[ERROR] No API key entered, "
+            "nothing was changed."
+        )
+        return
+
+    set_env_value(
+        "YOUTUBE_API_KEY",
+        api_key,
+    )
+
+    security_log.log_security_event(
+        "YouTube API key changed",
+        actor="panel",
+    )
+
+    print(
+        "YouTube API key saved to .env."
+    )
+
+    print(
+        "The change will take effect on "
+        "the next bot restart."
+    )
+
 
 # ============================================================
 # Commands
@@ -801,6 +841,11 @@ COMMANDS = [
         "set_twitch_api",
         "set or change the Twitch API credentials",
         cmd_set_twitch_api,
+    ),
+    (
+    "set_youtube_api",
+    "set or change the YouTube API key",
+    cmd_set_youtube_api,
     ),
 ]
 
