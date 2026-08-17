@@ -198,12 +198,12 @@ class TwitchCog(commands.Cog, name="Twitch"):
             )
             return None
 
-    async def _is_live(
+    async def _get_stream_data(
         self,
         session: aiohttp.ClientSession,
         twitch_login: str,
-    ) -> bool:
-        """Return True if a Twitch channel is currently live."""
+    ) -> dict | None:
+        """Return current Twitch stream data, or None if offline."""
 
         if not self.twitch_access_token:
             self.twitch_access_token = await self._get_access_token(
@@ -211,7 +211,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
             )
 
         if not self.twitch_access_token:
-            return False
+            return None
 
         headers = {
             "Client-Id": config.TWITCH_CLIENT_ID,
@@ -231,24 +231,35 @@ class TwitchCog(commands.Cog, name="Twitch"):
 
                 if response.status == 401:
                     self.twitch_access_token = None
-                    return False
+                    return None
 
                 if response.status != 200:
                     logger.warning(
                         f"Twitch API returned HTTP {response.status} "
                         f"for channel {twitch_login}."
                     )
-                    return False
+                    return None
 
                 data = await response.json()
+                streams = data.get("data", [])
 
-                return bool(data.get("data"))
+                if not streams:
+                    return None
+
+                stream = streams[0]
+
+                return {
+                    "streamer": twitch_login,
+                    "title": stream.get("title", ""),
+                    "game": stream.get("game_name", ""),
+                    "url": f"https://www.twitch.tv/{twitch_login}",
+                }
 
         except aiohttp.ClientError:
             logger.exception(
-                f"Unable to check Twitch channel: {twitch_login}"
+                f"Unable to get Twitch stream data: {twitch_login}"
             )
-            return False
+            return None
 
     # ==========================================================
     # Announcement helpers
@@ -257,19 +268,33 @@ class TwitchCog(commands.Cog, name="Twitch"):
     @staticmethod
     def _format_message(
         message: str,
-        twitch_login: str,
-        twitch_url: str,
+        stream_data: dict,
     ) -> str:
         """Replace supported placeholders in an announcement."""
         return (
             message
-            .replace("{channel}", twitch_login)
-            .replace("{link}", twitch_url)
+            .replace(
+                "{streamer}",
+                str(stream_data.get("streamer", "")),
+            )
+            .replace(
+                "{title}",
+                str(stream_data.get("title", "")),
+            )
+            .replace(
+                "{game}",
+                str(stream_data.get("game", "")),
+            )
+            .replace(
+                "{url}",
+                str(stream_data.get("url", "")),
+            )
         )
 
     async def _send_announcement(
         self,
         announcement: dict,
+        stream_data: dict | None = None,
     ) -> bool:
         """Send an announcement to its configured Discord channel."""
 
@@ -290,10 +315,17 @@ class TwitchCog(commands.Cog, name="Twitch"):
         if channel is None:
             return False
 
+        if stream_data is None:
+            stream_data = {
+                "streamer": twitch_login,
+                "title": "",
+                "game": "",
+                "url": twitch_url,
+            }
+
         formatted_message = self._format_message(
             message,
-            twitch_login,
-            twitch_url,
+            stream_data,
         )
 
         try:
@@ -375,8 +407,10 @@ class TwitchCog(commands.Cog, name="Twitch"):
             "💬 **Send the announcement message.**\n"
             "You have **1 minute**.\n\n"
             "Available placeholders:\n"
-            "`{channel}` → Twitch channel name\n"
-            "`{link}` → Twitch channel link"
+            "`{streamer}` → Twitch username\n"
+            "`{title}` → Stream title\n"
+            "`{game}` → Stream category\n"
+            "`{url}` → Twitch stream URL"
         )
 
         try:
@@ -392,7 +426,9 @@ class TwitchCog(commands.Cog, name="Twitch"):
         announcement_message = response.content.strip()
 
         if not announcement_message:
-            await ctx.send("❌ The announcement message cannot be empty.")
+            await ctx.send(
+                "❌ The announcement message cannot be empty."
+            )
             return
 
         # ------------------------------------------------------
@@ -689,10 +725,12 @@ class TwitchCog(commands.Cog, name="Twitch"):
                     )
                     continue
 
-                is_live = await self._is_live(
+                stream_data = await self._get_stream_data(
                     session,
                     twitch_login,
                 )
+
+                is_live = stream_data is not None
 
                 was_live = announcement.get(
                     "was_live",
@@ -703,7 +741,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 if is_live and not was_live:
 
                     success = await self._send_announcement(
-                        announcement
+                        announcement,
+                        stream_data,
                     )
 
                     if success:
