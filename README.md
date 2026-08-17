@@ -554,89 +554,96 @@ The command is restricted to authorized owners.
 
 ---
 
-# 📺 Twitch Announcements
+## 📢 Announcements
 
-v-bot can automatically announce when a configured Twitch channel starts a stream.
+v-bot includes an extensible announcement system for external platforms.
 
-Twitch announcements are managed through the Twitch Cog:
+Announcements are managed through a central system, while each supported
+platform has its own integration and background task.
+
+### Supported platforms
+
+- 🟣 Twitch
+- 🔴 YouTube
+
+### Announcement commands
+
+| Command | Description |
+|---|---|
+| `v!create_annonce` | Create a Twitch or YouTube announcement |
+| `v!annonces` | List configured announcements |
+| `v!test_annonce <id>` | Test an announcement |
+| `v!delete_annonce <id>` | Delete an announcement |
+
+These commands are available to:
+
+- Permanent bot owners
+- Discord server administrators
+
+Temporary owners do not have access to announcement management.
+
+### Twitch placeholders
+
+When creating a Twitch announcement, you can use:
+
+| Placeholder | Description |
+|---|---|
+| `{streamer}` | Twitch username |
+| `{title}` | Stream title |
+| `{game}` | Stream category |
+| `{url}` | Twitch stream URL |
+
+A Twitch announcement is automatically sent when the configured channel
+changes from offline to live.
+
+### YouTube placeholders
+
+When creating a YouTube announcement, you can use:
+
+| Placeholder | Description |
+|---|---|
+| `{channel}` | YouTube channel name |
+| `{title}` | Video title |
+| `{url}` | YouTube video URL |
+
+A YouTube announcement is automatically sent when a new video is detected.
+
+### Architecture
+
+The announcement system is split into separate cogs:
 
 ```text
-cogs/twitch.py
+cogs/
+├── annonce.py
+├── twitch.py
+└── youtube.py
+
 ```
+`annonce.py` handles announcement management and commands.
+`twitch.py` handles Twitch API requests, live detection and Twitch
+announcements.
+`youtube.py`handles YouTube API requests, new video detection and YouTube
+announcements.
 
-Each announcement configuration contains:
+This structure makes it easier to add support for additional platforms in
+the future without making the main announcement system unnecessarily large.
 
-* Twitch channel URL
-* Announcement message
-* Discord channel
+### Configuration
 
-The bot periodically checks the configured Twitch channels and automatically sends the configured announcement when a stream starts.
-
-## Twitch Commands
-
-### v!create_annonce
-
-Creates a new Twitch announcement configuration.
+Announcements are stored in:
 ```text
-v!create_annonce
+annonce_config.json
 ```
-
-The bot will interactively ask for:
-
-The Twitch channel URL
-The announcement message
-The Discord channel where the announcement should be sent
-
-Each step has a 1-minute timeout.
-
-If no response is received within 1 minute, the setup is cancelled.
-
-### v!annonces
-
-Displays the Twitch announcement configurations currently registered.
+Platform API credentials are configured through `.env`.
+For Twitch:
 ```text
-v!annonces
+TWITCH_CLIENT_ID=...
+TWITCH_CLIENT_SECRET=...
 ```
-
-### v!test_annonce
-
-Tests a configured Twitch announcement without waiting for the Twitch channel to start streaming.
+For YouTube:
 ```text
-v!test_annonce
+YOUTUBE_API_KEY=...
 ```
-This can be used to verify that the announcement message and Discord channel are correctly configured.
-
-### v!delete_annonce
-
-Deletes an existing Twitch announcement configuration.
-```text
-v!delete_annonce
-```
-The corresponding Twitch announcement configuration is removed from the local configuration.
-
-## Twitch API Configuration
-
-Twitch announcements require Twitch API credentials.
-The credentials are stored in `.env`:
-```text
-TWITCH_CLIENT_ID=YOUR_CLIENT_ID
-TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
-```
-They can be configured from the local control panel using:
-```text
-set_twitch_api
-```
-The Twitch API credentials are private and should never be published or committed to GitHub.
-
-## Twitch Configuration File
-
-Twitch announcement configurations are automatically stored locally in:
-```text
-twitch_config.json
-```
-This file is created automatically when Twitch announcement functionality is used.
-
-It should not be committed to GitHub if it contains private server configuration.
 
 
 ---
