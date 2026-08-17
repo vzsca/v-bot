@@ -144,7 +144,7 @@ class EventsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
-    logger.info(
+        logger.info(
         f"🚀 GUILD JOIN EVENT TRIGGERED: {guild.name} ({guild.id})"
     )
 
