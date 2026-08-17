@@ -52,7 +52,7 @@ The invitation link is only for the hosted v-bot instance. **If you install v-bo
 * 🔄 Automatic startup and shutdown management
 * 🧩 Modular architecture with Cogs
 * ⚡ Prefix commands and slash/hybrid commands for compatible commands
-* 📺 Automatic Twitch stream announcements
+* 📢 Automatic Twitch and YouTube announcements
 * 💬 Custom Discord embeds
 
 ---
@@ -67,31 +67,32 @@ v-bot/
 ├── deps.py                  # Dependency management
 ├── config.py                # Bot configuration
 ├── checks.py                # Permission system
-├── state.py                 # Internal bot state
-├── exceptions.py            # Custom exceptions
-├── security_log.py          # Security logging
+├── state.py                  # Internal bot state
+├── exceptions.py             # Custom exceptions
+├── security_log.py           # Security logging
 ├── twitch_api.py             # Twitch API integration
 │
-├── start_bot.bat            # Launches the panel
-├── start_bot.sh             # Linux/macOS launcher
-├── requirements.txt         # Python dependencies
-├── .env                     # Private configuration
-├── .env.example             # Configuration example
+├── start_bot.bat             # Launches the panel
+├── start_bot.sh              # Linux/macOS launcher
+├── requirements.txt          # Python dependencies
+├── .env                      # Private configuration
+├── .env.example              # Configuration example
 │
-├── bot.log                  # Bot logs
-├── security.log             # Security logs
-├── servers.txt              # Server list
-├── twitch_config.json      # Local Twitch announcement configuration
+├── bot.log                   # Bot logs
+├── security.log              # Security logs
+├── servers.txt               # Server list
+├── annonce_config.json       # Local announcement configuration
 │
 ├── cogs/
-    ├── events.py            # Discord events
-    ├── moderation.py        # Moderation
-    ├── info.py              # Information
-    ├── owner.py             # Bot administration
-    ├── dangerous.py         # Sensitive commands
-    ├── twitch.py            # Twitch commands and stream monitoring
-    └── help_cog.py          # Help system
-
+    ├── events.py             # Discord events
+    ├── moderation.py         # Moderation
+    ├── info.py               # Information
+    ├── owner.py              # Bot administration
+    ├── dangerous.py          # Sensitive commands
+    ├── annonce.py            # Announcement management commands
+    ├── twitch.py             # Twitch integration and stream monitoring
+    ├── youtube.py            # YouTube integration and video monitoring
+    └── help_cog.py           # Help system
 ```
 
 > ⚠️ The `venv/` folder is generated locally and should not be uploaded to GitHub.
@@ -149,6 +150,8 @@ DANGEROUS_COMMANDS_ENABLED=false
 
 TWITCH_CLIENT_ID=YOUR_CLIENT_ID
 TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
+
+YOUTUBE_API_KEY=YOUR_API_KEY
 ```
 
 ### 🔑 Variables
@@ -161,8 +164,9 @@ TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
 | `OWNER_PRINCIPAL_ID`         | Principal owner                        |
 | `OWNERS_SECONDARY_IDS`       | Secondary owners separated by commas   |
 | `DANGEROUS_COMMANDS_ENABLED` | Enables or disables sensitive commands |
-| `TWITCH_CLIENT_ID`            | Twitch API Client ID                   |
-| `TWITCH_CLIENT_SECRET`        | Twitch API Client Secret               |
+| `TWITCH_CLIENT_ID`           | Twitch API Client ID                   |
+| `TWITCH_CLIENT_SECRET`       | Twitch API Client Secret               |
+| `YOUTUBE_API_KEY`            | YouTube Data API key                   |
 
 > 🔒 **Never share your `.env` file or Discord bot token.**
 
@@ -262,6 +266,13 @@ Available commands:
 | `toggle_dangerous`    | Enable/disable sensitive commands       |
 | `set_prefix`          | Change the command prefix               |
 | `set_twitch_api`      | Configure the Twitch API credentials    |
+| `set_youtube_api`     | Configure the YouTube API key           |
+
+API credentials configured through the panel are saved to `.env`.
+
+After changing API credentials, the bot must be restarted for the changes
+to take effect.
+
 Use:
 
 ```text
@@ -847,18 +858,42 @@ Discord event handling:
 
 Sensitive commands, loaded only when enabled.
 
-### `cogs/twitch.py`
+### `cogs/annonce.py`
 
-Twitch integration and stream announcement system.
+Central announcement management system.
 
 Handles:
 
-* Twitch API integration
-* Twitch announcement configuration
-* Automatic stream detection
-* Announcement testing
-* Announcement deletion
-* Announcement listing
+* Creating announcements
+* Listing announcements
+* Testing announcements
+* Deleting announcements
+* Detecting the platform from the provided URL
+* Managing shared announcement configuration
+
+The platform-specific logic is handled by separate Cogs.
+
+### `cogs/twitch.py`
+
+Twitch integration.
+
+Handles:
+
+* Twitch API authentication
+* Live stream detection
+* Twitch stream information
+* Automatic Twitch announcements
+
+### `cogs/youtube.py`
+
+YouTube integration.
+
+Handles:
+
+* YouTube API integration
+* New video detection
+* YouTube video information
+* Automatic YouTube announcements
 
 ### `cogs/help_cog.py`
 
