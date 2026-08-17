@@ -28,7 +28,7 @@ ANNOUNCE_CONFIG_FILE = (
     Path(__file__).resolve().parent.parent / "annonce_config.json"
 )
 
-YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_API_URL = config.YOUTUBE_API_URL
 
 
 class YouTubeCog(commands.Cog, name="YouTube"):
