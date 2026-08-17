@@ -35,6 +35,10 @@ class HelpCog(commands.Cog, name="Help"):
         general_embed.add_field(name="👤 `user_info`", value="Displays user information.", inline=False)
         general_embed.add_field(name="🏠 `server_info`", value="Displays server information.", inline=False)
         general_embed.add_field(name="💬 `snipe [index]`", value="Displays a deleted message.", inline=False)
+        general_embed.add_field(name="📺 `create_annonce`", value="Creates a new automatic Twitch live announcement.", inline=False)
+        general_embed.add_field(name="📋 `annonces`", value="Lists all configured Twitch live announcements.", inline=False)
+        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured Twitch announcement without waiting for a live stream.", inline=False)
+        general_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured Twitch live announcement.", inline=False)
 
         owner_embed = discord.Embed(
             title="👑 Owner Commands",
@@ -48,11 +52,7 @@ class HelpCog(commands.Cog, name="Help"):
         owner_embed.add_field(name="📩 « Invite » button (in `v!servers`)", value="Generates a temporary invite for the selected server.", inline=False)
         owner_embed.add_field(name="🔁 `toggle_guild`", value="Enables/disables the bot on the current server.", inline=False)
         owner_embed.add_field(name="💬 `say <message>`", value="Makes the bot send a message.", inline=False)
-        owner_embed.add_field(name="📺 `create_annonce`", value="Creates an automatic Twitch live announcement.", inline=False)
-        owner_embed.add_field(name="📺 `create_annonce`", value="Creates a new automatic Twitch live announcement.", inline=False)
-        owner_embed.add_field(name="📋 `annonces`", value="Lists all configured Twitch live announcements.", inline=False)
-        owner_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured Twitch announcement without waiting for a live stream.", inline=False)
-        owner_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured Twitch live announcement.", inline=False)
+
 
         if config.DANGEROUS_COMMANDS_ENABLED:
             owner_embed.add_field(name="💣 `spam <amount> <message>`", value="Controlled message spam.", inline=False)
