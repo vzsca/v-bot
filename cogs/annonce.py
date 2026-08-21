@@ -571,9 +571,9 @@ class AnnonceCog(commands.Cog, name="Announcements"):
 
         # Dispatch the test to the platform cog.
         cog_name = (
-            "TwitchCog"
+            "Twitch"
             if platform == "twitch"
-            else "YouTubeCog"
+            else "YouTube"
         )
 
         platform_cog = self.bot.get_cog(
