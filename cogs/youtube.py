@@ -22,18 +22,14 @@ from discord.ext import commands, tasks
 
 import config
 
-
 logger = logging.getLogger("v-bot")
 
-
 ANNOUNCE_CONFIG_FILE = (
-    Path(__file__).resolve().parent.parent
-    / "annonce_config.json"
+    Path(__file__).resolve().parent.parent / "annonce_config.json"
 )
 
-# YouTube Data API v3
 YOUTUBE_API_KEY = config.YOUTUBE_API_KEY
-YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_API_URL = "https://youtube.googleapis.com"
 
 
 class YouTubeCog(commands.Cog, name="YouTube"):
@@ -42,6 +38,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         self.bot = bot
 
         self._ensure_config_file()
+
         self.youtube_task.start()
 
     def cog_unload(self):
@@ -99,12 +96,17 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
             return data
 
-        except (
-            OSError,
-            json.JSONDecodeError,
-        ):
+        except json.JSONDecodeError:
+            logger.error(
+                "Unable to load annonce_config.json: "
+                "invalid JSON."
+            )
+
+            return {"announcements": []}
+
+        except OSError:
             logger.exception(
-                "Unable to load annonce_config.json."
+                "Unable to read annonce_config.json."
             )
 
             return {"announcements": []}
@@ -142,30 +144,17 @@ class YouTubeCog(commands.Cog, name="YouTube"):
     def _extract_youtube_identifier(
         youtube_url: str,
     ) -> tuple[str, str] | None:
-        """
-        Extract the YouTube identifier from a channel URL.
-
-        Supported formats:
-        - /channel/UCxxxxxxxx
-        - /@username
-        - /c/channelname
-        - /user/channelname
-
-        Returns:
-            ("channel_id", value)
-            ("handle", value)
-            ("custom", value)
-        """
+        """Extract the YouTube channel identifier."""
 
         try:
             parsed = urlparse(
                 youtube_url.strip()
             )
 
-            if parsed.scheme not in (
+            if parsed.scheme not in {
                 "http",
                 "https",
-            ):
+            }:
                 return None
 
             hostname = (
@@ -186,9 +175,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             if not path:
                 return None
 
-            # --------------------------------------------------
             # /channel/UCxxxxxxxx
-            # --------------------------------------------------
 
             if path.startswith("channel/"):
                 channel_id = path[
@@ -203,9 +190,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
                 return None
 
-            # --------------------------------------------------
             # /@username
-            # --------------------------------------------------
 
             if path.startswith("@"):
                 handle = path.split("/")[0]
@@ -218,9 +203,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
                 return None
 
-            # --------------------------------------------------
             # /c/channelname
-            # --------------------------------------------------
 
             if path.startswith("c/"):
                 name = path[
@@ -235,9 +218,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
                 return None
 
-            # --------------------------------------------------
             # /user/channelname
-            # --------------------------------------------------
 
             if path.startswith("user/"):
                 name = path[
@@ -270,60 +251,58 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         session: aiohttp.ClientSession,
         endpoint: str,
         params: dict,
-    ) -> dict | None:
-        """Send a GET request to the YouTube Data API."""
+    ) -> tuple[dict | None, int | None]:
+        """
+        Send a GET request to the YouTube Data API.
+
+        Returns:
+            (response_json, status_code)
+        """
 
         if not YOUTUBE_API_KEY:
             logger.warning(
                 "YouTube API key is missing. "
                 "Set YOUTUBE_API_KEY in .env."
             )
-            return None
+
+            return None, None
 
         request_params = {
             **params,
             "key": YOUTUBE_API_KEY,
         }
 
-        url = (
-            f"{YOUTUBE_API_URL}/{endpoint}"
-        )
-
         try:
             async with session.get(
-                url,
+                f"{YOUTUBE_API_URL}/{endpoint}",
                 params=request_params,
             ) as response:
 
-                if response.status != 200:
+                status = response.status
+
+                if status != 200:
                     body = await response.text()
 
-                    logger.warning(
-                        "YouTube API returned HTTP "
-                        f"{response.status}: {body}"
-                    )
+                    return None, status
 
-                    return None
-
-                return await response.json()
+                return await response.json(), status
 
         except aiohttp.ClientError:
             logger.exception(
                 "YouTube API request failed."
             )
 
-            return None
+            return None, None
 
-        except Exception:
+        except ValueError:
             logger.exception(
-                "Unexpected error during "
-                "YouTube API request."
+                "YouTube API returned invalid JSON."
             )
 
-            return None
+            return None, None
 
     # ==========================================================
-    # Resolve channel ID
+    # Resolve channel
     # ==========================================================
 
     async def _resolve_channel_id(
@@ -331,12 +310,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         session: aiohttp.ClientSession,
         source_url: str,
     ) -> str | None:
-        """
-        Resolve a YouTube URL to a channel ID.
-
-        This function is only called when the channel ID
-        is not already stored in annonce_config.json.
-        """
+        """Resolve a YouTube URL to a channel ID."""
 
         identifier = (
             self._extract_youtube_identifier(
@@ -345,37 +319,29 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         )
 
         if not identifier:
-            logger.warning(
-                "Invalid YouTube channel URL: "
-                f"{source_url}"
-            )
             return None
 
         identifier_type, value = identifier
 
-        # ------------------------------------------------------
         # Direct channel ID
-        # ------------------------------------------------------
 
         if identifier_type == "channel_id":
             return value
 
-        # ------------------------------------------------------
         # @handle
-        # ------------------------------------------------------
 
         if identifier_type == "handle":
 
-            data = await self._api_get(
+            data, status = await self._api_get(
                 session,
-                "channels",
+                "youtube/v3/channels",
                 {
                     "part": "id",
                     "forHandle": value,
                 },
             )
 
-            if not data:
+            if status != 200 or not data:
                 return None
 
             items = data.get(
@@ -384,26 +350,17 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             )
 
             if not items:
-                logger.warning(
-                    "YouTube handle not found: "
-                    f"{value}"
-                )
                 return None
 
             return items[0].get("id")
 
-        # ------------------------------------------------------
         # Custom URL
-        #
-        # search.list is more expensive, so this is only used
-        # once when the channel ID is not already cached.
-        # ------------------------------------------------------
 
         if identifier_type == "custom":
 
-            data = await self._api_get(
+            data, status = await self._api_get(
                 session,
-                "search",
+                "youtube/v3/search",
                 {
                     "part": "snippet",
                     "q": value,
@@ -412,7 +369,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 },
             )
 
-            if not data:
+            if status != 200 or not data:
                 return None
 
             items = data.get(
@@ -421,10 +378,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             )
 
             if not items:
-                logger.warning(
-                    "YouTube custom channel not found: "
-                    f"{value}"
-                )
                 return None
 
             return (
@@ -444,23 +397,18 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         session: aiohttp.ClientSession,
         channel_id: str,
     ) -> dict | None:
-        """
-        Get channel information and the uploads playlist.
+        """Get YouTube channel information."""
 
-        This should normally only be called once per announcement,
-        because uploads_playlist_id is cached in the config.
-        """
-
-        data = await self._api_get(
+        data, status = await self._api_get(
             session,
-            "channels",
+            "youtube/v3/channels",
             {
                 "part": "snippet,contentDetails",
                 "id": channel_id,
             },
         )
 
-        if not data:
+        if status != 200 or not data:
             return None
 
         items = data.get(
@@ -469,10 +417,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         )
 
         if not items:
-            logger.warning(
-                "YouTube channel not found: "
-                f"{channel_id}"
-            )
             return None
 
         channel = items[0]
@@ -501,11 +445,14 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         )
 
         if not uploads_playlist:
-            logger.warning(
-                "No uploads playlist found for "
-                f"YouTube channel {channel_id}."
-            )
-            return None
+            return {
+                "channel_id": channel_id,
+                "channel": snippet.get(
+                    "title",
+                    "",
+                ),
+                "uploads_playlist": None,
+            }
 
         return {
             "channel_id": channel_id,
@@ -523,18 +470,21 @@ class YouTubeCog(commands.Cog, name="YouTube"):
     async def _get_latest_video(
         self,
         session: aiohttp.ClientSession,
-        uploads_playlist: str,
+        uploads_playlist: str | None,
     ) -> dict | None:
         """
-        Get the latest video from the uploads playlist.
+        Get the latest video.
 
-        This is the only API call performed on every monitoring
-        cycle once the channel information is cached.
+        A missing uploads playlist is treated as:
+        channel currently has no videos.
         """
 
-        data = await self._api_get(
+        if not uploads_playlist:
+            return None
+
+        data, status = await self._api_get(
             session,
-            "playlistItems",
+            "youtube/v3/playlistItems",
             {
                 "part": "snippet,contentDetails",
                 "playlistId": uploads_playlist,
@@ -542,7 +492,23 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             },
         )
 
-        if not data:
+        # ------------------------------------------------------
+        # IMPORTANT:
+        # A 404 playlistNotFound can happen when the channel
+        # currently has no videos.
+        #
+        # This is NOT treated as an API error.
+        # ------------------------------------------------------
+
+        if status == 404:
+            return None
+
+        if status != 200 or not data:
+            logger.warning(
+                "Unable to retrieve latest YouTube video "
+                f"from playlist {uploads_playlist}."
+            )
+
             return None
 
         items = data.get(
@@ -588,7 +554,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         }
 
     # ==========================================================
-    # Announcement helpers
+    # Announcement formatting
     # ==========================================================
 
     @staticmethod
@@ -629,12 +595,16 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             )
         )
 
+    # ==========================================================
+    # Send announcement
+    # ==========================================================
+
     async def _send_announcement(
         self,
         announcement: dict,
         video_data: dict,
     ) -> bool:
-        """Send a YouTube announcement to Discord."""
+        """Send a YouTube announcement."""
 
         channel_id = announcement.get(
             "channel_id"
@@ -644,49 +614,32 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             "message"
         )
 
-        if not channel_id:
-            logger.warning(
-                "YouTube announcement has no "
-                "Discord channel_id."
-            )
-            return False
-
-        if not message:
-            logger.warning(
-                "YouTube announcement has no message."
-            )
+        if not channel_id or not message:
             return False
 
         try:
-            channel_id_int = int(
-                channel_id
+            channel = self.bot.get_channel(
+                int(channel_id)
             )
-        except (
-            TypeError,
-            ValueError,
-        ):
-            logger.warning(
-                "Invalid Discord channel ID: "
-                f"{channel_id}"
-            )
-            return False
 
-        channel = self.bot.get_channel(
-            channel_id_int
-        )
+        except (TypeError, ValueError):
+            logger.warning(
+                f"Invalid Discord channel ID: {channel_id}"
+            )
+
+            return False
 
         if channel is None:
             logger.warning(
                 "Discord channel "
                 f"{channel_id} was not found."
             )
+
             return False
 
-        formatted_message = (
-            self._format_message(
-                message,
-                video_data,
-            )
+        formatted_message = self._format_message(
+            message,
+            video_data,
         )
 
         try:
@@ -737,19 +690,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         if not identifier:
             return False
 
-        identifier_type, value = identifier
-
-        if identifier_type == "channel_id":
-            channel_name = value
-
-        elif identifier_type == "handle":
-            channel_name = value
-
-        else:
-            channel_name = value
+        _, value = identifier
 
         test_data = {
-            "channel": channel_name,
+            "channel": value,
             "title": "Test video",
             "url": source_url,
         }
@@ -760,7 +704,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         )
 
     # ==========================================================
-    # YouTube background task
+    # Background task
     # ==========================================================
 
     @tasks.loop(seconds=60)
@@ -768,39 +712,27 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         """
         Check all YouTube announcements every 60 seconds.
 
-        Channel information and the uploads playlist are cached
-        in annonce_config.json.
-
-        Once cached, only playlistItems.list is used to check
-        for new videos.
+        The first video uploaded after an announcement has
+        been configured IS announced.
         """
 
-        announcement_config = (
-            self._load_config()
-        )
+        announcement_config = self._load_config()
 
-        announcements = (
-            announcement_config.get(
-                "announcements",
-                [],
-            )
+        announcements = announcement_config.get(
+            "announcements",
+            [],
         )
 
         youtube_announcements = [
             announcement
             for announcement in announcements
-            if announcement.get("type")
-            == "youtube"
+            if announcement.get("type") == "youtube"
         ]
 
         if not youtube_announcements:
             return
 
         if not YOUTUBE_API_KEY:
-            logger.warning(
-                "YouTube monitoring disabled: "
-                "YOUTUBE_API_KEY is missing."
-            )
             return
 
         config_changed = False
@@ -820,14 +752,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 )
 
                 if not source_url:
-                    logger.warning(
-                        "YouTube announcement has no "
-                        "source_url."
-                    )
                     continue
 
                 # --------------------------------------------------
-                # Channel ID
+                # Resolve channel ID
                 # --------------------------------------------------
 
                 channel_id = announcement.get(
@@ -844,6 +772,11 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                     )
 
                     if not channel_id:
+                        logger.warning(
+                            "Unable to resolve YouTube "
+                            f"channel: {source_url}"
+                        )
+
                         continue
 
                     announcement[
@@ -853,46 +786,52 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                     config_changed = True
 
                 # --------------------------------------------------
-                # Uploads playlist
+                # Get channel data
                 # --------------------------------------------------
 
-                uploads_playlist = (
-                    announcement.get(
-                        "uploads_playlist_id"
+                channel_data = (
+                    await self._get_channel_data(
+                        session,
+                        channel_id,
                     )
                 )
 
+                if not channel_data:
+                    continue
+
+                channel_name = channel_data.get(
+                    "channel",
+                    "Unknown",
+                )
+
+                uploads_playlist = (
+                    channel_data.get(
+                        "uploads_playlist"
+                    )
+                )
+
+                # --------------------------------------------------
+                # No uploads playlist
+                # --------------------------------------------------
+
                 if not uploads_playlist:
-
-                    channel_data = (
-                        await self._get_channel_data(
-                            session,
-                            channel_id,
-                        )
+                    logger.info(
+                        f"YouTube channel "
+                        f"{channel_name} has no videos yet."
                     )
 
-                    if not channel_data:
-                        continue
+                    continue
 
-                    uploads_playlist = (
-                        channel_data[
-                            "uploads_playlist"
-                        ]
-                    )
+                # Save playlist ID so we don't need to retrieve
+                # it again from the API every minute.
+
+                if announcement.get(
+                    "youtube_uploads_playlist"
+                ) != uploads_playlist:
 
                     announcement[
-                        "uploads_playlist_id"
+                        "youtube_uploads_playlist"
                     ] = uploads_playlist
-
-                    # Store channel name if available.
-                    if channel_data.get(
-                        "channel"
-                    ):
-                        announcement[
-                            "youtube_channel_name"
-                        ] = channel_data[
-                            "channel"
-                        ]
 
                     config_changed = True
 
@@ -907,51 +846,42 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                     )
                 )
 
-                if not video_data:
+                # --------------------------------------------------
+                # No videos yet
+                # --------------------------------------------------
+
+                if video_data is None:
+
+                    logger.info(
+                        f"YouTube channel "
+                        f"{channel_name} has no videos yet."
+                    )
+
                     continue
 
                 latest_video_id = (
                     video_data["video_id"]
                 )
 
-                last_video_id = (
-                    announcement.get(
-                        "last_video_id"
-                    )
+                last_video_id = announcement.get(
+                    "last_video_id"
                 )
 
                 # --------------------------------------------------
-                # First check
+                # IMPORTANT:
                 #
-                # Save the current video without announcing it.
+                # If last_video_id is None, it means that NO video
+                # has ever been announced.
+                #
+                # Therefore the first video MUST be announced.
                 # --------------------------------------------------
 
                 if not last_video_id:
 
-                    announcement[
-                        "last_video_id"
-                    ] = latest_video_id
-
-                    config_changed = True
-
                     logger.info(
-                        "Initialized YouTube announcement "
-                        f"for {source_url} with video "
-                        f"{latest_video_id}."
-                    )
-
-                    continue
-
-                # --------------------------------------------------
-                # New video detected
-                # --------------------------------------------------
-
-                if latest_video_id != last_video_id:
-
-                    logger.info(
-                        "New YouTube video detected: "
-                        f"{video_data['title']} "
-                        f"({latest_video_id})"
+                        f"New first video detected on "
+                        f"YouTube channel {channel_name}: "
+                        f"{video_data['title']}"
                     )
 
                     success = (
@@ -969,27 +899,43 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
                         config_changed = True
 
-                        logger.info(
-                            "YouTube announcement sent "
-                            f"for {latest_video_id}."
+                    continue
+
+                # --------------------------------------------------
+                # New video
+                # --------------------------------------------------
+
+                if latest_video_id != last_video_id:
+
+                    logger.info(
+                        f"New YouTube video detected on "
+                        f"{channel_name}: "
+                        f"{video_data['title']}"
+                    )
+
+                    success = (
+                        await self._send_announcement(
+                            announcement,
+                            video_data,
                         )
+                    )
 
-                    else:
+                    if success:
 
-                        logger.warning(
-                            "YouTube announcement failed "
-                            f"for {latest_video_id}. "
-                            "It will be retried."
-                        )
+                        announcement[
+                            "last_video_id"
+                        ] = latest_video_id
 
-        # ----------------------------------------------------------
-        # Save changes
-        # ----------------------------------------------------------
+                        config_changed = True
 
         if config_changed:
             self._save_config(
                 announcement_config
             )
+
+    # ==========================================================
+    # Task startup
+    # ==========================================================
 
     @youtube_task.before_loop
     async def before_youtube_task(self):
@@ -999,12 +945,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
 
 # ==============================================================
-# Cog setup
+# Setup
 # ==============================================================
 
-async def setup(
-    bot: commands.Bot,
-):
+async def setup(bot: commands.Bot):
     await bot.add_cog(
         YouTubeCog(bot)
     )
