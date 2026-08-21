@@ -28,7 +28,8 @@ ANNOUNCE_CONFIG_FILE = (
     Path(__file__).resolve().parent.parent / "annonce_config.json"
 )
 
-YOUTUBE_API_URL = config.YOUTUBE_API_KEY
+# YouTube Data API v3 base URL
+YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3"
 
 
 class YouTubeCog(commands.Cog, name="YouTube"):
@@ -143,6 +144,8 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             ("channel_id", value)
             or
             ("handle", value)
+            or
+            ("custom", value)
         """
 
         try:
@@ -327,7 +330,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         # ------------------------------------------------------
 
         if identifier_type == "handle":
-
             data = await self._api_get(
                 session,
                 "channels",
@@ -357,7 +359,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         # ------------------------------------------------------
 
         if identifier_type == "custom":
-
             data = await self._api_get(
                 session,
                 "search",
@@ -673,10 +674,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
     # YouTube background task
     # ==========================================================
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=30)
     async def youtube_task(self):
         """
-        Check all YouTube announcements every 60 seconds.
+        Check all YouTube announcements every 30 seconds.
 
         A notification is sent when a new video is detected.
         """
@@ -707,6 +708,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             "YOUTUBE_API_KEY",
             None,
         ):
+            logger.warning(
+                "YouTube announcements disabled: "
+                "YOUTUBE_API_KEY is missing."
+            )
             return
 
         config_changed = False
@@ -731,7 +736,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 )
 
                 if not channel_id:
-
                     channel_id = (
                         await self._resolve_channel_id(
                             session,
@@ -798,7 +802,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 # --------------------------------------------------
 
                 if not last_video_id:
-
                     announcement[
                         "last_video_id"
                     ] = latest_video_id
@@ -812,7 +815,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 # --------------------------------------------------
 
                 if latest_video_id != last_video_id:
-
                     success = (
                         await self._send_announcement(
                             announcement,
@@ -821,7 +823,6 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                     )
 
                     if success:
-
                         announcement[
                             "last_video_id"
                         ] = latest_video_id
