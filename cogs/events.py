@@ -141,20 +141,19 @@ class EventsCog(commands.Cog):
         )
 
         self._write_servers_file()
-
+        
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
-        logger.info(
-        f"🚀 GUILD JOIN EVENT TRIGGERED: {guild.name} ({guild.id})"
-    )
-
-    self._write_servers_file()
         """
         Handles the bot joining a new Discord server.
 
         Updates servers.txt and sends an official welcome embed
         to the first available text channel.
         """
+        logger.info(
+            f"🚀 GUILD JOIN EVENT TRIGGERED: {guild.name} ({guild.id})"
+        )
+
         self._write_servers_file()
 
         embed = discord.Embed(
