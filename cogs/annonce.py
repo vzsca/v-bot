@@ -81,8 +81,8 @@ class AnnonceCog(commands.Cog, name="Announcements"):
                 "source_url": source_url,
                 "message": message,
                 "channel_id": target.id,
-                "was_live": False if platform == "twitch" else None,
-                "last_video_id": None if platform == "youtube" else None,
+                "was_live": None if platform == "twitch" else None,
+                "last_video_id": None,
             })
 
         saved, announcement = store.transaction(add_announcement)
