@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 BASE_EXTENSIONS: tuple[str, ...] = (
     "cogs.events",
+    "cogs.security",
     "cogs.moderation",
     "cogs.info",
     "cogs.owner",
