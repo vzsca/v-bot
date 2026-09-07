@@ -66,6 +66,8 @@ def get_youtube_api_key(guild_id: int) -> str | None:
 
 
 def is_configured(guild_id: int, platform: str) -> bool:
-    if api_access.is_allowed(guild_id):
-        return bool(get_twitch_credentials(guild_id) if platform == "twitch" else get_youtube_api_key(guild_id))
-    return api_credentials.configured(guild_id, platform)
+    if platform == "twitch":
+        return get_twitch_credentials(guild_id) is not None
+    if platform == "youtube":
+        return get_youtube_api_key(guild_id) is not None
+    return False
