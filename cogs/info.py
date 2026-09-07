@@ -1,7 +1,5 @@
 """Information commands."""
 
-from typing import Optional
-
 import discord
 from discord.ext import commands
 
@@ -41,7 +39,7 @@ class InfoCog(commands.Cog, name="Information"):
     @commands.hybrid_command(name="user_info", description="Displays information about a member.")
     @commands.guild_only()
     @checks.kill_switch_required()
-    async def user_info(self, ctx, member: Optional[discord.Member] = None):
+    async def user_info(self, ctx, member: discord.Member | None = None):
         member = member or ctx.author
         embed = discord.Embed(title=f"Information about {member.display_name}", color=discord.Color.blue())
         embed.set_thumbnail(url=(member.avatar.url if member.avatar else member.default_avatar.url))
@@ -72,7 +70,7 @@ class InfoCog(commands.Cog, name="Information"):
 
     @commands.hybrid_command(name="avatar", description="Displays a member's avatar.")
     @checks.kill_switch_required()
-    async def avatar(self, ctx, member: Optional[discord.Member] = None):
+    async def avatar(self, ctx, member: discord.Member | None = None):
         member = member or ctx.author
         embed = discord.Embed(title=f"{member.display_name}'s Avatar", color=discord.Color.purple())
         embed.set_image(url=(member.avatar.url if member.avatar else member.default_avatar.url))
