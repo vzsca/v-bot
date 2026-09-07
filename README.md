@@ -37,7 +37,6 @@ This allows you to:
 
 The invitation link is only for the hosted v-bot instance. **If you install v-bot yourself, you must create and configure your own Discord bot.**
 
-
 ## ✨ Features
 
 * 🛡️ Full moderation
@@ -67,10 +66,12 @@ v-bot/
 ├── deps.py                  # Dependency management
 ├── config.py                # Bot configuration
 ├── checks.py                # Permission system
-├── state.py                  # Internal bot state
+├── state.py                 # Internal bot state
 ├── exceptions.py             # Custom exceptions
 ├── security_log.py           # Security logging
-├── twitch_api.py             # Twitch API integration
+├── integration_config.py     # Dynamic API credential configuration
+├── announcement_store.py     # Atomic announcement storage
+├── api_access.py             # API configuration access control
 │
 ├── start_bot.bat             # Launches the panel
 ├── start_bot.sh              # Linux/macOS launcher
@@ -78,17 +79,12 @@ v-bot/
 ├── .env                      # Private configuration
 ├── .env.example              # Configuration example
 │
-├── bot.log                   # Bot logs
-├── security.log              # Security logs
-├── servers.txt               # Server list
-├── annonce_config.json       # Local announcement configuration
-│
 ├── cogs/
     ├── events.py             # Discord events
     ├── moderation.py         # Moderation
     ├── info.py               # Information
     ├── owner.py              # Bot administration
-    ├── dangerous.py          # Sensitive commands
+    ├── dangerous_safe.py     # Sensitive commands
     ├── annonce.py            # Announcement management commands
     ├── twitch.py             # Twitch integration and stream monitoring
     ├── youtube.py            # YouTube integration and video monitoring
@@ -103,7 +99,7 @@ v-bot/
 
 ## Requirements
 
-* Windows, Linux, or macOS 
+* Windows, Linux, or macOS
 * Python **3.13 recommended**
 * A Discord bot created through the [Discord Developer Portal](https://discord.com/developers/applications)
 * The required intents enabled for the Discord bot
@@ -123,7 +119,7 @@ cd v-bot
 
 ## 2. Configure `.env`
 
-Create a `.env` file from `.env.example.`
+Create a `.env` file from `.env.example`.
 
 ### Windows
 ```text
@@ -141,7 +137,7 @@ Then configure:
 DISCORD_TOKEN=YOUR_TOKEN
 
 BOT_PREFIX=v!
-BOT_VERSION=3.7.5
+BOT_VERSION=3.8.2
 
 OWNER_PRINCIPAL_ID=YOUR_DISCORD_ID
 OWNERS_SECONDARY_IDS=
@@ -156,17 +152,17 @@ YOUTUBE_API_KEY=YOUR_API_KEY
 
 ### 🔑 Variables
 
-| Variable                     | Description                            |
-| ---------------------------- | -------------------------------------- |
-| `DISCORD_TOKEN`              | Discord bot token                      |
-| `BOT_PREFIX`                 | Command prefix                         |
-| `BOT_VERSION`                | Version displayed by the bot           |
-| `OWNER_PRINCIPAL_ID`         | Principal owner                        |
-| `OWNERS_SECONDARY_IDS`       | Secondary owners separated by commas   |
+| Variable | Description |
+|---|---|
+| `DISCORD_TOKEN` | Discord bot token |
+| `BOT_PREFIX` | Command prefix |
+| `BOT_VERSION` | Version displayed by the bot |
+| `OWNER_PRINCIPAL_ID` | Principal owner |
+| `OWNERS_SECONDARY_IDS` | Secondary owners separated by commas |
 | `DANGEROUS_COMMANDS_ENABLED` | Enables or disables sensitive commands |
-| `TWITCH_CLIENT_ID`           | Twitch API Client ID                   |
-| `TWITCH_CLIENT_SECRET`       | Twitch API Client Secret               |
-| `YOUTUBE_API_KEY`            | YouTube Data API key                   |
+| `TWITCH_CLIENT_ID` | Twitch API Client ID |
+| `TWITCH_CLIENT_SECRET` | Twitch API Client Secret |
+| `YOUTUBE_API_KEY` | YouTube Data API key |
 
 > 🔒 **Never share your `.env` file or Discord bot token.**
 
@@ -182,59 +178,41 @@ The recommended way to launch v-bot is:
 ```text
 start_bot.bat
 ```
-The launcher:
 
--Checks Python
--Creates the `venv` if necessary
--Installs dependencies
--Starts the control panel
+The launcher checks Python, creates the `venv` if necessary, installs dependencies, and starts the control panel.
 
 ### 🐧 Linux / 🍎 macOS
 
 The recommended way to launch v-bot is:
-
 ```text
 ./start_bot.sh
 ```
 
 If the script does not have execution permissions:
-
 ```bash
 chmod +x start_bot.sh
 ```
-Then:
 
-```bash
-./start_bot.sh
-```
-The launcher:
-
-Checks Python
-Creates the `venv` if necessary
-Installs dependencies
-Starts the control panel
-
+The launcher checks Python, creates the `venv` if necessary, installs dependencies, and starts the control panel.
 
 ## Manual launch
 
-If you prefer to launch v-bot manually, create and activate the virtual environment first.
-
 ### Windows
-
 ```powershell
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 python panel.py
 ```
-## Linux / macOS
 
+### Linux / macOS
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python panel.py
 ```
+
 The control panel can then be used to start the bot.
 
 ---
@@ -249,36 +227,33 @@ v-bot>
 
 Available commands:
 
-| Command               | Function                               |
-| --------------------- | -------------------------------------- |
-| `start`               | Start the bot                           |
-| `stop`                | Stop the bot                            |
-| `restart`             | Restart the bot                         |
-| `status`              | View the bot status                     |
-| `uptime`              | View how long the bot has been running |
-| `update`              | Update dependencies                     |
-| `logs`                | Open `bot.log`                          |
-| `security_logs`       | Display the latest security events      |
-| `servers`             | Display the bot's servers               |
-| `add_secondary_owner` | Add a secondary owner                   |
-| `set_token`           | Change the Discord token                |
-| `set_principal_owner` | Change the principal owner              |
-| `toggle_dangerous`    | Enable/disable sensitive commands       |
-| `set_prefix`          | Change the command prefix               |
-| `set_twitch_api`      | Configure the Twitch API credentials    |
-| `set_youtube_api`     | Configure the YouTube API key           |
+| Command | Function |
+|---|---|
+| `start` | Start the bot |
+| `stop` | Stop the bot |
+| `restart` | Restart the bot |
+| `status` | View the bot status |
+| `uptime` | View how long the bot has been running |
+| `update` | Update dependencies |
+| `logs` | Display `bot.log` |
+| `security_logs` | Display security events |
+| `servers` | Display connected servers |
+| `add_secondary_owner` | Add a secondary owner |
+| `set_token` | Change the Discord token |
+| `set_principal_owner` | Change the principal owner |
+| `toggle_dangerous` | Enable/disable sensitive commands |
+| `set_prefix` | Change the command prefix |
+| `set_twitch_api` | Configure Twitch API credentials |
+| `set_youtube_api` | Configure the YouTube API key |
 
-API credentials configured through the panel are saved to `.env`.
+API credentials configured through the panel are saved atomically to `.env`.
 
-After changing API credentials, the bot must be restarted for the changes
-to take effect.
+Twitch and YouTube credentials are reloaded automatically while the bot is running. Discord token, prefix, owner, and sensitive-command setting changes require a bot restart.
 
 Use:
-
 ```text
 help
 ```
-
 to display the list directly in the panel.
 
 ---
@@ -286,97 +261,72 @@ to display the list directly in the panel.
 # 📜 Discord Commands
 
 The default prefix is:
-
 ```text
 v!
 ```
 
-You can change it from the panel using:
-
-```text
-set_prefix
-```
+You can change it from the panel using `set_prefix`.
 
 ---
 
 ## 🛡️ Moderation
 
 ### `v!mute`
-
 Temporarily mutes a member.
-
 ```text
 v!mute @member 10 reason
 ```
 
 ### `v!unmute`
-
 Removes a member's mute.
-
 ```text
 v!unmute @member
 ```
 
 ### `v!kick`
-
 Kicks a member.
-
 ```text
 v!kick @member reason
 ```
 
 ### `v!ban`
-
 Bans a member.
-
 ```text
 v!ban @member reason
 ```
 
 ### `v!unban`
-
 Unbans a user by ID.
-
 ```text
 v!unban 123456789012345678
 ```
 
 ### `v!give_role`
-
 Gives a role to a member.
-
 ```text
 v!give_role @member @role
 ```
 
 ### `v!lock`
-
 Locks the current channel.
-
 ```text
 v!lock
 ```
 
 ### `v!unlock`
-
 Unlocks the current channel.
-
 ```text
 v!unlock
 ```
 
 ### `v!slowmode`
-
 Configures slow mode.
-
 ```text
 v!slowmode 10
 ```
 
 ### `v!clear`
-
 Deletes messages.
-
 ```text
 v!clear 50
 ```
@@ -388,54 +338,21 @@ Moderation commands check the corresponding Discord permissions or owner privile
 # ℹ️ Information
 
 ### `v!help`
-
 Displays the bot's help menu.
 
-```text
-v!help
-```
-
-Categories can also be used.
-
-```text
-v!help owner
-```
-
 ### `v!user_info`
-
 Displays information about a member.
 
-```text
-v!user_info @member
-```
-
 ### `v!server_info`
-
 Displays information about the server.
 
-```text
-v!server_info
-```
-
 ### `v!avatar`
-
 Displays a user's avatar.
 
-```text
-v!avatar @member
-```
-
 ### `v!snipe`
-
 Displays a recently deleted message.
-
 ```text
 v!snipe
-```
-
-You can also select a previous message:
-
-```text
 v!snipe 2
 ```
 
@@ -443,158 +360,106 @@ v!snipe 2
 
 # 👑 Owner System
 
-v-bot has multiple access levels.
-
 ### Principal Owner
-
-A single principal owner is defined with:
-
 ```env
 OWNER_PRINCIPAL_ID=123456789
 ```
 
 ### Secondary Owners
-
-Multiple secondary owners can be defined:
-
 ```env
 OWNERS_SECONDARY_IDS=123456789,987654321
 ```
 
-They can also be added from the panel using:
-
-```text
-add_secondary_owner
-```
+They can also be added from the panel using `add_secondary_owner`.
 
 ### Temporary Owners
 
 A permanent owner can temporarily grant permissions to a user:
-
 ```text
 v!add_temp @user 3600
 ```
 
-Here, the permission lasts for **3600 seconds**.
+The permission lasts for **3600 seconds** and is scoped to the current server.
 
 ### Owner List
-
 ```text
 v!owner_list
 ```
-
-Displays permanent and temporary owners.
 
 ---
 
 # 🔐 Kill Switch
 
-The bot includes a **Kill Switch** system that can block protected commands.
-
 Check its status:
-
 ```text
 v!killswitch
 ```
 
 Enable:
-
 ```text
 v!killswitch on
 ```
 
 Disable:
-
 ```text
 v!killswitch off
 ```
 
-The Kill Switch is particularly useful in case of a security issue or unexpected bot behavior.
+The Kill Switch can block protected commands in case of a security issue or unexpected behavior.
 
 ---
 
 # 🌐 Server Management
 
 Owners can use:
-
 ```text
 v!servers
 ```
 
 to access the server management panel.
 
-The local panel also provides:
-
-```text
-servers
-```
-
-which displays the list of servers the bot is connected to.
-
-The list is automatically saved to:
-
-```text
-servers.txt
-```
+The local panel also provides `servers`, which displays the connected servers.
 
 ---
 
 # 🗣️ `say` Command
 
 Owners can make the bot send a message:
-
 ```text
 v!say Hello everyone!
 ```
 
-The message containing the command is then deleted.
+The command message is then deleted.
 
 ---
 
 # 💬 `embed` Command
 
-Owners can make the bot send a custom Discord embed.
-
+Owners can create a custom Discord embed:
 ```text
 v!embed <title> | <description>
-v!embed Server Update | The server will be updated tonight.
 ```
 
-The | character separates the embed title from its description.
-The command is restricted to authorized owners.
+The `|` character separates the title from the description.
 
 ---
 
 ## 📢 Announcements
 
-v-bot includes an extensible announcement system for external platforms.
+v-bot includes an extensible announcement system for Twitch and YouTube.
 
-Announcements are managed through a central system, while each supported
-platform has its own integration and background task.
-
-### Supported platforms
-
-- 🟣 Twitch
-- 🔴 YouTube
-
-### Announcement commands
+### Commands
 
 | Command | Description |
 |---|---|
-| `v!create_annonce` | Create a Twitch or YouTube announcement |
+| `v!create_annonce` | Create an announcement |
 | `v!annonces` | List configured announcements |
 | `v!test_annonce <id>` | Test an announcement |
 | `v!delete_annonce <id>` | Delete an announcement |
 
-These commands are available to:
-
-- Permanent and temporary bot owners
-- Discord server administrators
-
+These commands are available to permanent/temporary owners and Discord server administrators.
 
 ### Twitch placeholders
-
-When creating a Twitch announcement, you can use:
 
 | Placeholder | Description |
 |---|---|
@@ -603,12 +468,9 @@ When creating a Twitch announcement, you can use:
 | `{game}` | Stream category |
 | `{url}` | Twitch stream URL |
 
-A Twitch announcement is automatically sent when the configured channel
-changes from offline to live.
+A Twitch announcement is sent when the configured channel changes from offline to live.
 
 ### YouTube placeholders
-
-When creating a YouTube announcement, you can use:
 
 | Placeholder | Description |
 |---|---|
@@ -616,146 +478,68 @@ When creating a YouTube announcement, you can use:
 | `{title}` | Video title |
 | `{url}` | YouTube video URL |
 
-A YouTube announcement is automatically sent when a new video is detected.
+A YouTube announcement is sent when a new video is detected.
 
 ### Architecture
-
-The announcement system is split into separate cogs:
 
 ```text
 cogs/
 ├── annonce.py
 ├── twitch.py
 └── youtube.py
-
-```
-`annonce.py` handles announcement management and commands.
-`twitch.py` handles Twitch API requests, live detection and Twitch
-announcements.
-`youtube.py` handles YouTube API requests, new video detection and YouTube
-announcements.
-
-This structure makes it easier to add support for additional platforms in
-the future without making the main announcement system unnecessarily large.
-
-### Configuration
-
-Announcements are stored in:
-```text
-annonce_config.json
-```
-Platform API credentials are configured through `.env`.
-For Twitch:
-```text
-TWITCH_CLIENT_ID=...
-TWITCH_CLIENT_SECRET=...
-```
-For YouTube:
-```text
-YOUTUBE_API_KEY=...
 ```
 
+`annonce.py` manages configuration. `twitch.py` and `youtube.py` contain the platform-specific API monitoring logic.
+
+Announcements are stored atomically in `annonce_config.json` and isolated by guild.
 
 ---
 
 # ⚠️ Sensitive Commands
 
-The following commands are intentionally separated into:
-
+Sensitive commands are intentionally isolated in:
 ```text
-cogs/dangerous.py
+cogs/dangerous_safe.py
 ```
+
+Available commands:
 
 * `spam`
 * `dmall`
 * `raid`
 * `remove_raid`
 
-They are **disabled by default**.
+They are **disabled by default** and the cog is not loaded unless enabled.
 
 ```env
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
-When disabled, the `dangerous` Cog is not even loaded by the bot.
-
----
-
-## Activation
+### Activation
 
 From the panel:
-
 ```text
 toggle_dangerous
 ```
 
-The panel requires explicit confirmation:
-
+The panel requires explicit confirmation with:
 ```text
 ENABLE
 ```
 
-After activation, a restart is required:
+A restart is required after changing this setting.
 
-```text
-restart
-```
+### Safety limits
 
----
-
-## `v!spam`
-
-Allows controlled sending of multiple messages.
-
-```text
-v!spam <amount> <message>
-```
-
-The maximum amount is limited by the bot configuration.
-
----
-
-## `v!dmall`
-
-Sends a direct message to server members.
-
-```text
-v!dmall <message>
-```
-
-This command is protected and should be used with caution.
-
----
-
-## `v!raid`
-
-A controlled test function that creates temporary channels and roles.
-
-```text
-v!raid 10
-```
-
-Created elements are tracked so they can later be removed with:
-
-```text
-v!remove_raid
-```
+Sensitive operations are deliberately capped by configuration. `dmall` is additionally restricted by a maximum member count and requires explicit confirmation.
 
 ---
 
 # 🛡️ Security
 
-v-bot includes several security protections.
+v-bot centralizes permission checks in `checks.py`.
 
-### Centralized Permissions
-
-Permissions are managed in:
-
-```text
-checks.py
-```
-
-with different access levels:
+Access levels include:
 
 * Permanent owner
 * Permanent or temporary owner
@@ -763,146 +547,68 @@ with different access levels:
 * Owner or specific Discord permission
 * Kill Switch
 
----
+Temporary owner authorization is scoped to a guild and automatically expires.
 
-### Anti-Double-Execution Protection
+Sensitive commands are separated from the normal command set and disabled by default.
 
-Sensitive commands cannot be executed multiple times simultaneously on the same server.
+### Atomic configuration
 
-This helps prevent:
-
-* Multiple channel/role creations
-* Duplicate operations
-* Accidental simultaneous executions
-
----
+`.env` and announcement configuration use atomic file replacement/transactional updates to avoid partially written configuration files.
 
 ### Security Logs
 
 Sensitive actions are recorded in:
-
 ```text
 security.log
 ```
 
-Examples:
-
-* Token changes
-* Principal owner changes
-* Secondary owner additions
-* Temporary owner additions
-* Sensitive command activation/deactivation
-* Kill Switch activation/deactivation
-
-The token itself is **never written to the logs**.
+The Discord token and API secrets are never written to security logs.
 
 ---
 
 # 📝 Logs
 
-## `bot.log`
+`bot.log` contains bot events and errors. It is rotated to prevent unbounded growth.
 
-Contains bot events and errors.
+`security.log` contains sensitive events and is also bounded/rotated.
 
-From the panel:
-
-```text
-logs
-```
-
-opens the file directly.
-
-## `security.log`
-
-Contains sensitive events only.
-
-From the panel:
-
-```text
-security_logs
-```
-
-displays the latest entries.
+The panel can display both through `logs` and `security_logs`.
 
 ---
 
 # ⚙️ Architecture
 
-The bot is organized into multiple **Cogs** to keep the project modular.
-
-### `cogs/moderation.py`
-
-All moderation commands.
-
-### `cogs/info.py`
-
-Information commands and the snipe system.
-
-### `cogs/owner.py`
-
-Bot administration and owner management.
+The bot is organized into modular Cogs.
 
 ### `cogs/events.py`
+Connection, server join/leave, mentions, deleted messages, errors, and periodic state cleanup.
 
-Discord event handling:
+### `cogs/moderation.py`
+Moderation commands.
 
-* Connection
-* Server join/leave
-* Bot mentions
-* Deleted messages
-* Errors
-* Temporary owner cleanup
+### `cogs/info.py`
+Information commands and snipe functionality.
 
-### `cogs/dangerous.py`
+### `cogs/owner.py`
+Owner management and server administration.
 
-Sensitive commands, loaded only when enabled.
+### `cogs/dangerous_safe.py`
+Sensitive commands loaded only when enabled.
 
 ### `cogs/annonce.py`
-
-Central announcement management system.
-
-Handles:
-
-* Creating announcements
-* Listing announcements
-* Testing announcements
-* Deleting announcements
-* Detecting the platform from the provided URL
-* Managing shared announcement configuration
-
-The platform-specific logic is handled by separate Cogs.
+Announcement management and guild-isolated configuration.
 
 ### `cogs/twitch.py`
-
-Twitch integration.
-
-Handles:
-
-* Twitch API authentication
-* Live stream detection
-* Twitch stream information
-* Automatic Twitch announcements
+Twitch authentication, live detection, bounded caching, and announcements.
 
 ### `cogs/youtube.py`
-
-YouTube integration.
-
-Handles:
-
-* YouTube API integration
-* New video detection
-* YouTube video information
-* Automatic YouTube announcements
-
-### `cogs/help_cog.py`
-
-Help system.
+YouTube API integration, new-video detection, bounded caching, and announcements.
 
 ---
 
 # 🔧 Discord Configuration
 
-The bot uses the following intents:
+The bot uses the following intents where required:
 
 ```text
 guilds
@@ -914,8 +620,6 @@ reactions
 
 The required intents must be enabled in the **Discord Developer Portal**.
 
-The bot also synchronizes its commands when connecting to Discord.
-
 ---
 
 # 🧰 Technologies
@@ -924,21 +628,20 @@ The bot also synchronizes its commands when connecting to Discord.
 * **discord.py**
 * **python-dotenv**
 * **psutil**
-* **asyncio**
-* **Windows Batch**
-* **Bash**
+* **aiohttp**
+* **pytest**
+* **ruff**
 
 ---
 
 # 🔒 Files That Should Never Be Published
 
 Never publish:
-
 ```text
 .env
 ```
 
-or any file containing your Discord token.
+or any file containing your Discord token or API secrets.
 
 The project uses `.env.example` to provide only the configuration template.
 
@@ -947,28 +650,22 @@ The project uses `.env.example` to provide only the configuration template.
 # 📌 Version
 
 Current version:
-
 ```text
-3.8.1
+3.8.2
 ```
 
 ---
 
 # 🐛 Bug Reports & Feedback
 
-If you encounter a bug, have a suggestion, or would like to recommend an improvement for v-bot, you can report it through either of the following methods:
+If you encounter a bug, have a suggestion, or would like to recommend an improvement for v-bot, report it through the project's configured support channels.
 
-* 📧 **Email:** `support.v.bot@gmail.com`
-* 💬 **Discord:** Open a support ticket in the [official Discord server](https://discord.gg/vgvFA7NJHg)
-
-When reporting a bug, please provide as much information as possible, including:
+When reporting a bug, provide:
 
 * What happened
 * What you expected to happen
 * Steps to reproduce the issue
 * Relevant error messages or logs
-
-Your feedback and suggestions are welcome and can help improve v-bot.
 
 ---
 
