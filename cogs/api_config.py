@@ -1,0 +1,99 @@
+"""Guild API credential configuration commands."""
+
+import discord
+from discord.ext import commands
+
+import api_access
+import api_credentials
+import checks
+import integration_config
+
+
+class TwitchAPIView(discord.ui.Modal, title="Configurer Twitch"):
+    client_id = discord.ui.TextInput(label="Client ID", min_length=8, max_length=512)
+    client_secret = discord.ui.TextInput(label="Client Secret", min_length=8, max_length=512, style=discord.TextStyle.short)
+
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        client_id = str(self.client_id.value).strip()
+        client_secret = str(self.client_secret.value).strip()
+        if not client_id or not client_secret or "\x00" in client_id or "\x00" in client_secret:
+            return await interaction.response.send_message("❌ Identifiants Twitch invalides.", ephemeral=True)
+        api_credentials.set_credentials(self.guild_id, "twitch", {"client_id": client_id, "client_secret": client_secret})
+        await interaction.response.send_message("✅ API Twitch configurée pour ce serveur.", ephemeral=True)
+
+
+class YouTubeAPIView(discord.ui.Modal, title="Configurer YouTube"):
+    api_key = discord.ui.TextInput(label="API Key", min_length=8, max_length=512)
+
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        key = str(self.api_key.value).strip()
+        if not key or "\x00" in key:
+            return await interaction.response.send_message("❌ Clé YouTube invalide.", ephemeral=True)
+        api_credentials.set_credentials(self.guild_id, "youtube", {"api_key": key})
+        await interaction.response.send_message("✅ API YouTube configurée pour ce serveur.", ephemeral=True)
+
+
+class APIConfigCog(commands.Cog, name="API Configuration"):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.command(name="set_api")
+    @commands.guild_only()
+    @checks.owner_or_permission(administrator=True)
+    @checks.kill_switch_required()
+    async def set_api(self, ctx, platform: str):
+        platform = platform.lower().strip()
+        if platform not in {"twitch", "yt", "youtube"}:
+            return await ctx.send("❌ Utilisation : `v!set_api twitch` ou `v!set_api yt`.")
+        if api_access.is_allowed(ctx.guild.id):
+            return await ctx.send("ℹ️ Ce serveur utilise l'API principale. La configuration locale n'est pas nécessaire.")
+
+        view = TwitchAPIView(ctx.guild.id) if platform == "twitch" else YouTubeAPIView(ctx.guild.id)
+        await ctx.send("🔐 Le formulaire est privé : renseigne les identifiants sans les envoyer dans un salon.", ephemeral=True) if False else None
+        await ctx.author.send("🔐 Ouvre le formulaire de configuration avec le bouton ci-dessous.")
+        class OpenView(discord.ui.View):
+            @discord.ui.button(label="Configurer", style=discord.ButtonStyle.primary)
+            async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+                if interaction.user.id != ctx.author.id:
+                    return await interaction.response.send_message("❌ Ce bouton ne t'est pas destiné.", ephemeral=True)
+                await interaction.response.send_modal(view)
+        await ctx.send(f"🔐 {ctx.author.mention}, ta configuration {platform} est disponible en message privé.")
+        await ctx.author.send(view=OpenView())
+
+    @commands.command(name="api_status")
+    @commands.guild_only()
+    @checks.owner_or_permission(administrator=True)
+    @checks.kill_switch_required()
+    async def api_status(self, ctx):
+        guild_id = ctx.guild.id
+        mode = "principale" if api_access.is_allowed(guild_id) else "serveur"
+        twitch = bool(integration_config.get_twitch_credentials(guild_id))
+        youtube = bool(integration_config.get_youtube_api_key(guild_id))
+        await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢' if twitch else '🔴'} | YouTube: {'🟢' if youtube else '🔴'}")
+
+    @commands.command(name="clear_api")
+    @commands.guild_only()
+    @checks.owner_or_permission(administrator=True)
+    @checks.kill_switch_required()
+    async def clear_api(self, ctx, platform: str):
+        platform = platform.lower().strip()
+        if platform == "yt":
+            platform = "youtube"
+        if platform not in {"twitch", "youtube"}:
+            return await ctx.send("❌ Utilisation : `v!clear_api twitch` ou `v!clear_api yt`.")
+        if api_access.is_allowed(ctx.guild.id):
+            return await ctx.send("ℹ️ Ce serveur utilise l'API principale.")
+        removed = api_credentials.remove(ctx.guild.id, platform)
+        await ctx.send("🗑️ Configuration API supprimée." if removed else "ℹ️ Aucune configuration trouvée.")
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(APIConfigCog(bot))
