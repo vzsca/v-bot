@@ -56,7 +56,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             if path.startswith("@"):
                 value = path.split("/")[0]
                 return ("handle", value) if len(value) > 1 else None
-            if path.startswith("c/") or path.startswith("user/"):
+            if path.startswith(("c/", "user/")):
                 value = path.split("/", 1)[1].split("/")[0]
                 return ("custom", value) if value else None
         except ValueError:
@@ -184,7 +184,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         if not announcements:
             return
         session = await self._get_session()
-        changed = False
+        updates = {}
         latest_cache = {}
         for announcement in announcements:
             guild_id = int(announcement["guild_id"])
@@ -198,23 +198,31 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 channel_id = await self._resolve_channel_id(session, guild_id, source)
                 if not channel_id:
                     continue
+                updates[(guild_id, announcement.get("id"))] = {"youtube_channel_id": channel_id}
                 announcement["youtube_channel_id"] = channel_id
-                changed = True
             key = (guild_id, channel_id)
             if key not in latest_cache:
                 latest_cache[key] = await self._get_latest_video(session, guild_id, channel_id)
             video = latest_cache[key]
             if not video:
                 continue
+            announcement_key = (guild_id, announcement.get("id"))
             if announcement.get("last_video_id") is None:
-                announcement["last_video_id"] = video["video_id"]
-                changed = True
+                updates.setdefault(announcement_key, {})["last_video_id"] = video["video_id"]
                 continue
             if announcement.get("last_video_id") != video["video_id"] and await self._send_announcement(announcement, video):
-                announcement["last_video_id"] = video["video_id"]
-                changed = True
-        if changed:
-            store.save(data)
+                updates.setdefault(announcement_key, {})["last_video_id"] = video["video_id"]
+        if updates:
+            def apply_updates(current):
+                count = 0
+                for item in current["announcements"]:
+                    key = (item.get("guild_id"), item.get("id"))
+                    fields = updates.get(key)
+                    if fields:
+                        item.update(fields)
+                        count += 1
+                return count
+            store.transaction(apply_updates)
 
     @youtube_task.before_loop
     async def before_youtube_task(self):
