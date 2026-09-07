@@ -1,4 +1,5 @@
 .env
+api_credentials.json
 venv/
 __pycache__/
 *.pyc
@@ -10,5 +11,4 @@ servers.txt
 twitch_config.json
 annonce_config.json
 api_config_access.json
-api_credentials.json
 *.tmp
