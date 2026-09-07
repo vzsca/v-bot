@@ -1,49 +1,40 @@
 """Persistent, guild-isolated storage for per-server API credentials."""
 
 import copy
-import json
 import os
-import tempfile
 import threading
 from pathlib import Path
+
+from safe_json import JsonStoreError, atomic_write, load_object
 
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "api_credentials.json"
 _LOCK = threading.RLock()
 
 
-def _load_unlocked() -> dict[str, dict[str, str]]:
-    try:
-        with CONFIG_FILE.open("r", encoding="utf-8") as file:
-            data = json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
+def _load_unlocked() -> dict[str, dict[str, dict[str, str]]]:
+    data = load_object(CONFIG_FILE, {})
     if not isinstance(data, dict):
-        return {}
-    return {str(guild_id): values for guild_id, values in data.items() if isinstance(values, dict)}
+        raise JsonStoreError(f"Invalid JSON structure in {CONFIG_FILE}")
+    clean: dict[str, dict[str, dict[str, str]]] = {}
+    for guild_id, values in data.items():
+        if not isinstance(guild_id, str) or not guild_id.isdigit() or int(guild_id) <= 0:
+            continue
+        if not isinstance(values, dict):
+            continue
+        platforms: dict[str, dict[str, str]] = {}
+        for platform, credentials in values.items():
+            if platform not in {"twitch", "youtube"} or not isinstance(credentials, dict):
+                continue
+            if all(isinstance(key, str) and isinstance(value, str) for key, value in credentials.items()):
+                platforms[platform] = dict(credentials)
+        if platforms:
+            clean[guild_id] = platforms
+    return clean
 
 
-def _save_unlocked(data: dict[str, dict[str, str]]) -> None:
-    CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    fd, temp_name = tempfile.mkstemp(prefix=".api_credentials.", suffix=".tmp", dir=CONFIG_FILE.parent)
-    try:
-        if hasattr(os, "fchmod"):
-            os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as file:
-            json.dump(data, file, ensure_ascii=False, indent=2)
-            file.write("\n")
-            file.flush()
-            os.fsync(file.fileno())
-        os.replace(temp_name, CONFIG_FILE)
-        if os.name != "nt":
-            try:
-                os.chmod(CONFIG_FILE, 0o600)
-            except OSError:
-                pass
-    finally:
-        try:
-            os.unlink(temp_name)
-        except FileNotFoundError:
-            pass
+def _save_unlocked(data: dict[str, dict[str, dict[str, str]]]) -> None:
+    mode = 0o600 if os.name != "nt" else None
+    atomic_write(CONFIG_FILE, data, mode=mode)
 
 
 def get(guild_id: int, platform: str) -> dict[str, str] | None:
@@ -57,6 +48,8 @@ def set_credentials(guild_id: int, platform: str, credentials: dict[str, str]) -
         raise ValueError("guild_id must be positive")
     if platform not in {"twitch", "youtube"}:
         raise ValueError("unsupported platform")
+    if not credentials or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in credentials.items()):
+        raise ValueError("credentials must contain non-empty string values")
     with _LOCK:
         data = _load_unlocked()
         data.setdefault(str(guild_id), {})[platform] = dict(credentials)
@@ -64,6 +57,8 @@ def set_credentials(guild_id: int, platform: str, credentials: dict[str, str]) -
 
 
 def remove(guild_id: int, platform: str) -> bool:
+    if guild_id <= 0 or platform not in {"twitch", "youtube"}:
+        return False
     with _LOCK:
         data = _load_unlocked()
         guild = data.get(str(guild_id), {})
