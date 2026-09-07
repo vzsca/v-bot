@@ -1,10 +1,11 @@
-"""Guild-isolated announcement storage with atomic transactions."""
+"""Guild-isolated announcement storage with atomic, fail-safe transactions."""
 
 import copy
-import json
 import logging
 import threading
 from pathlib import Path
+
+from safe_json import JsonStoreError, atomic_write, load_object
 
 logger = logging.getLogger("v-bot")
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "annonce_config.json"
@@ -13,10 +14,10 @@ _LOCK = threading.RLock()
 
 def _normalize(data: object) -> dict:
     if not isinstance(data, dict):
-        data = {}
+        raise JsonStoreError(f"Invalid announcement configuration structure in {CONFIG_FILE}")
     announcements = data.get("announcements")
     if not isinstance(announcements, list):
-        announcements = []
+        raise JsonStoreError(f"Invalid announcements structure in {CONFIG_FILE}")
     clean = []
     for item in announcements:
         if not isinstance(item, dict):
@@ -30,31 +31,16 @@ def _normalize(data: object) -> dict:
 
 
 def _load_unlocked() -> dict:
-    try:
-        if not CONFIG_FILE.exists():
-            return {"announcements": []}
-        with CONFIG_FILE.open("r", encoding="utf-8") as file:
-            return _normalize(json.load(file))
-    except (OSError, json.JSONDecodeError):
-        logger.exception("Unable to load announcement configuration.")
-        return {"announcements": []}
+    data = load_object(CONFIG_FILE, {"announcements": []})
+    return _normalize(data)
 
 
 def _save_unlocked(data: dict) -> bool:
-    normalized = _normalize(data)
-    tmp = CONFIG_FILE.with_suffix(".json.tmp")
     try:
-        with tmp.open("w", encoding="utf-8") as file:
-            json.dump(normalized, file, indent=4, ensure_ascii=False)
-            file.flush()
-        tmp.replace(CONFIG_FILE)
+        atomic_write(CONFIG_FILE, _normalize(data))
         return True
-    except OSError:
+    except JsonStoreError:
         logger.exception("Unable to atomically save announcement configuration.")
-        try:
-            tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
         return False
 
 
