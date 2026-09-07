@@ -12,10 +12,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 logger = logging.getLogger("v-bot")
 
 try:
+    import checks
+    import config
     import discord
     from discord.ext import commands
-    import config
-    import checks
 except SystemExit as e:
     logger.critical("Bot could not start (invalid configuration): %s", e)
     sys.exit(1)
