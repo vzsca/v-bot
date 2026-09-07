@@ -1,7 +1,4 @@
-"""
-Custom exceptions for permission checks and
-anti-double-execution protection.
-"""
+"""Custom exceptions for permission and safety checks."""
 
 from discord.ext import commands
 
@@ -14,21 +11,21 @@ class KillSwitchEnabled(commands.CheckFailure):
 
 
 class NotPermanentOwner(commands.CheckFailure):
-    """Restricted to permanent owners (principal + secondary), not temporary owners."""
+    """Restricted to permanent owners."""
 
     def __init__(self, message: str = "❌ This command is restricted to permanent owners."):
         super().__init__(message)
 
 
 class NotOwnerOrTemp(commands.CheckFailure):
-    """Neither a permanent nor valid temporary owner (and no sufficient Discord permission)."""
+    """Neither a permanent nor valid temporary owner."""
 
     def __init__(self, message: str = "❌ You do not have permission to use this command."):
         super().__init__(message)
 
 
 class NotOwnerOrGuildOwner(commands.CheckFailure):
-    """Neither an owner (permanent/temporary) nor the current server owner."""
+    """Neither an owner nor the current server owner."""
 
     def __init__(
         self,
@@ -38,7 +35,7 @@ class NotOwnerOrGuildOwner(commands.CheckFailure):
 
 
 class CommandAlreadyRunning(commands.CheckFailure):
-    """An instance of this command is already running (anti-double-execution protection)."""
+    """An instance of this command is already running."""
 
     def __init__(
         self,
