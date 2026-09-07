@@ -1,45 +1,46 @@
 # 🤖 v-bot
 
-Discord bot développé en **Python avec discord.py**, orienté modération, gestion de serveurs, annonces Twitch/YouTube et administration sécurisée.
+A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
 
-v-bot inclut un **panel local** pour gérer le processus, la configuration, les propriétaires, les logs, les mises à jour et les fonctionnalités sensibles. Le projet est prévu pour Windows, Linux et macOS.
+v-bot includes a **local control panel** for process management, configuration, owners, logs, updates, and sensitive features. The project targets Windows, Linux, and macOS.
 
-## ✨ Fonctionnalités
+## ✨ Features
 
-- 🛡️ Modération
-- ℹ️ Commandes d'information
-- 👑 Propriétaires permanents et autorisations temporaires
+- 🛡️ Moderation commands
+- ℹ️ Information commands
+- 👑 Permanent owners and temporary authorizations
 - 🔐 Kill Switch
-- 🧹 Snipe des messages supprimés
-- 🌐 Gestion multi-serveurs
-- ⚙️ Panel local cross-platform
-- 🔄 Mise à jour du code depuis Git avec redémarrage automatique
-- 🧯 Rollback automatique en cas d'échec de dépendances ou de démarrage
-- 📋 Logs standards et de sécurité
-- 📢 Annonces automatiques Twitch et YouTube
-- 🔑 API principale globale + API configurées individuellement par serveur
-- 🔒 Commandes sensibles désactivées par défaut
-- 🚦 Rate limiting, audit et détection anti-spam/anti-raid
-- 🧩 Architecture modulaire par Cogs et modules applicatifs
+- 🧹 Deleted-message snipe
+- 🌐 Multi-server management
+- ⚙️ Cross-platform local panel
+- 🔄 Git-based code updates with automatic restart
+- 🧯 Automatic code rollback on dependency or startup failure
+- 📋 Standard and security logs
+- 📢 Automatic Twitch and YouTube announcements
+- 🔑 Global primary API + per-server API credentials
+- 🔒 Sensitive commands disabled by default
+- 🚦 Rate limiting, audit logging, and anti-spam/anti-raid detection
+- 🧩 Modular Cogs and application modules
+- 📚 Permission-aware help system with category buttons
 
 ---
 
 # 🚀 Installation
 
-## Prérequis
+## Requirements
 
-- Windows, Linux ou macOS
-- Python **3.13 recommandé**
-- Un bot Discord créé depuis le Discord Developer Portal
-- Les intents nécessaires activés
-- Git installé pour utiliser les mises à jour depuis le panel
+- Windows, Linux, or macOS
+- Python **3.13 recommended**
+- A Discord bot created through the Discord Developer Portal
+- Required Discord intents enabled
+- Git installed for panel-based updates
 
 ```bash
 git clone https://github.com/vzsca/v-bot.git
 cd v-bot
 ```
 
-Crée `.env` depuis `.env.example`, puis renseigne au minimum :
+Create `.env` from `.env.example`, then configure at least:
 
 ```env
 DISCORD_TOKEN=YOUR_TOKEN
@@ -52,11 +53,11 @@ TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
 YOUTUBE_API_KEY=YOUR_API_KEY
 ```
 
-`BOT_VERSION` n'est plus une valeur à maintenir manuellement : la version applicative est dérivée des tags Git, avec un fallback pour les installations sans historique Git.
+`BOT_VERSION` is no longer maintained manually: the application version is derived from Git tags, with a fallback for installations without Git history.
 
-> 🔒 Ne publie jamais `.env`, le token Discord ou une clé API.
+> 🔒 Never publish `.env`, the Discord token, or any API key.
 
-## ▶️ Lancement
+## ▶️ Launch
 
 ### Windows
 
@@ -70,15 +71,15 @@ start_bot.bat
 ./start_bot.sh
 ```
 
-Le launcher prépare l'environnement Python et démarre le panel local.
+The launcher prepares the Python environment and starts the local panel.
 
 ---
 
-# 🖥️ Panel local
+# 🖥️ Local panel
 
-Le panel est interactif et fonctionne sous Windows, Linux et macOS.
+The panel is interactive and works on Windows, Linux, and macOS.
 
-### Processus
+### Process management
 
 ```text
 start
@@ -103,61 +104,85 @@ set_youtube_api
 toggle_dangerous
 ```
 
-### Mise à jour
+### Updates
 
 ```text
 update
 ```
 
-`update` :
+`update`:
 
-1. vérifie d'abord si `origin/main` contient réellement de nouveaux commits ;
-2. ne redémarre pas le bot lorsqu'il n'y a aucune mise à jour ;
-3. arrête le bot uniquement lorsqu'une mise à jour est disponible ;
-4. effectue un fast-forward Git sans écraser les modifications suivies localement ;
-5. met à jour les dépendances uniquement si `requirements.txt` a changé ;
-6. redémarre le bot avec le nouveau code ;
-7. restaure automatiquement l'ancien commit si l'installation des dépendances échoue ou si le nouveau bot ne démarre pas.
+1. checks whether `origin/main` actually contains new commits;
+2. does not restart the bot when no update is available;
+3. stops the bot only when an update is available;
+4. performs a Git fast-forward without overwriting tracked local changes;
+5. updates dependencies only when `requirements.txt` changed;
+6. restarts the bot with the updated code;
+7. restores the previous code commit when dependency installation or startup fails.
 
-Les fichiers de configuration et données runtime ignorés par Git restent en place pendant toute la procédure : `.env`, `api_credentials.json`, `annonce_config.json`, `api_config_access.json`, logs et fichiers PID/runtime.
+Git-ignored runtime and configuration files remain in place during the process: `.env`, `api_credentials.json`, `annonce_config.json`, `api_config_access.json`, logs, and PID/runtime files.
 
-Une branche locale divergente ou des modifications Git suivies localement bloquent l'update automatique afin d'éviter une écriture destructive.
+A divergent local branch or tracked local modifications block the automatic update to avoid destructive changes.
 
 ### `status`
 
-`status` affiche notamment :
+`status` displays information including:
 
-- version et plateforme ;
-- owner principal ;
-- owners secondaires et compteur `X/5` ;
-- état du bot, PID et processus ;
-- uptime ;
-- CPU/RAM ;
-- état du dépôt Git et nombre de commits disponibles ;
-- commit actuellement installé.
+- version and platform;
+- primary owner;
+- secondary owners and the `X/5` counter;
+- bot state, PID, and process information;
+- uptime;
+- CPU/RAM usage;
+- Git repository state and available commit count;
+- currently installed commit.
+
+---
+
+# 📚 Help system
+
+The `v!help` command is permission-aware and separates commands into four categories:
+
+- 📜 **General** — available to everyone;
+- 🛡️ **Moderation** — available to users with moderation permissions;
+- ⚙️ **Admin & Announcements** — requires the Discord `Administrator` permission;
+- 👑 **Owner** — restricted to bot owners/authorized users.
+
+When multiple categories are available, `v!help` displays a category menu with buttons. Buttons are restricted to the user who opened the menu and include a button to return to the category menu.
+
+Specific categories can also be opened directly:
+
+```text
+v!help general
+v!help mod
+v!help admin
+v!help owner
+```
+
+Users who only have access to General receive the General help embed directly.
 
 ---
 
 # 👑 Owners
 
-Il existe **1 owner principal maximum** et **5 owners secondaires maximum**.
+There is a maximum of **1 primary owner** and **5 secondary owners**.
 
 ```env
 OWNER_PRINCIPAL_ID=123456789
 OWNERS_SECONDARY_IDS=111111111,222222222
 ```
 
-Le panel refuse l'ajout d'un sixième owner secondaire et empêche les doublons ou l'ajout de l'owner principal comme secondaire.
+The panel prevents adding a sixth secondary owner and blocks duplicates or adding the primary owner as a secondary owner.
 
-Les autorisations temporaires sont limitées au serveur concerné et expirent automatiquement.
+Temporary authorizations are limited to the relevant server and expire automatically.
 
 ---
 
-# 🔑 Configuration des API par serveur
+# 🔑 Per-server API configuration
 
-Un serveur autorisé dans `api_config_access.json` utilise automatiquement **l'API principale** définie dans `.env`.
+A server authorized in `api_config_access.json` automatically uses the **primary API** configured in `.env`.
 
-Un serveur non autorisé utilise uniquement ses **propres credentials**, configurés depuis Discord.
+A non-authorized server uses only its **own credentials**, configured from Discord.
 
 ### Twitch
 
@@ -165,7 +190,7 @@ Un serveur non autorisé utilise uniquement ses **propres credentials**, configu
 v!set_api twitch
 ```
 
-Le bot ouvre un formulaire privé pour renseigner le Twitch Client ID et le Twitch Client Secret.
+The bot opens a private form for the Twitch Client ID and Twitch Client Secret.
 
 ### YouTube
 
@@ -173,40 +198,40 @@ Le bot ouvre un formulaire privé pour renseigner le Twitch Client ID et le Twit
 v!set_api yt
 ```
 
-Le formulaire permet de renseigner la YouTube API Key.
+The form allows the user to enter the YouTube API Key.
 
-### Vérifier
+### Check configuration
 
 ```text
 v!api_status
 ```
 
-La commande affiche le mode utilisé et l'état de configuration, sans révéler les secrets.
+The command displays the active API mode and configuration status without revealing secrets.
 
-### Supprimer
+### Remove configuration
 
 ```text
 v!clear_api twitch
 v!clear_api yt
 ```
 
-Les credentials par serveur sont stockés dans `api_credentials.json`, isolés par `guild_id`, avec écriture atomique. Ce fichier est ignoré par Git.
+Per-server credentials are stored in `api_credentials.json`, isolated by `guild_id`, and written atomically. This file is ignored by Git.
 
-> ⚠️ Les secrets ne doivent jamais être envoyés directement dans un salon Discord. `v!set_api` utilise un formulaire privé.
+> ⚠️ API secrets should never be sent directly in a Discord channel. `v!set_api` uses a private form.
 
 ---
 
-# 📢 Annonces Twitch / YouTube
+# 📢 Twitch / YouTube announcements
 
-## Création
+## Creation
 
 ```text
 v!create_annonce
 ```
 
-Le bot demande l'URL, le message et le salon cible. L'annonce utilise automatiquement l'API correspondant au serveur : API principale pour un serveur autorisé, credentials locaux pour un serveur non autorisé.
+The bot asks for the source URL, announcement message, and target channel. The announcement automatically uses the API associated with the server: the primary API for an authorized server, or local credentials for a non-authorized server.
 
-## Gestion
+## Management
 
 ```text
 v!annonces
@@ -216,47 +241,47 @@ v!delete_annonce <id>
 
 ### Twitch placeholders
 
-- `{streamer}` — nom Twitch
-- `{title}` — titre du live
-- `{game}` — catégorie
-- `{url}` — URL du live
+- `{streamer}` — Twitch channel name
+- `{title}` — live stream title
+- `{game}` — category
+- `{url}` — stream URL
 
 ### YouTube placeholders
 
-- `{channel}` — nom de la chaîne
-- `{title}` — titre de la vidéo
-- `{url}` — URL de la vidéo
+- `{channel}` — channel name
+- `{title}` — video title
+- `{url}` — video URL
 
 ---
 
-# ⚠️ Commandes sensibles
+# ⚠️ Sensitive commands
 
-Les commandes `spam`, `dmall`, `raid` et `remove_raid` sont isolées et désactivées par défaut.
+The `spam`, `dmall`, `raid`, and `remove_raid` commands are isolated and disabled by default.
 
 ```env
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
-Des limites de volume, confirmations et contrôles de permissions empêchent leur utilisation accidentelle.
+Volume limits, confirmations, and permission checks help prevent accidental use.
 
 ---
 
-# 🛡️ Sécurité
+# 🛡️ Security
 
-- Permissions centralisées dans `app/checks.py`
-- Rate limiting global, par utilisateur et par commande
-- Audit des actions et détection de rafales suspectes
-- Détection anti-spam et anti-raid
-- Autorisations temporaires limitées au serveur et expirables
-- Secrets jamais écrits dans les logs de sécurité
-- `.env` et configurations persistantes écrites atomiquement
-- JSON corrompu refusé au lieu d'être remplacé silencieusement
-- Logs bornés et rotatifs
-- Credentials API par serveur isolés par `guild_id`
-- `api_credentials.json` exclu de Git
-- Commandes sensibles séparées et désactivées par défaut
-- Mises à jour Git en fast-forward uniquement
-- Rollback automatique du code en cas d'échec critique pendant une mise à jour
+- Permissions centralized in `app/checks.py`
+- Global, per-user, and per-command rate limiting
+- Audit logging and suspicious burst detection
+- Anti-spam and anti-raid detection
+- Temporary authorizations scoped to a server and automatically expired
+- Secrets never written to security logs
+- `.env` and persistent configuration files written atomically
+- Corrupted JSON rejected instead of silently overwritten
+- Bounded and rotating logs
+- Per-server API credentials isolated by `guild_id`
+- `api_credentials.json` excluded from Git
+- Sensitive commands separated and disabled by default
+- Git updates restricted to fast-forward operations
+- Automatic code rollback on critical update failures
 
 ---
 
@@ -278,7 +303,6 @@ v-bot/
 │   ├── metrics.py
 │   ├── rate_limit.py
 │   ├── safe_json.py
-│   ├── security.py
 │   ├── security_log.py
 │   ├── state.py
 │   ├── updater.py
@@ -303,26 +327,26 @@ v-bot/
 └── requirements.txt
 ```
 
-`main.py` reste limité au bootstrap, au logging, aux checks globaux et au chargement des extensions. La logique métier appartient aux modules applicatifs et aux Cogs.
+`main.py` remains limited to bootstrap, logging, global checks, and extension loading. Business logic belongs in application modules and Cogs.
 
 ---
 
 # 🏷️ Versioning
 
-La version est dérivée de Git avec :
+The version is derived from Git using:
 
 ```text
 git describe --tags --match v[0-9]* --always --dirty
 ```
 
-Utiliser des tags de release comme :
+Use release tags such as:
 
 ```text
 v3.8.2
 v3.9.0
 ```
 
-La version affichée par le bot et le panel suit ainsi Git au lieu de nécessiter plusieurs modifications manuelles.
+The version displayed by the bot and panel therefore follows Git instead of requiring several manual changes.
 
 ---
 
@@ -339,9 +363,9 @@ La version affichée par le bot et le panel suit ainsi Git au lieu de nécessite
 
 ---
 
-# 🔒 Fichiers privés / runtime
+# 🔒 Private / runtime files
 
-Ne jamais publier :
+Never publish:
 
 ```text
 .env
@@ -352,7 +376,7 @@ security.log
 bot.log
 ```
 
-ou tout autre fichier contenant un token ou une clé API.
+or any other file containing a token or API key.
 
 ---
 
