@@ -1,7 +1,7 @@
 """Secure UI components used by the owner server panel."""
 
 import discord
-from discord.ui import View, Select
+from discord.ui import Select, View
 
 import api_access
 import checks
@@ -53,7 +53,7 @@ class ServersMenu(_OwnerOnlyView):
 
     def __init__(self, guilds, owner_id, page=0):
         super().__init__(owner_id)
-        self.guilds = sorted(list(guilds), key=lambda g: g.name.casefold())
+        self.guilds = sorted(guilds, key=lambda g: g.name.casefold())
         self.page = max(0, page)
         self._rebuild()
 
