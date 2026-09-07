@@ -19,11 +19,7 @@ def _load_unlocked() -> dict[str, dict[str, str]]:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {
-        str(guild_id): values
-        for guild_id, values in data.items()
-        if isinstance(values, dict)
-    }
+    return {str(guild_id): values for guild_id, values in data.items() if isinstance(values, dict)}
 
 
 def _save_unlocked(data: dict[str, dict[str, str]]) -> None:
@@ -51,9 +47,8 @@ def _save_unlocked(data: dict[str, dict[str, str]]) -> None:
 
 
 def get(guild_id: int, platform: str) -> dict[str, str] | None:
-    key = str(guild_id)
     with _LOCK:
-        values = _load_unlocked().get(key, {}).get(platform)
+        values = _load_unlocked().get(str(guild_id), {}).get(platform)
         return copy.deepcopy(values) if isinstance(values, dict) else None
 
 
@@ -81,7 +76,3 @@ def remove(guild_id: int, platform: str) -> bool:
             data.pop(str(guild_id), None)
         _save_unlocked(data)
         return True
-
-
-def configured(guild_id: int, platform: str) -> bool:
-    return get(guild_id, platform) is not None
