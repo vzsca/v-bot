@@ -24,9 +24,7 @@ def _git_version() -> str | None:
     value = result.stdout.strip()
     if not value:
         return None
-    if value.startswith("v"):
-        value = value[1:]
-    return value
+    return value.removeprefix("v")
 
 
 VERSION = _git_version() or FALLBACK_VERSION
