@@ -1,4 +1,4 @@
-"""Bot entry point."""
+"""Application entry point for v-bot."""
 
 import asyncio
 import logging
@@ -6,22 +6,15 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot.log")
-_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=[logging.StreamHandler(), _handler])
-logger = logging.getLogger("v-bot")
+import checks
+import config
+import discord
+from discord.ext import commands
 
-try:
-    import checks
-    import config
-    import discord
-    from discord.ext import commands
-except SystemExit as e:
-    logger.critical("Bot could not start (invalid configuration): %s", e)
-    sys.exit(1)
-except Exception:
-    logger.exception("Unexpected error while loading the configuration.")
-    sys.exit(1)
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot.log")
+handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=[logging.StreamHandler(), handler])
+logger = logging.getLogger("v-bot")
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -31,6 +24,20 @@ intents.message_content = True
 intents.reactions = True
 bot = commands.Bot(command_prefix=config.PREFIXES, intents=intents, help_command=None)
 bot.add_check(checks.global_check)
+
+EXTENSIONS = [
+    "cogs.events",
+    "cogs.moderation",
+    "cogs.info",
+    "cogs.owner",
+    "cogs.help_cog",
+    "cogs.api_config",
+    "cogs.annonce",
+    "cogs.twitch",
+    "cogs.youtube",
+]
+if config.DANGEROUS_COMMANDS_ENABLED:
+    EXTENSIONS.append("cogs.dangerous_safe")
 
 
 async def on_command_error(ctx, error):
@@ -55,31 +62,12 @@ async def on_command_error(ctx, error):
         logger.exception("Could not report command error to Discord.")
 
 
-bot.on_command_error = on_command_error
-
-
 async def on_error(event_method, *args, **kwargs):
     logger.error("Unhandled error in event handler '%s'", event_method, exc_info=sys.exc_info())
 
 
+bot.on_command_error = on_command_error
 bot.on_error = on_error
-
-EXTENSIONS = [
-    "cogs.events",
-    "cogs.moderation",
-    "cogs.info",
-    "cogs.owner",
-    "cogs.help_cog",
-    "cogs.api_config",
-    "cogs.annonce",
-    "cogs.twitch",
-    "cogs.youtube",
-]
-if config.DANGEROUS_COMMANDS_ENABLED:
-    EXTENSIONS.append("cogs.dangerous_safe")
-    logger.warning("Sensitive commands ENABLED with safety confirmations and guild-scoped cleanup.")
-else:
-    logger.info("Sensitive commands DISABLED - no sensitive cog loaded.")
 
 
 async def main():
