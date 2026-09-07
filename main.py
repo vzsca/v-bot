@@ -21,11 +21,14 @@ logging.basicConfig(
 logger = logging.getLogger("v-bot")
 
 try:
+    import audit
     import checks
     import config
     import discord
+    import metrics
     from discord.ext import commands
     from extensions import get_extensions, is_dangerous_extension
+    from rate_limit import RateLimitExceeded
 except SystemExit as e:
     logger.critical("Bot could not start (invalid configuration): %s", e)
     sys.exit(1)
@@ -43,8 +46,24 @@ bot = commands.Bot(command_prefix=config.PREFIXES, intents=intents, help_command
 bot.add_check(checks.global_check)
 
 
+async def on_command_completion(ctx):
+    command_name = getattr(ctx.command, "qualified_name", "unknown")
+    metrics.metrics.command(command_name, success=True)
+    if ctx.guild:
+        audit.manager.record(ctx.guild.id, ctx.author.id, command_name, success=True)
+
+
 async def on_command_error(ctx, error):
+    command_name = getattr(ctx.command, "qualified_name", "unknown")
+    if not isinstance(error, commands.CommandNotFound):
+        metrics.metrics.command(command_name, success=False)
+        if ctx.guild:
+            audit.manager.record(ctx.guild.id, ctx.author.id, command_name, success=False)
+
     if isinstance(error, commands.CommandNotFound):
+        return
+    if isinstance(error, RateLimitExceeded):
+        await ctx.send(str(error))
         return
     if isinstance(error, commands.CheckFailure):
         await ctx.send(str(error) or "❌ You do not have permission to use this command.")
@@ -58,9 +77,10 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"⏳ Please wait {error.retry_after:.1f}s before trying again.")
         return
+
     logger.error(
         "Unhandled command error in %s",
-        getattr(ctx.command, "qualified_name", "unknown"),
+        command_name,
         exc_info=(type(error), error, error.__traceback__),
     )
     try:
@@ -69,10 +89,12 @@ async def on_command_error(ctx, error):
         logger.exception("Could not report command error to Discord.")
 
 
+bot.on_command_completion = on_command_completion
 bot.on_command_error = on_command_error
 
 
 async def on_error(event_method, *args, **kwargs):
+    metrics.metrics.event(f"error:{event_method}")
     logger.error("Unhandled error in event handler '%s'", event_method, exc_info=sys.exc_info())
 
 
