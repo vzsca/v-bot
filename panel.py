@@ -274,12 +274,12 @@ def cmd_restart() -> bool:
 
 def cmd_status() -> None:
     principal, secondary = _owner_status()
-    permanent = [principal] + secondary if principal != "not configured" else secondary
+    bot_name = get_env_value("BOT_NAME") or "not configured"
     print("\n===== v-bot status =====")
+    print("Bot:", bot_name)
     print("Version:", VERSION)
     print("Platform:", "Windows" if IS_WINDOWS else "macOS" if IS_MACOS else "Linux" if IS_LINUX else sys.platform)
     print("Python:", PYTHON_EXE)
-    print("Permanent owners:", ", ".join(permanent) if permanent else "none")
     print("Principal owner:", principal)
     print("Secondary owners:", ", ".join(secondary) if secondary else "none")
     print("Secondary owner count:", f"{len(secondary)}/5")
@@ -437,146 +437,4 @@ def cmd_add_secondary_owner() -> None:
     print("The change will take effect when the bot is (re)started.")
 
 
-def cmd_set_token() -> None:
-    new_token = input("New Discord token: ").strip()
-    if new_token:
-        set_env_value("DISCORD_TOKEN", new_token)
-        security_log.log_security_event("Discord token changed", actor="panel")
-        print("Token saved to .env.")
-
-
-def cmd_set_principal_owner() -> None:
-    new_id = input("Enter the Discord ID of the principal owner: ").strip()
-    if not new_id or not new_id.isdigit():
-        print("[ERROR] The ID must contain digits only.")
-        return
-    secondary = [x.strip() for x in get_env_value("OWNERS_SECONDARY_IDS").split(",") if x.strip()]
-    if new_id in secondary:
-        print("[ERROR] This ID is already a secondary owner. Remove it first.")
-        return
-    set_env_value("OWNER_PRINCIPAL_ID", new_id)
-    security_log.log_security_event(f"Principal owner set: {new_id}", actor="panel")
-    print("Principal owner saved to .env.")
-
-
-def _dangerous_commands_enabled() -> bool:
-    return get_env_value("DANGEROUS_COMMANDS_ENABLED").strip().lower() in ("1", "true", "on", "yes")
-
-
-def cmd_toggle_dangerous() -> None:
-    value = "false" if _dangerous_commands_enabled() else "true"
-    if value == "true" and input("Type ENABLE to confirm: ").strip() != "ENABLE":
-        print("Cancelled.")
-        return
-    set_env_value("DANGEROUS_COMMANDS_ENABLED", value)
-    security_log.log_security_event(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}", actor="panel")
-    print(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}. Restart required.")
-
-
-def cmd_set_prefix() -> None:
-    value = input("New prefix: ").strip()
-    if not value or len(value) > 10 or any(char.isspace() for char in value):
-        print("[ERROR] Invalid prefix.")
-        return
-    set_env_value("BOT_PREFIX", value)
-    print(f"Prefix saved: {value}. Restart required.")
-
-
-def cmd_set_twitch_api() -> None:
-    client_id = input("Twitch Client ID: ").strip()
-    client_secret = input("Twitch Client Secret: ").strip()
-    if not client_id or not client_secret:
-        print("[ERROR] Both values are required.")
-        return
-    set_env_value("TWITCH_CLIENT_ID", client_id)
-    set_env_value("TWITCH_CLIENT_SECRET", client_secret)
-    security_log.log_security_event("Twitch API credentials changed", actor="panel")
-    print("Twitch API credentials saved to .env.")
-
-
-def cmd_set_youtube_api() -> None:
-    api_key = input("YouTube API Key: ").strip()
-    if not api_key:
-        print("[ERROR] API key required.")
-        return
-    set_env_value("YOUTUBE_API_KEY", api_key)
-    security_log.log_security_event("YouTube API key changed", actor="panel")
-    print("YouTube API key saved to .env.")
-
-
-COMMANDS = [
-    ("start", "start the bot", cmd_start),
-    ("stop", "stop the bot", cmd_stop),
-    ("restart", "restart the bot", cmd_restart),
-    ("status", "full bot/process/repository status", cmd_status),
-    ("uptime", "show bot uptime", cmd_uptime),
-    ("update", "update source, sync dependencies, and restart safely", cmd_update),
-    ("logs", "display bot.log", cmd_logs),
-    ("security_logs", "display security.log", cmd_security_logs),
-    ("servers", "list connected servers", cmd_servers),
-    ("add_secondary_owner", "add a secondary owner (max 5)", cmd_add_secondary_owner),
-    ("set_token", "set Discord token", cmd_set_token),
-    ("set_principal_owner", "set principal owner", cmd_set_principal_owner),
-    ("toggle_dangerous", "enable/disable sensitive commands", cmd_toggle_dangerous),
-    ("set_prefix", "set bot prefix", cmd_set_prefix),
-    ("set_twitch_api", "set main Twitch API", cmd_set_twitch_api),
-    ("set_youtube_api", "set main YouTube API", cmd_set_youtube_api),
-]
-COMMAND_MAP = {name: func for name, _, func in COMMANDS}
-
-
-def cmd_help() -> None:
-    print("\n===== v-bot =====")
-    width = max(len(name) for name, _, _ in COMMANDS) + 2
-    for name, desc, _ in COMMANDS:
-        print(f"{name.ljust(width)}- {desc}")
-    print(f"{'help'.ljust(width)}- display this list again")
-    print(f"{'exit'.ljust(width)}- close this panel")
-
-
-def check_principal_owner() -> None:
-    if not get_env_value("OWNER_PRINCIPAL_ID"):
-        print("No principal owner is defined in .env.")
-        cmd_set_principal_owner()
-
-
-def check_token() -> None:
-    if not get_env_value("DISCORD_TOKEN"):
-        print("No Discord token is defined in .env.")
-        cmd_set_token()
-
-
-def main() -> None:
-    print("===================================")
-    print("          v-bot Control Panel")
-    print("===================================")
-    print(f"Version: {VERSION}")
-    print(f"Platform: {'Windows' if IS_WINDOWS else 'macOS' if IS_MACOS else 'Linux' if IS_LINUX else sys.platform}")
-    print(f"Python: {PYTHON_EXE}")
-    if not ENV_PATH.exists():
-        print("[WARNING] .env file not found. The bot will fail to start.")
-    else:
-        check_principal_owner()
-        check_token()
-    print('Type "help" for the list of panel commands.')
-    while True:
-        try:
-            cmd = input("v-bot> ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            print()
-            break
-        if cmd == "exit":
-            break
-        if cmd == "help":
-            cmd_help()
-        elif cmd in COMMAND_MAP:
-            try:
-                COMMAND_MAP[cmd]()
-            except Exception as exc:
-                print(f"[ERROR] Command failed: {exc}")
-        elif cmd:
-            print(f'Unknown command "{cmd}". Type "help" for the list.')
-
-
-if __name__ == "__main__":
-    main()
+def cmd...
