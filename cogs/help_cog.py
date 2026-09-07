@@ -28,11 +28,11 @@ class HelpCategoryView(discord.ui.View):
 
         async def callback(interaction: discord.Interaction) -> None:
             if interaction.user.id != self.author_id:
-                await interaction.response.send_message("❌ Ce menu ne t'est pas destiné.", ephemeral=True)
+                await interaction.response.send_message("❌ This menu is not assigned to you.", ephemeral=True)
                 return
             embeds = self.cog.available_embeds(interaction)
             if category not in embeds:
-                await interaction.response.send_message("🔒 Tu n'as pas accès à cette catégorie.", ephemeral=True)
+                await interaction.response.send_message("🔒 You do not have access to this category.", ephemeral=True)
                 return
             await interaction.response.edit_message(embeds=[embeds[category]], view=HelpBackView(self))
 
@@ -45,10 +45,10 @@ class HelpBackView(discord.ui.View):
         super().__init__(timeout=180)
         self.parent_view = parent
 
-    @discord.ui.button(label="Menu des catégories", emoji="📚", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Category Menu", emoji="📚", style=discord.ButtonStyle.secondary)
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.parent_view.author_id:
-            await interaction.response.send_message("❌ Ce menu ne t'est pas destiné.", ephemeral=True)
+            await interaction.response.send_message("❌ This menu is not assigned to you.", ephemeral=True)
             return
         await interaction.response.edit_message(
             embeds=[self.parent_view.cog.menu_embed(interaction)],
@@ -214,14 +214,14 @@ class HelpCog(commands.Cog, name="Help"):
         categories = self.category_order(ctx)
         embed = discord.Embed(
             title="📚  V-BOT • Help",
-            description="Voici les catégories auxquelles tu as accès. Utilise les boutons pour ouvrir une catégorie.",
+            description="Here are the categories you can access. Use the buttons to open a category.",
             color=discord.Color.dark_blue(),
         )
         labels = {
-            "general": ("📜 General", "Commandes disponibles à tous."),
-            "mod": ("🛡️ Moderation", "Commandes de modération selon tes permissions serveur."),
-            "admin": ("⚙️ Admin & Announcements", "Configuration API et annonces ; Administrateur requis."),
-            "owner": ("👑 Owner", "Administration globale du bot et sécurité."),
+            "general": ("📜 General", "Commands available to everyone."),
+            "mod": ("🛡️ Moderation", "Moderation commands based on your server permissions."),
+            "admin": ("⚙️ Admin & Announcements", "API configuration and announcements; Administrator required."),
+            "owner": ("👑 Owner", "Global bot administration and security controls."),
         }
         for category in categories:
             title, description = labels[category]
