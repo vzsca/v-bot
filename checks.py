@@ -9,10 +9,6 @@ A single source of truth for each type of check:
   ready-to-use decorators for commands.
 - kill_switch_required: blocks a command if the Kill Switch is active.
 - global_check: global check applied to all bot commands.
-
-All functions below raise typed exceptions (exceptions.py) instead of generic
-commands.CheckFailure exceptions with hardcoded messages -- see exceptions.py
-for details on why.
 """
 
 from discord.ext import commands
@@ -29,13 +25,11 @@ def is_permanent_owner(user_id: int) -> bool:
 
 def is_owner_or_temp(user_id: int) -> bool:
     """Returns True if the user is a permanent owner OR has a valid temporary authorization."""
-    if is_permanent_owner(user_id):
-        return True
-    return state.is_temp_authorized(user_id)
+    return is_permanent_owner(user_id) or state.is_temp_authorized(user_id)
 
 
 async def global_check(ctx) -> bool:
-    """Global check applied to ALL commands (equivalent to the old @bot.check)."""
+    """Global check applied to ALL commands."""
     if is_permanent_owner(ctx.author.id):
         return True
     if state.kill_switch:
@@ -55,7 +49,7 @@ def owner_check():
 
 
 def permanent_owner_check():
-    """Strictly restricted to permanent owners (principal + secondary), not temporary owners."""
+    """Strictly restricted to permanent owners, not temporary owners."""
     async def predicate(ctx):
         if is_permanent_owner(ctx.author.id):
             return True
@@ -64,13 +58,18 @@ def permanent_owner_check():
 
 
 def owner_or_permission(**perms):
-    """Owner (permanent/temporary) OR a specific Discord permission on the server."""
+    """Owner (permanent/temporary) OR ALL requested Discord permissions."""
     async def predicate(ctx):
         if is_owner_or_temp(ctx.author.id):
             return True
-        for perm, value in perms.items():
-            if getattr(ctx.author.guild_permissions, perm, False) == value:
-                return True
+
+        if not ctx.guild:
+            raise exceptions.NotOwnerOrTemp()
+
+        guild_permissions = ctx.author.guild_permissions
+        if all(getattr(guild_permissions, perm, False) == value for perm, value in perms.items()):
+            return True
+
         raise exceptions.NotOwnerOrTemp()
     return commands.check(predicate)
 
@@ -93,3 +92,34 @@ def kill_switch_required():
             raise exceptions.KillSwitchEnabled()
         return True
     return commands.check(predicate)
+
+
+def can_manage_member(ctx, target) -> bool:
+    """Return whether the command author can moderate the target member."""
+    if not ctx.guild:
+        return False
+    if target.id == ctx.author.id:
+        return False
+    if target.id == ctx.guild.owner_id:
+        return False
+    if ctx.author.id != ctx.guild.owner_id and target.top_role >= ctx.author.top_role:
+        return False
+    return True
+
+
+def can_bot_manage_member(ctx, target) -> bool:
+    """Return whether the bot can moderate the target member."""
+    me = ctx.guild.me if ctx.guild else None
+    if me is None:
+        return False
+    if target.id == me.id:
+        return False
+    return target.top_role < me.top_role
+
+
+def can_manage_role(ctx, role) -> bool:
+    """Return whether the bot's hierarchy allows managing the role."""
+    me = ctx.guild.me if ctx.guild else None
+    if me is None:
+        return False
+    return role.is_assignable() and role < me.top_role
