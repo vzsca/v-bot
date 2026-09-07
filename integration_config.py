@@ -35,12 +35,12 @@ def _env() -> dict[str, str]:
         except OSError:
             mtime = None
         if mtime != _ENV_MTIME_NS:
+            # Start with process environment for deployments that don't use .env,
+            # then let the local .env override it so panel changes take effect.
+            merged = dict(os.environ)
             values = dotenv_values(_ENV_PATH)
-            _ENV_CACHE = {str(k): str(v).strip() for k, v in values.items() if k and v is not None}
-            # Process environment variables remain an explicit fallback/override.
-            for key, value in os.environ.items():
-                if value:
-                    _ENV_CACHE[key] = value.strip()
+            merged.update({str(k): str(v).strip() for k, v in values.items() if k and v is not None})
+            _ENV_CACHE = merged
             _ENV_MTIME_NS = mtime
         return _ENV_CACHE
 
@@ -52,11 +52,11 @@ def _valid_secret(value: str, minimum: int = 8) -> bool:
 def get_twitch_credentials(guild_id: int) -> tuple[str, str] | None:
     env = _env()
     if api_access.is_allowed(guild_id):
-        client_id = env.get("TWITCH_CLIENT_ID", "")
-        client_secret = env.get("TWITCH_CLIENT_SECRET", "")
+        client_id = env.get("TWITCH_CLIENT_ID", "").strip()
+        client_secret = env.get("TWITCH_CLIENT_SECRET", "").strip()
     else:
-        client_id = env.get(_guild_key("TWITCH_CLIENT_ID", guild_id), "")
-        client_secret = env.get(_guild_key("TWITCH_CLIENT_SECRET", guild_id), "")
+        client_id = env.get(_guild_key("TWITCH_CLIENT_ID", guild_id), "").strip()
+        client_secret = env.get(_guild_key("TWITCH_CLIENT_SECRET", guild_id), "").strip()
     if not client_id or not _valid_secret(client_id) or not client_secret or not _valid_secret(client_secret):
         return None
     return client_id, client_secret
@@ -64,7 +64,7 @@ def get_twitch_credentials(guild_id: int) -> tuple[str, str] | None:
 
 def get_youtube_api_key(guild_id: int) -> str | None:
     env = _env()
-    key = env.get("YOUTUBE_API_KEY", "") if api_access.is_allowed(guild_id) else env.get(_guild_key("YOUTUBE_API_KEY", guild_id), "")
+    key = env.get("YOUTUBE_API_KEY", "").strip() if api_access.is_allowed(guild_id) else env.get(_guild_key("YOUTUBE_API_KEY", guild_id), "").strip()
     if not key or not _valid_secret(key):
         return None
     return key
