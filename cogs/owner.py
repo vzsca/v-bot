@@ -19,7 +19,7 @@ class OwnerCog(commands.Cog, name="Owner"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(name="servers")
+    @commands.hybrid_command(name="servers", description="Open the owner server management panel.")
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
     async def servers(self, ctx):
@@ -27,7 +27,7 @@ class OwnerCog(commands.Cog, name="Owner"):
         embed = discord.Embed(title="🌐 Server Panel", description=f"Select a server to manage the bot\n\n📊 **Number of servers:** `{len(self.bot.guilds)}`", color=discord.Color.gold())
         await ctx.send(embed=embed, view=view)
 
-    @commands.command(name="add_temp")
+    @commands.hybrid_command(name="add_temp", description="Authorize a user temporarily on this server.")
     @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
@@ -43,7 +43,7 @@ class OwnerCog(commands.Cog, name="Owner"):
         security_log.log_security_event(f"Temporary owner granted to {user} ({user.id}) in guild {ctx.guild.id} for {duration}s", actor=f"{ctx.author} ({ctx.author.id})")
         await ctx.send(f"✅ {user.mention} is now authorized on **this server** for {duration} seconds.")
 
-    @commands.command(name="owner_list")
+    @commands.hybrid_command(name="owner_list", description="Show authorized owners for this server.")
     @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
@@ -60,7 +60,7 @@ class OwnerCog(commands.Cog, name="Owner"):
         embed = discord.Embed(title="📋 Authorized Users", description=description or "⚠️ No users are currently authorized.", color=discord.Color.green())
         await ctx.send(embed=embed)
 
-    @commands.command(name="killswitch")
+    @commands.hybrid_command(name="killswitch", description="Enable, disable, or inspect the bot kill switch.")
     @checks.permanent_owner_check()
     async def killswitch(self, ctx, mode: str | None = None):
         if mode is None:
@@ -78,9 +78,9 @@ class OwnerCog(commands.Cog, name="Owner"):
             security_log.log_security_event("Kill switch DISABLED", actor=f"{ctx.author} ({ctx.author.id})")
             await ctx.send("🟢 Kill switch DISABLED: bot fully operational.")
             return
-        await ctx.send("❌ Invalid value. Usage: `v!killswitch true/false | on/off | 1/0` or no argument.")
+        await ctx.send("❌ Invalid value. Usage: `/killswitch true/false` or `v!killswitch true/false`.")
 
-    @commands.command(name="toggle_guild")
+    @commands.hybrid_command(name="toggle_guild", description="Enable or disable the bot on this server.")
     @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
@@ -93,20 +93,21 @@ class OwnerCog(commands.Cog, name="Owner"):
             state.disabled_guilds.add(guild_id)
             await ctx.send("🔴 Bot disabled on this server.")
 
-    @commands.command(name="say")
+    @commands.hybrid_command(name="say", description="Send a message as the bot.")
     @checks.owner_check()
     @checks.kill_switch_required()
     async def say(self, ctx, *, message: str):
         try:
             await ctx.send(message)
-            await ctx.message.delete()
+            if ctx.message:
+                await ctx.message.delete()
         except discord.Forbidden:
             await ctx.send("❌ I do not have permission to send or delete messages here.")
         except discord.HTTPException:
             logger.exception("Owner say command failed.")
             await ctx.send("❌ Unable to complete the command.")
 
-    @commands.command(name="embed")
+    @commands.hybrid_command(name="embed", description="Send an embed from a title and description.")
     @checks.owner_check()
     @checks.kill_switch_required()
     async def embed(self, ctx, *, content: str):
@@ -121,7 +122,8 @@ class OwnerCog(commands.Cog, name="Owner"):
         embed = discord.Embed(title=title[:256], description=description[:4096], color=discord.Color.blue())
         try:
             await ctx.send(embed=embed)
-            await ctx.message.delete()
+            if ctx.message:
+                await ctx.message.delete()
         except discord.Forbidden:
             await ctx.send("❌ I don't have permission to send or delete messages here.")
         except discord.HTTPException:
