@@ -8,6 +8,7 @@ from discord.ext import commands
 
 import announcement_store as store
 import checks
+import integration_config
 
 logger = logging.getLogger("v-bot")
 
@@ -48,6 +49,11 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         platform = self._detect_platform(source_url)
         if not platform:
             return await ctx.send("❌ Unsupported Twitch/YouTube URL.")
+        if not integration_config.is_configured(ctx.guild.id, platform):
+            return await ctx.send(
+                f"❌ Aucune API **{platform}** valide n'est configurée pour ce serveur. "
+                f"Utilise `v!set_api {'yt' if platform == 'youtube' else 'twitch'}` avant de créer l'annonce."
+            )
 
         placeholders = "`{streamer}` `{title}` `{game}` `{url}`" if platform == "twitch" else "`{channel}` `{title}` `{url}`"
         await ctx.send(f"💬 Send the announcement message. Available placeholders: {placeholders}\nYou have **1 minute**.")
