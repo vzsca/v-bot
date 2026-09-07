@@ -61,10 +61,14 @@ class HelpCog(commands.Cog, name="Help"):
         self.bot = bot
 
     @staticmethod
-    def has_moderation_access(ctx) -> bool:
-        if not ctx.guild:
+    def _user(context):
+        return context.user if isinstance(context, discord.Interaction) else context.author
+
+    @staticmethod
+    def has_moderation_access(context) -> bool:
+        if not context.guild:
             return False
-        permissions = ctx.author.guild_permissions
+        permissions = HelpCog._user(context).guild_permissions
         return any(
             getattr(permissions, permission, False)
             for permission in (
@@ -78,16 +82,17 @@ class HelpCog(commands.Cog, name="Help"):
         )
 
     @staticmethod
-    def has_admin_access(ctx) -> bool:
-        return bool(ctx.guild and ctx.author.guild_permissions.administrator)
+    def has_admin_access(context) -> bool:
+        return bool(context.guild and HelpCog._user(context).guild_permissions.administrator)
 
-    def category_order(self, ctx) -> list[str]:
+    def category_order(self, context) -> list[str]:
         categories = ["general"]
-        if self.has_moderation_access(ctx):
+        if self.has_moderation_access(context):
             categories.append("mod")
-        if self.has_admin_access(ctx):
+        if self.has_admin_access(context):
             categories.append("admin")
-        if checks.is_owner_or_temp(ctx.author.id, ctx.guild.id if ctx.guild else None):
+        user = self._user(context)
+        if checks.is_owner_or_temp(user.id, context.guild.id if context.guild else None):
             categories.append("owner")
         return categories
 
@@ -200,21 +205,25 @@ class HelpCog(commands.Cog, name="Help"):
         embed.set_footer(text="v-bot • Owner controls • Sensitive actions")
         return embed
 
-    def available_embeds(self, ctx) -> dict[str, discord.Embed]:
+    def available_embeds(self, context) -> dict[str, discord.Embed]:
         embeds = {"general": self.general_embed()}
-        if self.has_moderation_access(ctx):
+        if self.has_moderation_access(context):
             embeds["mod"] = self.moderation_embed()
-        if self.has_admin_access(ctx):
+        if self.has_admin_access(context):
             embeds["admin"] = self.admin_embed()
-        if checks.is_owner_or_temp(ctx.author.id, ctx.guild.id if ctx.guild else None):
+        user = self._user(context)
+        if checks.is_owner_or_temp(user.id, context.guild.id if context.guild else None):
             embeds["owner"] = self.owner_embed()
         return embeds
 
-    def menu_embed(self, ctx) -> discord.Embed:
-        categories = self.category_order(ctx)
+    def menu_embed(self, context) -> discord.Embed:
+        categories = self.category_order(context)
         embed = discord.Embed(
             title="📚  V-BOT • Help",
-            description="Here are the categories you can access. Use the buttons to open a category.",
+            description=(
+                "Here are the categories you can access.\n"
+                "⚠️ The category buttons are temporarily unavailable. Use `v!help general`, `v!help mod`, `v!help admin`, or `v!help owner` to open a category directly."
+            ),
             color=discord.Color.dark_blue(),
         )
         labels = {
