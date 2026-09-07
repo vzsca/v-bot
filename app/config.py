@@ -57,9 +57,9 @@ if not TOKEN:
     raise SystemExit("DISCORD_TOKEN missing from .env")
 
 OWNER_PRINCIPAL = _parse_owner_id(os.getenv("OWNER_PRINCIPAL_ID"), "OWNER_PRINCIPAL_ID")
-OWNERS_SECONDARY = [uid for uid in _parse_owner_id_list(os.getenv("OWNERS_SECONDARY_IDS")) if uid != OWNER_PRINCIPAL]
-if len(OWNERS_SECONDARY) > MAX_SECONDARY_OWNERS:
-    raise SystemExit(f"Maximum of {MAX_SECONDARY_OWNERS} secondary owners exceeded")
+OWNERS_SECONDARY = _parse_owner_id_list(os.getenv("OWNERS_SECONDARY_IDS"))
+if OWNER_PRINCIPAL in OWNERS_SECONDARY:
+    raise SystemExit("OWNER_PRINCIPAL_ID cannot also appear in OWNERS_SECONDARY_IDS")
 PERMANENT_OWNERS = [OWNER_PRINCIPAL] + OWNERS_SECONDARY
 PERMANENT_OWNERS_SET = frozenset(PERMANENT_OWNERS)
 
