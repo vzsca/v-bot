@@ -35,9 +35,12 @@ class HelpCog(commands.Cog, name="Help"):
         general_embed.add_field(name="👤 `user_info`", value="Displays user information.", inline=False)
         general_embed.add_field(name="🏠 `server_info`", value="Displays server information.", inline=False)
         general_embed.add_field(name="💬 `snipe [index]`", value="Displays a deleted message.", inline=False)
-        general_embed.add_field(name="📺 `create_annonce`", value="Creates a new automatic Twitch live announcement.", inline=False)
+        general_embed.add_field(name="🔑 `set_api twitch|yt`", value="Configure the current server's own API credentials.", inline=False)
+        general_embed.add_field(name="📋 `api_status`", value="Shows API mode and configuration status without exposing secrets.", inline=False)
+        general_embed.add_field(name="🗑️ `clear_api twitch|yt`", value="Removes the current server's API credentials.", inline=False)
+        general_embed.add_field(name="📺 `create_annonce`", value="Creates a Twitch or YouTube automatic announcement using the server's selected API.", inline=False)
         general_embed.add_field(name="📋 `annonces`", value="Lists configured Twitch/YouTube announcements.", inline=False)
-        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured announcement without waiting for a live event.", inline=False)
+        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured announcement without waiting for an event.", inline=False)
         general_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured announcement.", inline=False)
 
         owner_embed = discord.Embed(
@@ -49,7 +52,6 @@ class HelpCog(commands.Cog, name="Help"):
         owner_embed.add_field(name="📌 `add_temp @user duration`", value="Grants temporary authorization.", inline=False)
         owner_embed.add_field(name="📄 `owner_list`", value="Lists the bot owners.", inline=False)
         owner_embed.add_field(name="⚙️ `servers`", value="Server panel (selection + actions).", inline=False)
-        owner_embed.add_field(name="📩 Invite button (in `v!servers`)", value="Generates a temporary invite for the selected server.", inline=False)
         owner_embed.add_field(name="🔁 `toggle_guild`", value="Enables/disables the bot on the current server.", inline=False)
         owner_embed.add_field(name="💬 `say <message>`", value="Makes the bot send a message.", inline=False)
 
@@ -64,22 +66,12 @@ class HelpCog(commands.Cog, name="Help"):
 
         owner_embed.add_field(
             name="Sensitive commands (raid / remove_raid / dmall / spam)",
-            value=(
-                f"Status: {sensitive_status}\n"
-                "Toggled through the `start_bot.bat` panel (`toggle_dangerous` command), "
-                "not through a Discord command — requires a bot restart."
-            ),
+            value=f"Status: {sensitive_status}\nToggled through the `start_bot.bat` panel and requires a restart.",
             inline=False,
         )
         owner_embed.add_field(
             name="🚨 `killswitch [true/false | on/off | 1/0]`",
-            value=(
-                "Enables or disables the bot's global security mode.\n\n"
-                "✔ `v!killswitch true / on / 1` → enables command blocking\n"
-                "✔ `v!killswitch false / off / 0` → disables command blocking\n"
-                "✔ `v!killswitch` → displays the current status\n\n"
-                "🔐 Restricted to **permanent owners only**"
-            ),
+            value="Global security mode. Restricted to permanent owners only.",
             inline=False,
         )
 
