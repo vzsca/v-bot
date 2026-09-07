@@ -5,10 +5,11 @@ import os
 
 from dotenv import load_dotenv
 
-from version import VERSION
+import version
 
 load_dotenv()
 logger = logging.getLogger("v-bot")
+VERSION = version.VERSION
 MAX_SECONDARY_OWNERS = 5
 
 
