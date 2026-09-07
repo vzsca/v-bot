@@ -16,8 +16,8 @@ logger = logging.getLogger("v-bot")
 class TwitchCog(commands.Cog, name="Twitch"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # Access tokens are isolated by Discord guild ID.
-        self._tokens: dict[int, tuple[str, str, float]] = {}
+        # client_id, client_secret, access_token, expires_at — all keyed by guild.
+        self._tokens: dict[int, tuple[str, str, str, float]] = {}
         self.twitch_task.start()
 
     def cog_unload(self):
@@ -42,8 +42,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return None
         client_id, client_secret = credentials
         cached = self._tokens.get(guild_id)
-        if cached and cached[0] == client_id and cached[1] == client_secret and time.time() < cached[2]:
-            return cached[0], cached[1]
+        if cached and cached[0] == client_id and cached[1] == client_secret and time.time() < cached[3]:
+            return cached[0], cached[2]
         try:
             async with session.post(
                 "https://id.twitch.tv/oauth2/token",
@@ -57,7 +57,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 expires_in = int(data.get("expires_in", 0) or 0)
                 if not token:
                     return None
-                self._tokens[guild_id] = (client_id, token, time.time() + max(0, expires_in - 60))
+                self._tokens[guild_id] = (client_id, client_secret, token, time.time() + max(0, expires_in - 60))
                 return client_id, token
         except (aiohttp.ClientError, ValueError):
             logger.exception("Twitch authentication request failed for guild %s.", guild_id)
