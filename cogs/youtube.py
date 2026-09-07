@@ -1,4 +1,4 @@
-"""YouTube integration with guild-safe credentials and quota-aware polling."""
+"""YouTube integration with guild-safe credentials and bounded API caching."""
 
 import asyncio
 import logging
@@ -14,6 +14,7 @@ import integration_config
 
 logger = logging.getLogger("v-bot")
 YOUTUBE_API_URL = "https://youtube.googleapis.com"
+CACHE_TTL = 300
 
 
 class YouTubeCog(commands.Cog, name="YouTube"):
@@ -30,6 +31,12 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         if self._session and not self._session.closed:
             asyncio.create_task(self._session.close())
         self._session = None
+
+    def _prune_caches(self):
+        now = time.time()
+        self._channel_cache = {k: v for k, v in self._channel_cache.items() if now - v[1] < CACHE_TTL}
+        self._latest_cache = {k: v for k, v in self._latest_cache.items() if now - v[1] < CACHE_TTL}
+        self._backoff_until = {k: v for k, v in self._backoff_until.items() if now < v}
 
     async def _get_session(self):
         if self._session is None or self._session.closed:
@@ -84,8 +91,9 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             return value
         api_key = integration_config.get_youtube_api_key(guild_id)
         cache_key = (api_key, f"{kind}:{value}")
-        if cache_key in self._channel_cache:
-            return self._channel_cache[cache_key]
+        cached = self._channel_cache.get(cache_key)
+        if cached and time.time() - cached[1] < 60:
+            return cached[0]
         if kind == "handle":
             data, status = await self._api_get(session, guild_id, "youtube/v3/channels", {"part": "id", "forHandle": value})
         else:
@@ -99,20 +107,21 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             exact = next((i for i in items if i.get("snippet", {}).get("title", "").casefold() == value.casefold()), items[0])
             channel_id = exact.get("snippet", {}).get("channelId")
         if channel_id:
-            self._channel_cache[cache_key] = channel_id
+            self._channel_cache[cache_key] = (channel_id, time.time())
         return channel_id
 
     async def _get_uploads_playlist(self, session, guild_id, channel_id):
         api_key = integration_config.get_youtube_api_key(guild_id)
         cache_key = (api_key, "playlist:" + channel_id)
-        if cache_key in self._channel_cache:
-            return self._channel_cache[cache_key]
+        cached = self._channel_cache.get(cache_key)
+        if cached and time.time() - cached[1] < 60:
+            return cached[0]
         data, status = await self._api_get(session, guild_id, "youtube/v3/channels", {"part": "contentDetails", "id": channel_id})
         if status != 200 or not data or not data.get("items"):
             return None
         playlist_id = data["items"][0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
         if playlist_id:
-            self._channel_cache[cache_key] = playlist_id
+            self._channel_cache[cache_key] = (playlist_id, time.time())
         return playlist_id
 
     async def _get_latest_video(self, session, guild_id, channel_id):
@@ -169,6 +178,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
 
     @tasks.loop(seconds=60)
     async def youtube_task(self):
+        self._prune_caches()
         data = store.load()
         announcements = [a for a in data["announcements"] if a.get("type") == "youtube" and a.get("guild_id")]
         if not announcements:
@@ -196,10 +206,13 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             video = latest_cache[key]
             if not video:
                 continue
-            if announcement.get("last_video_id") != video["video_id"]:
-                if await self._send_announcement(announcement, video):
-                    announcement["last_video_id"] = video["video_id"]
-                    changed = True
+            if announcement.get("last_video_id") is None:
+                announcement["last_video_id"] = video["video_id"]
+                changed = True
+                continue
+            if announcement.get("last_video_id") != video["video_id"] and await self._send_announcement(announcement, video):
+                announcement["last_video_id"] = video["video_id"]
+                changed = True
         if changed:
             store.save(data)
 
