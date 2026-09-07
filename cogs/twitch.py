@@ -1,4 +1,4 @@
-"""Twitch integration with guild-safe credentials and shared API caching."""
+"""Twitch integration with guild-safe credentials and bounded API caching."""
 
 import asyncio
 import logging
@@ -13,6 +13,7 @@ import announcement_store as store
 import integration_config
 
 logger = logging.getLogger("v-bot")
+CACHE_TTL = 300
 
 
 class TwitchCog(commands.Cog, name="Twitch"):
@@ -29,6 +30,12 @@ class TwitchCog(commands.Cog, name="Twitch"):
         if self._session and not self._session.closed:
             asyncio.create_task(self._session.close())
         self._session = None
+
+    def _prune_caches(self):
+        now = time.time()
+        self._tokens = {k: v for k, v in self._tokens.items() if now < v[1]}
+        self._stream_cache = {k: v for k, v in self._stream_cache.items() if now - v[1] < CACHE_TTL}
+        self._backoff_until = {k: v for k, v in self._backoff_until.items() if now < v}
 
     async def _get_session(self):
         if self._session is None or self._session.closed:
@@ -145,6 +152,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
 
     @tasks.loop(seconds=60)
     async def twitch_task(self):
+        self._prune_caches()
         data = store.load()
         announcements = [a for a in data["announcements"] if a.get("type") == "twitch" and a.get("guild_id")]
         if not announcements:
@@ -162,6 +170,10 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 cache[key] = await self._get_stream_data(session, guild_id, login)
             stream = cache[key]
             is_live = stream is not None
+            if "was_live" not in announcement:
+                announcement["was_live"] = is_live
+                changed = True
+                continue
             was_live = bool(announcement.get("was_live", False))
             if is_live and not was_live and await self._send_announcement(announcement, stream):
                 announcement["was_live"] = True
