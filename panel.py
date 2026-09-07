@@ -21,7 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 import security_log
 from deps import install_requirements
-from updater import current_commit, requirements_changed, update_code
+from updater import current_commit, repository_status, requirements_changed, update_code
 from version import VERSION
 
 ENV_PATH = ROOT / ".env"
@@ -271,18 +271,36 @@ def cmd_restart() -> None:
 
 def cmd_status() -> None:
     principal, secondary = _owner_status()
+    permanent = [principal] + secondary if principal != "not configured" else secondary
     print("\n===== v-bot status =====")
     print("Version:", VERSION)
     print("Platform:", "Windows" if IS_WINDOWS else "macOS" if IS_MACOS else "Linux" if IS_LINUX else sys.platform)
     print("Python:", PYTHON_EXE)
+    print("Permanent owners:", ", ".join(permanent) if permanent else "none")
     print("Principal owner:", principal)
     print("Secondary owners:", ", ".join(secondary) if secondary else "none")
     print("Secondary owner count:", f"{len(secondary)}/5")
     print("Dangerous commands:", "enabled" if get_env_value("DANGEROUS_COMMANDS_ENABLED").lower() in {"1", "true", "yes", "on"} else "disabled")
     print(".env:", "present" if ENV_PATH.exists() else "missing")
+
+    repo_ok, behind, ahead, repo_message = repository_status(fetch=True)
+    if repo_ok:
+        if behind:
+            print(f"Repository: UPDATE AVAILABLE ({behind} commit(s))")
+        elif ahead:
+            print(f"Repository: local branch ahead by {ahead} commit(s)")
+        else:
+            print("Repository: up to date")
+    else:
+        print(f"Repository: unavailable ({repo_message})")
+    commit = current_commit()
+    if commit:
+        print("Current commit:", commit[:12])
+
     pid = _get_bot_pid()
     if pid is None:
         print("State: INACTIVE")
+        print("Uptime: not running")
         return
     try:
         process = psutil.Process(pid)
@@ -468,7 +486,7 @@ COMMANDS = [
     ("start", "start the bot", cmd_start),
     ("stop", "stop the bot", cmd_stop),
     ("restart", "restart the bot", cmd_restart),
-    ("status", "full bot/process status", cmd_status),
+    ("status", "full bot/process/repository status", cmd_status),
     ("uptime", "show bot uptime", cmd_uptime),
     ("update", "pull latest code and update only changed dependencies", cmd_update),
     ("logs", "display bot.log", cmd_logs),
