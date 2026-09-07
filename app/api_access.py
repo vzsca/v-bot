@@ -4,7 +4,7 @@ import json
 import threading
 from pathlib import Path
 
-CONFIG_FILE = Path(__file__).resolve().parent / "api_config_access.json"
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "api_config_access.json"
 _LOCK = threading.RLock()
 
 
@@ -29,6 +29,8 @@ def is_allowed(guild_id: int) -> bool:
 
 
 def set_allowed(guild_id: int, allowed: bool) -> bool:
+    if guild_id <= 0:
+        return False
     with _LOCK:
         guilds = _load_unlocked()
         if allowed:
