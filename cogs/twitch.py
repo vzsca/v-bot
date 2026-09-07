@@ -158,7 +158,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
         if not announcements:
             return
         session = await self._get_session()
-        changed = False
+        updates = {}
         cache = {}
         for announcement in announcements:
             guild_id = int(announcement["guild_id"])
@@ -170,19 +170,25 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 cache[key] = await self._get_stream_data(session, guild_id, login)
             stream = cache[key]
             is_live = stream is not None
-            if "was_live" not in announcement:
-                announcement["was_live"] = is_live
-                changed = True
+            announcement_key = (guild_id, announcement.get("id"))
+            if "was_live" not in announcement or announcement.get("was_live") is None:
+                updates[announcement_key] = is_live
                 continue
             was_live = bool(announcement.get("was_live", False))
             if is_live and not was_live and await self._send_announcement(announcement, stream):
-                announcement["was_live"] = True
-                changed = True
+                updates[announcement_key] = True
             elif not is_live and was_live:
-                announcement["was_live"] = False
-                changed = True
-        if changed:
-            store.save(data)
+                updates[announcement_key] = False
+        if updates:
+            def apply_updates(current):
+                count = 0
+                for item in current["announcements"]:
+                    key = (item.get("guild_id"), item.get("id"))
+                    if key in updates:
+                        item["was_live"] = updates[key]
+                        count += 1
+                return count
+            store.transaction(apply_updates)
 
     @twitch_task.before_loop
     async def before_twitch_task(self):
