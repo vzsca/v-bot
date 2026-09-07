@@ -6,6 +6,7 @@ import time
 from urllib.parse import urlparse
 
 import aiohttp
+import discord
 from discord.ext import commands, tasks
 
 import announcement_store as store
@@ -15,12 +16,12 @@ logger = logging.getLogger("v-bot")
 
 
 class TwitchCog(commands.Cog, name="Twitch"):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
-        self._tokens: dict[tuple[str, str], tuple[str, float]] = {}
-        self._stream_cache: dict[tuple[str, str], tuple[dict | None, float]] = {}
-        self._backoff_until: dict[tuple[str, str], float] = {}
-        self._session: aiohttp.ClientSession | None = None
+        self._tokens = {}
+        self._stream_cache = {}
+        self._backoff_until = {}
+        self._session = None
         self.twitch_task.start()
 
     def cog_unload(self):
@@ -29,13 +30,13 @@ class TwitchCog(commands.Cog, name="Twitch"):
             asyncio.create_task(self._session.close())
         self._session = None
 
-    async def _get_session(self) -> aiohttp.ClientSession:
+    async def _get_session(self):
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
         return self._session
 
     @staticmethod
-    def _extract_twitch_login(url: str) -> str | None:
+    def _extract_twitch_login(url):
         try:
             parsed = urlparse(url.strip())
             host = parsed.netloc.lower().split(":")[0]
@@ -48,7 +49,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
         except ValueError:
             return None
 
-    async def _get_access_token(self, session: aiohttp.ClientSession, guild_id: int) -> tuple[str, str] | None:
+    async def _get_access_token(self, session, guild_id):
         credentials = integration_config.get_twitch_credentials(guild_id)
         if not credentials:
             return None
@@ -73,7 +74,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
             logger.exception("Twitch authentication request failed.")
             return None
 
-    async def _get_stream_data(self, session: aiohttp.ClientSession, guild_id: int, login: str) -> dict | None:
+    async def _get_stream_data(self, session, guild_id, login):
         credentials = integration_config.get_twitch_credentials(guild_id)
         if not credentials:
             return None
@@ -96,7 +97,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
                     return None
                 if response.status == 429:
                     self._backoff_until[credential_key] = time.time() + 120
-                    logger.warning("Twitch rate limit reached; backing off for credential scope.")
+                    logger.warning("Twitch rate limit reached; backing off.")
                     return None
                 if response.status != 200:
                     logger.warning("Twitch API returned HTTP %s.", response.status)
@@ -113,12 +114,12 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return None
 
     @staticmethod
-    def _format_message(message: str, data: dict) -> str:
+    def _format_message(message, data):
         for key in ("streamer", "title", "game", "url"):
             message = message.replace("{" + key + "}", str(data.get(key, "")))
         return message[:2000]
 
-    async def _send_announcement(self, announcement: dict, stream_data: dict) -> bool:
+    async def _send_announcement(self, announcement, stream_data):
         channel_id, guild_id, message = announcement.get("channel_id"), announcement.get("guild_id"), announcement.get("message")
         if not channel_id or not guild_id or not message:
             return False
@@ -136,7 +137,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
             logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
             return False
 
-    async def test_announcement(self, announcement: dict) -> bool:
+    async def test_announcement(self, announcement):
         login = self._extract_twitch_login(announcement.get("source_url", ""))
         if not login or not announcement.get("guild_id"):
             return False
@@ -150,7 +151,7 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return
         session = await self._get_session()
         changed = False
-        cache: dict[tuple[int, str], dict | None] = {}
+        cache = {}
         for announcement in announcements:
             guild_id = int(announcement["guild_id"])
             login = self._extract_twitch_login(announcement.get("source_url", ""))
@@ -176,5 +177,5 @@ class TwitchCog(commands.Cog, name="Twitch"):
         await self.bot.wait_until_ready()
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(TwitchCog(bot))
