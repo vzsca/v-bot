@@ -18,24 +18,27 @@ def _parse_owner_id(raw: str | None, var_name: str) -> int:
         logger.critical("%s is invalid in .env", var_name)
         raise SystemExit(f"{var_name} is invalid in .env")
     if value <= 0:
+        logger.critical("%s is invalid in .env", var_name)
         raise SystemExit(f"{var_name} is invalid in .env")
     return value
 
 
 def _parse_owner_id_list(raw: str | None) -> list[int]:
     ids: list[int] = []
-    if not raw:
+    if not raw or not raw.strip():
         return ids
     for part in raw.split(","):
         part = part.strip()
         if not part:
             continue
-        try:
-            value = int(part)
-            if value > 0:
-                ids.append(value)
-        except ValueError:
-            logger.warning("Invalid secondary owner ID ignored.")
+        if not part.isdigit() or int(part) <= 0:
+            logger.critical("Invalid secondary owner ID in OWNERS_SECONDARY_IDS.")
+            raise SystemExit("OWNERS_SECONDARY_IDS contains an invalid ID")
+        value = int(part)
+        if value in ids:
+            logger.critical("Duplicate secondary owner ID in OWNERS_SECONDARY_IDS.")
+            raise SystemExit("OWNERS_SECONDARY_IDS contains a duplicate ID")
+        ids.append(value)
     return ids
 
 
