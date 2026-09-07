@@ -1,4 +1,8 @@
-"""Shared, guild-isolated announcement storage."""
+"""Shared, guild-isolated announcement storage.
+
+Announcement IDs are scoped to a guild: two servers may both have announcement #1.
+All reads/writes go through this module so integrations cannot accidentally mix servers.
+"""
 
 import json
 import logging
@@ -16,9 +20,17 @@ def _normalize(data: object) -> dict:
     announcements = data.get("announcements")
     if not isinstance(announcements, list):
         announcements = []
-    # Legacy entries without guild_id cannot safely be associated with a server.
-    # They remain on disk for manual migration but are never returned by guild queries.
-    return {"announcements": [a for a in announcements if isinstance(a, dict)]}
+    # Entries without guild_id are unsafe to associate with a server and are ignored.
+    clean = []
+    for item in announcements:
+        if not isinstance(item, dict):
+            continue
+        if not isinstance(item.get("guild_id"), int):
+            continue
+        if not isinstance(item.get("id"), int) or item["id"] < 1:
+            continue
+        clean.append(item)
+    return {"announcements": clean}
 
 
 def load() -> dict:
@@ -53,8 +65,30 @@ def save(data: dict) -> bool:
 
 
 def for_guild(data: dict, guild_id: int) -> list[dict]:
-    return [a for a in _normalize(data)["announcements"] if a.get("guild_id") == guild_id]
+    return [a for a in _normalize(data)["announcements"] if a["guild_id"] == guild_id]
 
 
 def find(data: dict, guild_id: int, announcement_id: int) -> dict | None:
-    return next((a for a in for_guild(data, guild_id) if a.get("id") == announcement_id), None)
+    return next((a for a in for_guild(data, guild_id) if a["id"] == announcement_id), None)
+
+
+def next_id(data: dict, guild_id: int) -> int:
+    """Return the next announcement ID for this guild only."""
+    return max((a["id"] for a in for_guild(data, guild_id)), default=0) + 1
+
+
+def add(data: dict, announcement: dict) -> dict:
+    """Add an announcement after enforcing its guild-scoped identity."""
+    guild_id = announcement["guild_id"]
+    announcement = dict(announcement)
+    announcement["id"] = next_id(data, guild_id)
+    data["announcements"].append(announcement)
+    return announcement
+
+
+def remove(data: dict, guild_id: int, announcement_id: int) -> bool:
+    announcement = find(data, guild_id, announcement_id)
+    if not announcement:
+        return False
+    data["announcements"].remove(announcement)
+    return True
