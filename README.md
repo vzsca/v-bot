@@ -2,22 +2,25 @@
 
 Discord bot développé en **Python avec discord.py**, orienté modération, gestion de serveurs, annonces Twitch/YouTube et administration sécurisée.
 
-v-bot inclut un **panel local** pour gérer le processus, le `.env`, les propriétaires, les logs et les fonctionnalités sensibles. Le projet est prévu pour Windows, Linux et macOS.
+v-bot inclut un **panel local** pour gérer le processus, la configuration, les propriétaires, les logs, les mises à jour et les fonctionnalités sensibles. Le projet est prévu pour Windows, Linux et macOS.
 
 ## ✨ Fonctionnalités
 
 - 🛡️ Modération
 - ℹ️ Commandes d'information
-- 👑 Système de propriétaires permanents et temporaires
-- 🔐 Kill Switch global
+- 👑 Propriétaires permanents et autorisations temporaires
+- 🔐 Kill Switch
 - 🧹 Snipe des messages supprimés
 - 🌐 Gestion multi-serveurs
-- ⚙️ Panel local
+- ⚙️ Panel local cross-platform
+- 🔄 Mise à jour du code depuis Git avec redémarrage automatique
+- 🧯 Rollback automatique en cas d'échec de dépendances ou de démarrage
 - 📋 Logs standards et de sécurité
 - 📢 Annonces automatiques Twitch et YouTube
 - 🔑 API principale globale + API configurées individuellement par serveur
 - 🔒 Commandes sensibles désactivées par défaut
-- 🧩 Architecture modulaire par Cogs
+- 🚦 Rate limiting, audit et détection anti-spam/anti-raid
+- 🧩 Architecture modulaire par Cogs et modules applicatifs
 
 ---
 
@@ -29,6 +32,7 @@ v-bot inclut un **panel local** pour gérer le processus, le `.env`, les propri�
 - Python **3.13 recommandé**
 - Un bot Discord créé depuis le Discord Developer Portal
 - Les intents nécessaires activés
+- Git installé pour utiliser les mises à jour depuis le panel
 
 ```bash
 git clone https://github.com/vzsca/v-bot.git
@@ -72,23 +76,65 @@ Le launcher prépare l'environnement Python et démarre le panel local.
 
 # 🖥️ Panel local
 
-Commandes principales :
+Le panel est interactif et fonctionne sous Windows, Linux et macOS.
 
-- `start`, `stop`, `restart`
-- `status` — version, plateforme, Python, état `.env`, PID, processus, uptime, mémoire, CPU et owners
-- `uptime`
-- `logs`, `security_logs`, `servers`
-- `set_token`
-- `set_principal_owner`
-- `add_secondary_owner`
-- `set_prefix`
-- `toggle_dangerous`
-- `set_twitch_api`
-- `set_youtube_api`
+### Processus
 
-Le panel affiche l'owner principal et les owners secondaires avec le compteur `X/5`.
+```text
+start
+stop
+restart
+status
+uptime
+logs
+security_logs
+servers
+```
 
-Les clés configurées depuis le panel correspondent à **l'API principale**, c'est-à-dire les credentials personnels de l'instance du bot. Elles sont écrites atomiquement dans `.env` et rechargées automatiquement pour Twitch/YouTube.
+### Configuration
+
+```text
+set_token
+set_principal_owner
+add_secondary_owner
+set_prefix
+set_twitch_api
+set_youtube_api
+toggle_dangerous
+```
+
+### Mise à jour
+
+```text
+update
+```
+
+`update` :
+
+1. vérifie d'abord si `origin/main` contient réellement de nouveaux commits ;
+2. ne redémarre pas le bot lorsqu'il n'y a aucune mise à jour ;
+3. arrête le bot uniquement lorsqu'une mise à jour est disponible ;
+4. effectue un fast-forward Git sans écraser les modifications suivies localement ;
+5. met à jour les dépendances uniquement si `requirements.txt` a changé ;
+6. redémarre le bot avec le nouveau code ;
+7. restaure automatiquement l'ancien commit si l'installation des dépendances échoue ou si le nouveau bot ne démarre pas.
+
+Les fichiers de configuration et données runtime ignorés par Git restent en place pendant toute la procédure : `.env`, `api_credentials.json`, `annonce_config.json`, `api_config_access.json`, logs et fichiers PID/runtime.
+
+Une branche locale divergente ou des modifications Git suivies localement bloquent l'update automatique afin d'éviter une écriture destructive.
+
+### `status`
+
+`status` affiche notamment :
+
+- version et plateforme ;
+- owner principal ;
+- owners secondaires et compteur `X/5` ;
+- état du bot, PID et processus ;
+- uptime ;
+- CPU/RAM ;
+- état du dépôt Git et nombre de commits disponibles ;
+- commit actuellement installé.
 
 ---
 
@@ -102,6 +148,8 @@ OWNERS_SECONDARY_IDS=111111111,222222222
 ```
 
 Le panel refuse l'ajout d'un sixième owner secondaire et empêche les doublons ou l'ajout de l'owner principal comme secondaire.
+
+Les autorisations temporaires sont limitées au serveur concerné et expirent automatiquement.
 
 ---
 
@@ -158,8 +206,6 @@ v!create_annonce
 
 Le bot demande l'URL, le message et le salon cible. L'annonce utilise automatiquement l'API correspondant au serveur : API principale pour un serveur autorisé, credentials locaux pour un serveur non autorisé.
 
-Si aucune API valide n'est disponible pour la plateforme choisie, l'annonce ne peut pas être configurée correctement.
-
 ## Gestion
 
 ```text
@@ -185,65 +231,85 @@ v!delete_annonce <id>
 
 # ⚠️ Commandes sensibles
 
-Les commandes `spam`, `dmall`, `raid` et `remove_raid` sont isolées dans `cogs/dangerous_safe.py` et désactivées par défaut.
+Les commandes `spam`, `dmall`, `raid` et `remove_raid` sont isolées et désactivées par défaut.
 
 ```env
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
+Des limites de volume, confirmations et contrôles de permissions empêchent leur utilisation accidentelle.
+
 ---
 
 # 🛡️ Sécurité
 
-- Permissions centralisées dans `checks.py`
+- Permissions centralisées dans `app/checks.py`
+- Rate limiting global, par utilisateur et par commande
+- Audit des actions et détection de rafales suspectes
+- Détection anti-spam et anti-raid
 - Autorisations temporaires limitées au serveur et expirables
 - Secrets jamais écrits dans les logs de sécurité
 - `.env` et configurations persistantes écrites atomiquement
+- JSON corrompu refusé au lieu d'être remplacé silencieusement
 - Logs bornés et rotatifs
 - Credentials API par serveur isolés par `guild_id`
 - `api_credentials.json` exclu de Git
 - Commandes sensibles séparées et désactivées par défaut
+- Mises à jour Git en fast-forward uniquement
+- Rollback automatique du code en cas d'échec critique pendant une mise à jour
 
 ---
 
 # 🧩 Architecture
 
-Le projet utilise des Cogs pour séparer les responsabilités :
-
 ```text
 v-bot/
+├── app/
+│   ├── announcement_store.py
+│   ├── api_access.py
+│   ├── api_credentials.py
+│   ├── audit.py
+│   ├── checks.py
+│   ├── config.py
+│   ├── deps.py
+│   ├── exceptions.py
+│   ├── extensions.py
+│   ├── integration_config.py
+│   ├── metrics.py
+│   ├── rate_limit.py
+│   ├── safe_json.py
+│   ├── security.py
+│   ├── security_log.py
+│   ├── state.py
+│   ├── updater.py
+│   └── version.py
+├── cogs/
+│   ├── events.py
+│   ├── moderation.py
+│   ├── info.py
+│   ├── owner.py
+│   ├── api_config.py
+│   ├── annonce.py
+│   ├── twitch.py
+│   ├── youtube.py
+│   ├── help_cog.py
+│   └── dangerous_safe.py
+├── tests/
 ├── main.py
 ├── panel.py
-├── config.py
-├── version.py
-├── checks.py
-├── state.py
-├── security_log.py
-├── integration_config.py
-├── announcement_store.py
-├── api_access.py
-├── api_credentials.py
-│
-└── cogs/
-    ├── events.py
-    ├── moderation.py
-    ├── info.py
-    ├── owner.py
-    ├── api_config.py
-    ├── annonce.py
-    ├── twitch.py
-    ├── youtube.py
-    ├── help_cog.py
-    └── dangerous_safe.py
+├── bootstrap.py
+├── start_bot.bat
+├── start_bot.sh
+└── requirements.txt
 ```
 
-`main.py` reste volontairement limité au bootstrap, au logging et au chargement des extensions. La logique métier appartient aux modules et Cogs dédiés.
+`main.py` reste limité au bootstrap, au logging, aux checks globaux et au chargement des extensions. La logique métier appartient aux modules applicatifs et aux Cogs.
 
 ---
 
 # 🏷️ Versioning
 
-La version est centralisée dans `version.py` et dérivée de Git avec :
+La version est dérivée de Git avec :
 
 ```text
 git describe --tags --match v[0-9]* --always --dirty
@@ -269,25 +335,24 @@ La version affichée par le bot et le panel suit ainsi Git au lieu de nécessite
 - aiohttp
 - pytest
 - ruff
+- Git
 
 ---
 
-# 🔒 Fichiers privés
+# 🔒 Fichiers privés / runtime
 
 Ne jamais publier :
 
 ```text
 .env
 api_credentials.json
+annonce_config.json
+api_config_access.json
+security.log
+bot.log
 ```
 
 ou tout autre fichier contenant un token ou une clé API.
-
----
-
-# 📌 Version actuelle
-
-Le projet utilise désormais le versioning Git comme source de vérité.
 
 ---
 
