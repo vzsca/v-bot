@@ -220,10 +220,7 @@ class HelpCog(commands.Cog, name="Help"):
         categories = self.category_order(context)
         embed = discord.Embed(
             title="📚  V-BOT • Help",
-            description=(
-                "Here are the categories you can access.\n"
-                "⚠️ The category buttons are temporarily unavailable. Use `v!help general`, `v!help mod`, `v!help admin`, or `v!help owner` to open a category directly."
-            ),
+            description="Here are the categories you can access. Use the buttons to open a category.",
             color=discord.Color.dark_blue(),
         )
         labels = {
@@ -237,6 +234,17 @@ class HelpCog(commands.Cog, name="Help"):
             embed.add_field(name=title, value=description, inline=False)
         embed.set_footer(text="v-bot • Help • Access is based on your current permissions")
         return embed
+
+    def buttons_unavailable_embed(self) -> discord.Embed:
+        return discord.Embed(
+            title="⚠️ Help Buttons Unavailable",
+            description=(
+                "The category buttons are temporarily unavailable.\n"
+                "Use the command directly instead:\n\n"
+                "`v!help general` • `v!help mod` • `v!help admin` • `v!help owner`"
+            ),
+            color=discord.Color.orange(),
+        )
 
     @commands.command(name="help")
     @checks.kill_switch_required()
@@ -276,6 +284,7 @@ class HelpCog(commands.Cog, name="Help"):
             await ctx.send(embed=self.general_embed())
             return
 
+        await ctx.send(embed=self.buttons_unavailable_embed())
         await ctx.send(
             embed=self.menu_embed(ctx),
             view=HelpCategoryView(self, ctx.author.id, categories),
