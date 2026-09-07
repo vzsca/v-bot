@@ -11,7 +11,7 @@ import integration_config
 
 class TwitchAPIView(discord.ui.Modal, title="Configurer Twitch"):
     client_id = discord.ui.TextInput(label="Client ID", min_length=8, max_length=512)
-    client_secret = discord.ui.TextInput(label="Client Secret", min_length=8, max_length=512, style=discord.TextStyle.short)
+    client_secret = discord.ui.TextInput(label="Client Secret", min_length=8, max_length=512)
 
     def __init__(self, guild_id: int):
         super().__init__()
@@ -41,6 +41,19 @@ class YouTubeAPIView(discord.ui.Modal, title="Configurer YouTube"):
         await interaction.response.send_message("✅ API YouTube configurée pour ce serveur.", ephemeral=True)
 
 
+class OpenAPIView(discord.ui.View):
+    def __init__(self, author_id: int, modal: discord.ui.Modal):
+        super().__init__(timeout=120)
+        self.author_id = author_id
+        self.modal = modal
+
+    @discord.ui.button(label="Configurer", style=discord.ButtonStyle.primary)
+    async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("❌ Ce bouton ne t'est pas destiné.", ephemeral=True)
+        await interaction.response.send_modal(self.modal)
+
+
 class APIConfigCog(commands.Cog, name="API Configuration"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -54,19 +67,10 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
         if platform not in {"twitch", "yt", "youtube"}:
             return await ctx.send("❌ Utilisation : `v!set_api twitch` ou `v!set_api yt`.")
         if api_access.is_allowed(ctx.guild.id):
-            return await ctx.send("ℹ️ Ce serveur utilise l'API principale. La configuration locale n'est pas nécessaire.")
+            return await ctx.send("ℹ️ Ce serveur utilise l'API principale. Aucune API locale n'est nécessaire.")
 
-        view = TwitchAPIView(ctx.guild.id) if platform == "twitch" else YouTubeAPIView(ctx.guild.id)
-        await ctx.send("🔐 Le formulaire est privé : renseigne les identifiants sans les envoyer dans un salon.", ephemeral=True) if False else None
-        await ctx.author.send("🔐 Ouvre le formulaire de configuration avec le bouton ci-dessous.")
-        class OpenView(discord.ui.View):
-            @discord.ui.button(label="Configurer", style=discord.ButtonStyle.primary)
-            async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-                if interaction.user.id != ctx.author.id:
-                    return await interaction.response.send_message("❌ Ce bouton ne t'est pas destiné.", ephemeral=True)
-                await interaction.response.send_modal(view)
-        await ctx.send(f"🔐 {ctx.author.mention}, ta configuration {platform} est disponible en message privé.")
-        await ctx.author.send(view=OpenView())
+        modal = TwitchAPIView(ctx.guild.id) if platform == "twitch" else YouTubeAPIView(ctx.guild.id)
+        await ctx.send(f"🔐 Configuration **{platform}** : clique sur le bouton puis renseigne ta clé dans le formulaire.", view=OpenAPIView(ctx.author.id, modal))
 
     @commands.command(name="api_status")
     @commands.guild_only()
@@ -77,7 +81,7 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
         mode = "principale" if api_access.is_allowed(guild_id) else "serveur"
         twitch = bool(integration_config.get_twitch_credentials(guild_id))
         youtube = bool(integration_config.get_youtube_api_key(guild_id))
-        await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢' if twitch else '🔴'} | YouTube: {'🟢' if youtube else '🔴'}")
+        await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢 configurée' if twitch else '🔴 absente'} | YouTube: {'🟢 configurée' if youtube else '🔴 absente'}")
 
     @commands.command(name="clear_api")
     @commands.guild_only()
