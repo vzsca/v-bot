@@ -35,11 +35,20 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
     @commands.guild_only()
     @checks.owner_or_guild_owner()
     @checks.kill_switch_required()
-    async def spam(self, ctx, times: int, confirmation: str = "", *, message: str):
+    async def spam(self, ctx, times: int, *, payload: str):
+        parts = payload.strip().split(maxsplit=1)
+        confirmation = ""
+        message = payload.strip()
+        if parts and parts[0].lower() == "confirm":
+            confirmation = "confirm"
+            message = parts[1].strip() if len(parts) == 2 else ""
+        if not message:
+            await ctx.send("❌ Message vide. Utilise `v!spam <amount> <message>` ou confirme avec `confirm` pour plusieurs messages.")
+            return
         if not 1 <= times <= config.MAX_SPAM:
             await ctx.send(f"❌ times doit être entre 1 et {config.MAX_SPAM}.")
             return
-        if times > 1 and confirmation.lower() != "confirm":
+        if times > 1 and confirmation != "confirm":
             await ctx.send(f"⚠️ Confirme avec `v!spam {times} confirm <message>` pour envoyer {times} messages.")
             return
         try:
@@ -53,13 +62,19 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
     @commands.guild_only()
     @checks.owner_or_guild_owner()
     @checks.kill_switch_required()
-    async def dmall(self, ctx, confirmation: str = "", *, message: str):
+    async def dmall(self, ctx, *, payload: str):
+        parts = payload.strip().split(maxsplit=1)
+        confirmation = parts[0].lower() == "confirm" if parts else False
+        message = parts[1].strip() if confirmation and len(parts) == 2 else payload.strip()
         members = [m for m in ctx.guild.members if not m.bot]
         if len(members) > config.MAX_DMALL_MEMBERS:
             await ctx.send(f"❌ Opération bloquée: {len(members)} membres dépasse la limite de {config.MAX_DMALL_MEMBERS}.")
             return
-        if confirmation.lower() != "confirm":
+        if not confirmation:
             await ctx.send(f"⚠️ {len(members)} membres vont recevoir un DM. Utilise `v!dmall confirm <message>` pour confirmer.")
+            return
+        if not message:
+            await ctx.send("❌ Message vide.")
             return
         await ctx.send("📨 Envoi confirmé et contrôlé…")
         sent = failed = 0
@@ -79,8 +94,13 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
     @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
-    async def raid(self, ctx, amount: int = 10):
-        amount = max(1, min(amount, config.MAX_RAID_AMOUNT))
+    async def raid(self, ctx, amount: int = 10, confirmation: str = ""):
+        if not 1 <= amount <= config.MAX_RAID_AMOUNT:
+            await ctx.send(f"❌ amount doit être entre 1 et {config.MAX_RAID_AMOUNT}.")
+            return
+        if confirmation.lower() != "confirm":
+            await ctx.send(f"⚠️ Confirme avec `v!raid {amount} confirm` pour créer les éléments de test.")
+            return
         guild_id = ctx.guild.id
         roles = channels = 0
         try:
