@@ -5,8 +5,11 @@ import os
 
 from dotenv import load_dotenv
 
+from version import VERSION
+
 load_dotenv()
 logger = logging.getLogger("v-bot")
+MAX_SECONDARY_OWNERS = 5
 
 
 def _parse_owner_id(raw: str | None, var_name: str) -> int:
@@ -33,13 +36,13 @@ def _parse_owner_id_list(raw: str | None) -> list[int]:
         if not part:
             continue
         if not part.isdigit() or int(part) <= 0:
-            logger.critical("Invalid secondary owner ID in OWNERS_SECONDARY_IDS.")
             raise SystemExit("OWNERS_SECONDARY_IDS contains an invalid ID")
         value = int(part)
         if value in ids:
-            logger.critical("Duplicate secondary owner ID in OWNERS_SECONDARY_IDS.")
             raise SystemExit("OWNERS_SECONDARY_IDS contains a duplicate ID")
         ids.append(value)
+    if len(ids) > MAX_SECONDARY_OWNERS:
+        raise SystemExit(f"OWNERS_SECONDARY_IDS cannot contain more than {MAX_SECONDARY_OWNERS} IDs")
     return ids
 
 
@@ -51,7 +54,6 @@ def _parse_bool(raw: str | None, default: bool = False) -> bool:
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    logger.critical("No token found: add DISCORD_TOKEN to .env file")
     raise SystemExit("DISCORD_TOKEN missing from .env")
 
 OWNER_PRINCIPAL = _parse_owner_id(os.getenv("OWNER_PRINCIPAL_ID"), "OWNER_PRINCIPAL_ID")
@@ -71,6 +73,4 @@ TEMP_AUTH_CLEAN_INTERVAL = 10
 MENTION_RESPONSE_COOLDOWN = 5
 API_CACHE_TTL = 60
 API_BACKOFF_MAX = 15 * 60
-
 DANGEROUS_COMMANDS_ENABLED = _parse_bool(os.getenv("DANGEROUS_COMMANDS_ENABLED"), default=False)
-VERSION = "3.8.2"
