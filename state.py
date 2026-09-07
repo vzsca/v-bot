@@ -1,6 +1,7 @@
 """Centralized container for all in-memory data shared between Cogs."""
 
 import time
+from datetime import datetime
 
 
 class BotState:
@@ -17,10 +18,8 @@ class BotState:
     def __init__(self):
         self.kill_switch: bool = False
         self.disabled_guilds: set[int] = set()
-        # (guild_id, user_id) -> expiry timestamp. Temporary authorization is guild-scoped.
         self.temp_authorized_users: dict[tuple[int, int], float] = {}
         self.sniped_messages: dict[int, list[dict]] = {}
-        # guild_id -> created Discord object IDs. Prevents cross-guild cleanup.
         self.created_raid_channels: dict[int, set[int]] = {}
         self.created_raid_roles: dict[int, set[int]] = {}
         self.running_commands: set[tuple[str, int]] = set()
@@ -74,23 +73,45 @@ class BotState:
                 self.created_raid_roles.pop(guild_id, None)
 
     def add_sniped(self, channel_id: int, data: dict, limit: int) -> None:
+        if limit < 1:
+            raise ValueError("Snipe limit must be positive.")
         bucket = self.sniped_messages.setdefault(channel_id, [])
         bucket.insert(0, data)
         if len(bucket) > limit:
             del bucket[limit:]
 
+    @staticmethod
+    def _snipe_timestamp(item: dict) -> float | None:
+        value = item.get("time")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                return None
+        return None
+
     def clean_snipes(self, retention_seconds: int) -> int:
+        if retention_seconds < 0:
+            raise ValueError("Snipe retention cannot be negative.")
         now = time.time()
         removed = 0
         for channel_id, bucket in list(self.sniped_messages.items()):
-            fresh = [m for m in bucket if now - m.get("time", 0).timestamp() <= retention_seconds]
+            fresh = []
+            for item in bucket:
+                timestamp = self._snipe_timestamp(item)
+                if timestamp is not None and 0 <= now - timestamp <= retention_seconds:
+                    fresh.append(item)
+                else:
+                    removed += 1
             if fresh:
                 self.sniped_messages[channel_id] = fresh
             else:
                 self.sniped_messages.pop(channel_id, None)
-                removed += 1
         return removed
 
 
-# Single process-wide instance. Do not create another BotState instance here.
 state = BotState()
