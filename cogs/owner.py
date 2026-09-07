@@ -62,7 +62,7 @@ class OwnerCog(commands.Cog, name="Owner"):
 
     @commands.command(name="killswitch")
     @checks.permanent_owner_check()
-    async def killswitch(self, ctx, mode: str = None):
+    async def killswitch(self, ctx, mode: str | None = None):
         if mode is None:
             status = "🚨 ENABLED" if state.kill_switch else "🟢 DISABLED"
             await ctx.send(f"📊 Current kill switch status: **{status}**")
