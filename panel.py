@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 import security_log
 from deps import install_requirements
+from version import VERSION
 
 ENV_PATH = ROOT / ".env"
 BOT_PID_FILE = ROOT / "bot.pid"
@@ -270,6 +271,7 @@ def cmd_restart() -> None:
 def cmd_status() -> None:
     principal, secondary = _owner_status()
     print("\n===== v-bot status =====")
+    print("Version:", VERSION)
     print("Platform:", "Windows" if IS_WINDOWS else "macOS" if IS_MACOS else "Linux" if IS_LINUX else sys.platform)
     print("Python:", PYTHON_EXE)
     print("Principal owner:", principal)
@@ -480,6 +482,7 @@ def main() -> None:
     print("===================================")
     print("          v-bot Control Panel")
     print("===================================")
+    print(f"Version: {VERSION}")
     print(f"Platform: {'Windows' if IS_WINDOWS else 'macOS' if IS_MACOS else 'Linux' if IS_LINUX else sys.platform}")
     print(f"Python: {PYTHON_EXE}")
     if not ENV_PATH.exists():
