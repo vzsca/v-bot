@@ -1,42 +1,28 @@
-"""
-Centralized bot configuration.
+"""Centralized bot configuration."""
 
-Everything sensitive (token, permanent owner IDs) comes from the .env file
-and is NEVER hardcoded into the source code. This makes it possible to share
-or version the script without exposing this information.
-"""
-
-import os
 import logging
-
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
 logger = logging.getLogger("v-bot")
 
 
-# --- Bot token ---
-TOKEN = os.getenv("DISCORD_TOKEN")
-if not TOKEN:
-    logger.critical("No token found: add DISCORD_TOKEN to your .env file")
-    raise SystemExit("DISCORD_TOKEN missing from .env")
-
-
 def _parse_owner_id(raw: str | None, var_name: str) -> int:
-    """Parses a required owner ID and cleanly stops the bot if it is invalid or missing."""
     if not raw or not raw.strip():
-        logger.critical(f"{var_name} missing from .env")
+        logger.critical("%s missing from .env", var_name)
         raise SystemExit(f"{var_name} missing from .env")
     try:
-        return int(raw.strip())
+        value = int(raw.strip())
     except ValueError:
-        logger.critical(f"{var_name} is invalid in .env (must be a numeric Discord ID)")
+        logger.critical("%s is invalid in .env", var_name)
         raise SystemExit(f"{var_name} is invalid in .env")
+    if value <= 0:
+        raise SystemExit(f"{var_name} is invalid in .env")
+    return value
 
 
 def _parse_owner_id_list(raw: str | None) -> list[int]:
-    """Parses a comma-separated list of IDs. Invalid entries are silently ignored."""
     ids: list[int] = []
     if not raw:
         return ids
@@ -45,50 +31,12 @@ def _parse_owner_id_list(raw: str | None) -> list[int]:
         if not part:
             continue
         try:
-            ids.append(int(part))
+            value = int(part)
+            if value > 0:
+                ids.append(value)
         except ValueError:
-            logger.warning(f"Invalid secondary owner ID ignored: '{part}'")
+            logger.warning("Invalid secondary owner ID ignored.")
     return ids
-
-
-# --- Permanent owners ---
-# OWNER_PRINCIPAL: a single ID, the bot's principal owner (required).
-# OWNERS_SECONDARY: list of additional IDs, as many as needed (optional).
-OWNER_PRINCIPAL: int = _parse_owner_id(os.getenv("OWNER_PRINCIPAL_ID"), "OWNER_PRINCIPAL_ID")
-OWNERS_SECONDARY: list[int] = [
-    uid for uid in _parse_owner_id_list(os.getenv("OWNERS_SECONDARY_IDS"))
-    if uid != OWNER_PRINCIPAL
-]
-
-# Ordered list (principal first) -> used for display (owner_list, etc.)
-PERMANENT_OWNERS: list[int] = [OWNER_PRINCIPAL] + OWNERS_SECONDARY
-
-# Frozen set -> O(1) permission checks instead of iterating through a list.
-# Adding a secondary owner is done through start_bot.bat (add_secondary_owner
-# command), which edits .env directly; restarting the bot reloads this list
-# from .env.
-PERMANENT_OWNERS_SET: frozenset[int] = frozenset(PERMANENT_OWNERS)
-
-# --- Twitch API ---
-TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID", "").strip()
-TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET", "").strip()
-
-# --- Youtube API ---
-YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY", "").strip()
-
-# --- Bot identity ---
-BOT_PREFIX = os.getenv("BOT_PREFIX", "v!").strip()
-
-if not BOT_PREFIX:
-    BOT_PREFIX = "v!"
-
-PREFIXES = [BOT_PREFIX, BOT_PREFIX.upper()]
-
-# --- General bot settings ---
-MAX_SPAM = 20                  # spam command limit
-MAX_RAID_AMOUNT = 15           # raid command limit (roles/channels created)
-SNIPE_LIMIT = 15               # number of deleted messages kept in memory per channel
-TEMP_AUTH_CLEAN_INTERVAL = 10  # seconds between temporary owner cleanup cycles
 
 
 def _parse_bool(raw: str | None, default: bool = False) -> bool:
@@ -97,19 +45,28 @@ def _parse_bool(raw: str | None, default: bool = False) -> bool:
     return raw.strip().lower() in ("1", "true", "on", "yes")
 
 
-# Sensitive commands (raid, remove_raid, dmall, spam): DISABLED by default.
-# Isolated in cogs/dangerous.py, which is only loaded by main.py if this flag
-# is true -> when disabled, these commands simply do not exist in the bot's
-# command tree (they are not merely blocked by a check).
-# Toggled from the start_bot.bat panel (toggle_dangerous command), not via
-# Discord, and requires a bot restart to take effect.
-DANGEROUS_COMMANDS_ENABLED: bool = _parse_bool(
-    os.getenv("DANGEROUS_COMMANDS_ENABLED"),
-    default=False,
-)
+TOKEN = os.getenv("DISCORD_TOKEN")
+if not TOKEN:
+    logger.critical("No token found: add DISCORD_TOKEN to .env file")
+    raise SystemExit("DISCORD_TOKEN missing from .env")
 
-# Version displayed in the bot's Discord status (see cogs/events.py, on_ready)
-# and available elsewhere if needed. Must be manually incremented after each
-# notable change -- it is not automatically linked to git or anything else.
+OWNER_PRINCIPAL = _parse_owner_id(os.getenv("OWNER_PRINCIPAL_ID"), "OWNER_PRINCIPAL_ID")
+OWNERS_SECONDARY = [uid for uid in _parse_owner_id_list(os.getenv("OWNERS_SECONDARY_IDS")) if uid != OWNER_PRINCIPAL]
+PERMANENT_OWNERS = [OWNER_PRINCIPAL] + OWNERS_SECONDARY
+PERMANENT_OWNERS_SET = frozenset(PERMANENT_OWNERS)
 
-VERSION = "3.8.1"
+BOT_PREFIX = os.getenv("BOT_PREFIX", "v!").strip() or "v!"
+PREFIXES = [BOT_PREFIX, BOT_PREFIX.upper()]
+
+MAX_SPAM = 20
+MAX_RAID_AMOUNT = 15
+MAX_DMALL_MEMBERS = 500
+SNIPE_LIMIT = 15
+SNIPE_RETENTION_SECONDS = 15 * 60
+TEMP_AUTH_CLEAN_INTERVAL = 10
+MENTION_RESPONSE_COOLDOWN = 5
+API_CACHE_TTL = 60
+API_BACKOFF_MAX = 15 * 60
+
+DANGEROUS_COMMANDS_ENABLED = _parse_bool(os.getenv("DANGEROUS_COMMANDS_ENABLED"), default=False)
+VERSION = "3.8.2"
