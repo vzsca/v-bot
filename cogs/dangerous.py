@@ -33,30 +33,16 @@ class DangerousCog(commands.Cog, name="Sensitive"):
 
     @staticmethod
     def _running_key(ctx: commands.Context) -> tuple[str, int]:
-        # One key per (command, server) — or per user if the command is run
-        # outside a server (which should not happen for these commands, but
-        # we remain robust instead of crashing).
         scope_id = ctx.guild.id if ctx.guild else ctx.author.id
         return (ctx.command.qualified_name, scope_id)
 
     async def cog_before_invoke(self, ctx: commands.Context) -> None:
-        """
-        Anti-double-execution protection: prevents a second instance of the
-        same command from running on the same server while the previous one
-        is still active (prevents duplicate channels/roles, duplicate DMs,
-        etc. if someone enters the command too quickly or two owners run it
-        at the same time).
-        """
         key = self._running_key(ctx)
         if key in state.running_commands:
             raise exceptions.CommandAlreadyRunning()
         state.running_commands.add(key)
 
     async def cog_after_invoke(self, ctx: commands.Context) -> None:
-        # Called even if the command raises an exception (see discord.py:
-        # hooked_wrapped_callback wraps the call in a try/finally) —
-        # therefore the lock is always released, whether the command
-        # succeeds or fails.
         state.running_commands.discard(self._running_key(ctx))
 
     @commands.command(name="spam")
@@ -71,8 +57,9 @@ class DangerousCog(commands.Cog, name="Sensitive"):
             for _ in range(times):
                 await ctx.send(message)
                 await asyncio.sleep(0.5)
-        except Exception as e:
-            await ctx.send(f"An error occurred: {e}")
+        except Exception:
+            logger.exception("Unexpected error in spam command")
+            await ctx.send("⚠️ An internal error occurred.")
 
     @commands.command(name="dmall")
     @commands.guild_only()
@@ -93,9 +80,9 @@ class DangerousCog(commands.Cog, name="Sensitive"):
                 await asyncio.sleep(1.2)
             except discord.Forbidden:
                 failed += 1
-            except Exception as e:
+            except Exception:
                 failed += 1
-                logger.warning(f"DM error for {member.id}: {e}")
+                logger.exception("DM error for member %s", member.id)
 
         await ctx.send(f"✅ Messages sent: {sent}\n❌ Failures: {failed}")
 
@@ -104,10 +91,7 @@ class DangerousCog(commands.Cog, name="Sensitive"):
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
     async def raid(self, ctx, amount: int = 10):
-        """
-        Controlled test command:
-        creates roles + channels and tracks them for remove_raid.
-        """
+        """Controlled test command: creates roles/channels and tracks them."""
         amount = max(1, min(amount, config.MAX_RAID_AMOUNT))
         created_roles = 0
         created_channels = 0
@@ -126,7 +110,7 @@ class DangerousCog(commands.Cog, name="Sensitive"):
                 try:
                     await channel.send("🧪 test raid system active")
                 except Exception:
-                    pass
+                    logger.exception("Failed to send raid test message in channel %s", channel.id)
 
             await ctx.send(
                 f"✅ RAID TEST COMPLETED\n"
@@ -137,8 +121,9 @@ class DangerousCog(commands.Cog, name="Sensitive"):
 
         except discord.Forbidden:
             await ctx.send("❌ Insufficient permissions.")
-        except Exception as e:
-            await ctx.send(f"⚠️ Error: {e}")
+        except Exception:
+            logger.exception("Unexpected error in raid command")
+            await ctx.send("⚠️ An internal error occurred.")
 
     @commands.command(name="remove_raid")
     @commands.guild_only()
@@ -157,7 +142,7 @@ class DangerousCog(commands.Cog, name="Sensitive"):
                     await channel.delete()
                     deleted_channels += 1
                 except Exception:
-                    pass
+                    logger.exception("Failed to delete raid channel %s", ch_id)
             state.created_raid_channels.discard(ch_id)
 
         for role_id in list(state.created_raid_roles):
@@ -167,7 +152,7 @@ class DangerousCog(commands.Cog, name="Sensitive"):
                     await role.delete()
                     deleted_roles += 1
                 except Exception:
-                    pass
+                    logger.exception("Failed to delete raid role %s", role_id)
             state.created_raid_roles.discard(role_id)
 
         for channel in ctx.guild.text_channels[:10]:
@@ -178,8 +163,9 @@ class DangerousCog(commands.Cog, name="Sensitive"):
                             await message.delete()
                             deleted_messages += 1
                         except Exception:
-                            pass
+                            logger.exception("Failed to delete raid test message %s", message.id)
             except Exception:
+                logger.exception("Failed to inspect channel %s during raid cleanup", channel.id)
                 continue
 
         await ctx.send(
@@ -189,9 +175,6 @@ class DangerousCog(commands.Cog, name="Sensitive"):
             f"• Messages deleted: {deleted_messages}"
         )
 
-
-async def setup(bot: commands.Bot):
-    await bot.add_cog(DangerousCog(bot))
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(DangerousCog(bot))
