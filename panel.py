@@ -278,9 +278,7 @@ def cmd_restart() -> bool:
 
 def cmd_status() -> None:
     principal, secondary = _owner_status()
-    bot_name = get_env_value("BOT_NAME") or "not configured"
     print("\n===== v-bot status =====")
-    print("Bot:", bot_name)
     print("Version:", VERSION)
     print("Platform:", "Windows" if IS_WINDOWS else "macOS" if IS_MACOS else "Linux" if IS_LINUX else sys.platform)
     print("Python:", PYTHON_EXE)
