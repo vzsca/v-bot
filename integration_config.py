@@ -1,8 +1,20 @@
-"""Integration credentials with shared panel access or per-guild credentials."""
+"""Integration credentials with runtime-reloaded, guild-scoped configuration."""
 
 import os
+import threading
+import time
+from pathlib import Path
+
+from dotenv import dotenv_values
 
 import api_access
+
+_ENV_PATH = Path(__file__).resolve().parent / ".env"
+_LOCK = threading.RLock()
+_ENV_CACHE: dict[str, str] = {}
+_ENV_MTIME_NS: int | None = None
+_ENV_CHECK_INTERVAL = 2.0
+_LAST_ENV_CHECK = 0.0
 
 
 def _guild_key(prefix: str, guild_id: int) -> str:
@@ -11,21 +23,48 @@ def _guild_key(prefix: str, guild_id: int) -> str:
     return f"{prefix}_{guild_id}"
 
 
+def _env() -> dict[str, str]:
+    global _ENV_MTIME_NS, _LAST_ENV_CHECK, _ENV_CACHE
+    now = time.monotonic()
+    if now - _LAST_ENV_CHECK < _ENV_CHECK_INTERVAL:
+        return _ENV_CACHE
+    with _LOCK:
+        _LAST_ENV_CHECK = now
+        try:
+            mtime = _ENV_PATH.stat().st_mtime_ns
+        except OSError:
+            mtime = None
+        if mtime != _ENV_MTIME_NS:
+            values = dotenv_values(_ENV_PATH)
+            _ENV_CACHE = {str(k): str(v).strip() for k, v in values.items() if k and v is not None}
+            # Process environment variables remain an explicit fallback/override.
+            for key, value in os.environ.items():
+                if value:
+                    _ENV_CACHE[key] = value.strip()
+            _ENV_MTIME_NS = mtime
+        return _ENV_CACHE
+
+
+def _valid_secret(value: str, minimum: int = 8) -> bool:
+    return minimum <= len(value) <= 512 and "\x00" not in value
+
+
 def get_twitch_credentials(guild_id: int) -> tuple[str, str] | None:
+    env = _env()
     if api_access.is_allowed(guild_id):
-        client_id = os.getenv("TWITCH_CLIENT_ID", "").strip()
-        client_secret = os.getenv("TWITCH_CLIENT_SECRET", "").strip()
+        client_id = env.get("TWITCH_CLIENT_ID", "")
+        client_secret = env.get("TWITCH_CLIENT_SECRET", "")
     else:
-        client_id = os.getenv(_guild_key("TWITCH_CLIENT_ID", guild_id), "").strip()
-        client_secret = os.getenv(_guild_key("TWITCH_CLIENT_SECRET", guild_id), "").strip()
-    if not client_id or not client_secret:
+        client_id = env.get(_guild_key("TWITCH_CLIENT_ID", guild_id), "")
+        client_secret = env.get(_guild_key("TWITCH_CLIENT_SECRET", guild_id), "")
+    if not client_id or not _valid_secret(client_id) or not client_secret or not _valid_secret(client_secret):
         return None
     return client_id, client_secret
 
 
 def get_youtube_api_key(guild_id: int) -> str | None:
-    if api_access.is_allowed(guild_id):
-        key = os.getenv("YOUTUBE_API_KEY", "").strip()
-    else:
-        key = os.getenv(_guild_key("YOUTUBE_API_KEY", guild_id), "").strip()
-    return key or None
+    env = _env()
+    key = env.get("YOUTUBE_API_KEY", "") if api_access.is_allowed(guild_id) else env.get(_guild_key("YOUTUBE_API_KEY", guild_id), "")
+    if not key or not _valid_secret(key):
+        return None
+    return key
