@@ -9,7 +9,7 @@ import checks
 import integration_config
 
 
-class TwitchAPIView(discord.ui.Modal, title="Configurer Twitch"):
+class TwitchAPIView(discord.ui.Modal, title="Configure Twitch"):
     client_id = discord.ui.TextInput(label="Client ID", min_length=8, max_length=512)
     client_secret = discord.ui.TextInput(label="Client Secret", min_length=8, max_length=512)
 
@@ -21,12 +21,12 @@ class TwitchAPIView(discord.ui.Modal, title="Configurer Twitch"):
         client_id = str(self.client_id.value).strip()
         client_secret = str(self.client_secret.value).strip()
         if not client_id or not client_secret or "\x00" in client_id or "\x00" in client_secret:
-            return await interaction.response.send_message("❌ Identifiants Twitch invalides.", ephemeral=True)
+            return await interaction.response.send_message("❌ Invalid Twitch credentials.", ephemeral=True)
         api_credentials.set_credentials(self.guild_id, "twitch", {"client_id": client_id, "client_secret": client_secret})
-        await interaction.response.send_message("✅ API Twitch configurée pour ce serveur.", ephemeral=True)
+        await interaction.response.send_message("✅ Twitch API configured for this server.", ephemeral=True)
 
 
-class YouTubeAPIView(discord.ui.Modal, title="Configurer YouTube"):
+class YouTubeAPIView(discord.ui.Modal, title="Configure YouTube"):
     api_key = discord.ui.TextInput(label="API Key", min_length=8, max_length=512)
 
     def __init__(self, guild_id: int):
@@ -36,9 +36,9 @@ class YouTubeAPIView(discord.ui.Modal, title="Configurer YouTube"):
     async def on_submit(self, interaction: discord.Interaction) -> None:
         key = str(self.api_key.value).strip()
         if not key or "\x00" in key:
-            return await interaction.response.send_message("❌ Clé YouTube invalide.", ephemeral=True)
+            return await interaction.response.send_message("❌ Invalid YouTube API key.", ephemeral=True)
         api_credentials.set_credentials(self.guild_id, "youtube", {"api_key": key})
-        await interaction.response.send_message("✅ API YouTube configurée pour ce serveur.", ephemeral=True)
+        await interaction.response.send_message("✅ YouTube API configured for this server.", ephemeral=True)
 
 
 class OpenAPIView(discord.ui.View):
@@ -47,10 +47,10 @@ class OpenAPIView(discord.ui.View):
         self.author_id = author_id
         self.modal = modal
 
-    @discord.ui.button(label="Configurer", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="Configure", style=discord.ButtonStyle.primary)
     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author_id:
-            return await interaction.response.send_message("❌ Ce bouton ne t'est pas destiné.", ephemeral=True)
+            return await interaction.response.send_message("❌ This button is not for you.", ephemeral=True)
         await interaction.response.send_modal(self.modal)
 
 
@@ -65,12 +65,12 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
     async def set_api(self, ctx, platform: str):
         platform = platform.lower().strip()
         if platform not in {"twitch", "yt", "youtube"}:
-            return await ctx.send("❌ Utilisation : `v!set_api twitch` ou `v!set_api yt`.")
+            return await ctx.send("❌ Usage: `v!set_api twitch` or `v!set_api yt`.")
         if api_access.is_allowed(ctx.guild.id):
-            return await ctx.send("ℹ️ Ce serveur utilise l'API principale. Aucune API locale n'est nécessaire.")
+            return await ctx.send("ℹ️ This server uses the main API. No local API configuration is required.")
 
         modal = TwitchAPIView(ctx.guild.id) if platform == "twitch" else YouTubeAPIView(ctx.guild.id)
-        await ctx.send(f"🔐 Configuration **{platform}** : clique sur le bouton puis renseigne ta clé dans le formulaire.", view=OpenAPIView(ctx.author.id, modal))
+        await ctx.send(f"🔐 **{platform} configuration:** click the button and enter your API credentials in the form.", view=OpenAPIView(ctx.author.id, modal))
 
     @commands.hybrid_command(name="api_status", description="Show the API configuration status for this server.")
     @commands.guild_only()
@@ -78,10 +78,10 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
     @checks.kill_switch_required()
     async def api_status(self, ctx):
         guild_id = ctx.guild.id
-        mode = "principale" if api_access.is_allowed(guild_id) else "serveur"
+        mode = "main" if api_access.is_allowed(guild_id) else "server"
         twitch = bool(integration_config.get_twitch_credentials(guild_id))
         youtube = bool(integration_config.get_youtube_api_key(guild_id))
-        await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢 configurée' if twitch else '🔴 absente'} | YouTube: {'🟢 configurée' if youtube else '🔴 absente'}")
+        await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢 configured' if twitch else '🔴 missing'} | YouTube: {'🟢 configured' if youtube else '🔴 missing'}")
 
     @commands.hybrid_command(name="clear_api", description="Remove the Twitch or YouTube API configuration for this server.")
     @commands.guild_only()
@@ -92,11 +92,11 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
         if platform == "yt":
             platform = "youtube"
         if platform not in {"twitch", "youtube"}:
-            return await ctx.send("❌ Utilisation : `v!clear_api twitch` ou `v!clear_api yt`.")
+            return await ctx.send("❌ Usage: `v!clear_api twitch` or `v!clear_api yt`.")
         if api_access.is_allowed(ctx.guild.id):
-            return await ctx.send("ℹ️ Ce serveur utilise l'API principale.")
+            return await ctx.send("ℹ️ This server uses the main API.")
         removed = api_credentials.remove(ctx.guild.id, platform)
-        await ctx.send("🗑️ Configuration API supprimée." if removed else "ℹ️ Aucune configuration trouvée.")
+        await ctx.send("🗑️ API configuration removed." if removed else "ℹ️ No API configuration found.")
 
 
 async def setup(bot: commands.Bot):
