@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 
 logger = logging.getLogger("v-bot")
-CONFIG_FILE = Path(__file__).resolve().parent / "annonce_config.json"
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "annonce_config.json"
 _LOCK = threading.RLock()
 
 
@@ -69,7 +69,6 @@ def save(data: dict) -> bool:
 
 
 def transaction(mutator) -> tuple[bool, object]:
-    """Atomically load, mutate and save the announcement database."""
     with _LOCK:
         data = _load_unlocked()
         working = copy.deepcopy(data)

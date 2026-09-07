@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-LOG_FILE = Path(__file__).resolve().parent / "security.log"
+LOG_FILE = Path(__file__).resolve().parent.parent / "security.log"
 MAX_LOG_BYTES = 5 * 1024 * 1024
 BACKUP_COUNT = 5
 logger = logging.getLogger("v-bot.security")

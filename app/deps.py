@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 REQUIREMENTS_FILE = ROOT / "requirements.txt"
 
 
@@ -24,10 +24,7 @@ def install_requirements(upgrade: bool = False) -> bool:
     else:
         cmd = [python, "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)]
     if upgrade:
-        if _has_uv():
-            cmd.insert(3, "--upgrade")
-        else:
-            cmd.insert(4, "--upgrade")
+        cmd.insert(3 if _has_uv() else 4, "--upgrade")
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print("[ERROR] Dependency installation failed.")

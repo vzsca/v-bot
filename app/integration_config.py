@@ -10,7 +10,7 @@ from dotenv import dotenv_values
 import api_access
 import api_credentials
 
-_ENV_PATH = Path(__file__).resolve().parent / ".env"
+_ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 _LOCK = threading.RLock()
 _ENV_CACHE: dict[str, str] = {}
 _ENV_MTIME_NS: int | None = None
