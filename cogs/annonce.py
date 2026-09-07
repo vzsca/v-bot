@@ -81,7 +81,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
                 "source_url": source_url,
                 "message": message,
                 "channel_id": target.id,
-                "was_live": None if platform == "twitch" else None,
+                "was_live": None,
                 "last_video_id": None,
             })
 
@@ -89,9 +89,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         if not saved or not announcement:
             return await ctx.send("❌ Failed to save the announcement.")
 
-        await ctx.send(
-            f"✅ Announcement `{announcement['id']}` created for **{ctx.guild.name}** in {target.mention}."
-        )
+        await ctx.send(f"✅ Announcement `{announcement['id']}` created for **{ctx.guild.name}** in {target.mention}.")
 
     @commands.command(name="annonces")
     @commands.guild_only()
@@ -101,25 +99,11 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         announcements = store.for_guild(store.load(), ctx.guild.id)
         if not announcements:
             return await ctx.send("📭 No announcements are configured on this server.")
-
-        embed = discord.Embed(
-            title=f"📢 Announcements — {ctx.guild.name}",
-            description=f"**{len(announcements)}** configured on this server.",
-            color=discord.Color.purple(),
-        )
+        embed = discord.Embed(title=f"📢 Announcements — {ctx.guild.name}", description=f"**{len(announcements)}** configured on this server.", color=discord.Color.purple())
         for announcement in announcements[:25]:
             channel = f"<#{announcement.get('channel_id')}>" if announcement.get('channel_id') else "Unknown"
             status = "🟢 LIVE" if announcement.get("type") == "twitch" and announcement.get("was_live") else "🟢 Enabled"
-            embed.add_field(
-                name=f"#{announcement['id']} — {str(announcement.get('type', 'unknown')).capitalize()}",
-                value=(
-                    f"**Source:** {announcement.get('source_url', 'Unknown')}\n"
-                    f"**Channel:** {channel}\n"
-                    f"**Status:** {status}\n"
-                    f"**Message:** {announcement.get('message', 'No message')}"
-                ),
-                inline=False,
-            )
+            embed.add_field(name=f"#{announcement['id']} — {str(announcement.get('type', 'unknown')).capitalize()}", value=f"**Source:** {announcement.get('source_url', 'Unknown')}\n**Channel:** {channel}\n**Status:** {status}\n**Message:** {announcement.get('message', 'No message')}", inline=False)
         await ctx.send(embed=embed)
 
     @commands.command(name="test_annonce")
@@ -131,7 +115,6 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         announcement = store.find(data, ctx.guild.id, announcement_id)
         if not announcement:
             return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
-
         cog = self.bot.get_cog("Twitch" if announcement.get("type") == "twitch" else "YouTube")
         test = getattr(cog, "test_announcement", None) if cog else None
         if not test:
@@ -150,7 +133,6 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     async def delete_annonce(self, ctx, announcement_id: int):
         def remove_announcement(data):
             return store.remove(data, ctx.guild.id, announcement_id)
-
         saved, removed = store.transaction(remove_announcement)
         if not saved:
             return await ctx.send("❌ Failed to save the configuration.")
