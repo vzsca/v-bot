@@ -21,9 +21,7 @@ async def global_check(ctx) -> bool:
         return True
     if state.kill_switch:
         return False
-    if ctx.guild and ctx.guild.id in state.disabled_guilds:
-        return False
-    return True
+    return not (ctx.guild and ctx.guild.id in state.disabled_guilds)
 
 
 def owner_check():
@@ -78,9 +76,7 @@ def can_manage_member(ctx, target) -> bool:
         return False
     if target.id == ctx.author.id or target.id == ctx.guild.owner_id:
         return False
-    if ctx.author.id != ctx.guild.owner_id and target.top_role >= ctx.author.top_role:
-        return False
-    return True
+    return ctx.author.id == ctx.guild.owner_id or target.top_role < ctx.author.top_role
 
 
 def can_bot_manage_member(ctx, target) -> bool:
