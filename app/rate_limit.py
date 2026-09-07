@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 from collections import defaultdict, deque
 
-from discord.ext import import commands
+from discord.ext import commands
 
-from config import GLOBAL_COMMAND_LIMIT, GLOBAL_COMMAND_WINDOW, OWNER_COMMAND_LIMIT
+import config
 
 
 class RateLimitExceeded(commands.CheckFailure):
@@ -19,7 +19,7 @@ class RateLimitExceeded(commands.CheckFailure):
 
 
 class CommandRateLimiter:
-    def __init__(self, limit: int = GLOBAL_COMMAND_LIMIT, window: float = GLOBAL_COMMAND_WINDOW):
+    def __init__(self, limit: int = config.GLOBAL_COMMAND_LIMIT, window: float = config.GLOBAL_COMMAND_WINDOW):
         self.limit = limit
         self.window = window
         self._hits: dict[tuple[int, int, str], deque[float]] = defaultdict(deque)
@@ -31,7 +31,7 @@ class CommandRateLimiter:
         cutoff = now - self.window
         while hits and hits[0] <= cutoff:
             hits.popleft()
-        limit = OWNER_COMMAND_LIMIT if owner else self.limit
+        limit = config.OWNER_COMMAND_LIMIT if owner else self.limit
         if len(hits) >= limit:
             raise RateLimitExceeded(self.window - (now - hits[0]))
         hits.append(now)
@@ -43,3 +43,6 @@ class CommandRateLimiter:
                 hits.popleft()
             if not hits:
                 self._hits.pop(key, None)
+
+
+rate_limiter = CommandRateLimiter()
