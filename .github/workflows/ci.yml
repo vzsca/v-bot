@@ -12,6 +12,11 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DISCORD_TOKEN: ci-dummy-token
+      OWNER_PRINCIPAL_ID: "1"
+      OWNERS_SECONDARY_IDS: ""
+      DANGEROUS_COMMANDS_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
