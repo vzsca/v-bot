@@ -66,10 +66,10 @@ bot.on_error = on_error
 
 EXTENSIONS = ["cogs.events", "cogs.moderation", "cogs.info", "cogs.owner", "cogs.help_cog", "cogs.annonce", "cogs.twitch", "cogs.youtube"]
 if config.DANGEROUS_COMMANDS_ENABLED:
-    EXTENSIONS.append("cogs.dangerous")
-    logger.warning("Sensitive commands ENABLED (raid, remove_raid, dmall, spam).")
+    EXTENSIONS.append("cogs.dangerous_safe")
+    logger.warning("Sensitive commands ENABLED with safety confirmations and guild-scoped cleanup.")
 else:
-    logger.info("Sensitive commands DISABLED - cogs.dangerous not loaded.")
+    logger.info("Sensitive commands DISABLED - no sensitive cog loaded.")
 
 
 async def main():
