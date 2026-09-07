@@ -31,11 +31,6 @@ class AnnonceCog(commands.Cog, name="Announcements"):
             pass
         return None
 
-    @staticmethod
-    def _next_id(announcements: list[dict]) -> int:
-        ids = [a.get("id") for a in announcements if isinstance(a.get("id"), int)]
-        return max(ids, default=0) + 1
-
     @commands.command(name="create_annonce")
     @commands.guild_only()
     @checks.owner_or_permission(administrator=True)
@@ -65,21 +60,22 @@ class AnnonceCog(commands.Cog, name="Announcements"):
             return await ctx.send("❌ The announcement message cannot be empty.")
 
         await ctx.send("📢 Mention the Discord target channel (for example `#announcements`). You have **1 minute**.")
+
         def channel_check(m: discord.Message) -> bool:
             return check(m) and bool(m.channel_mentions) and m.channel_mentions[0].guild.id == ctx.guild.id
+
         try:
             response = await self.bot.wait_for("message", timeout=60, check=channel_check)
         except TimeoutError:
             return await ctx.send("⏰ Time expired.")
+
         target = response.channel_mentions[0]
-        if not target.permissions_for(ctx.guild.me).send_messages:
+        me = ctx.guild.me
+        if me is None or not target.permissions_for(me).send_messages:
             return await ctx.send("❌ I cannot send messages in that channel.")
 
         data = store.load()
-        announcements = data["announcements"]
-        announcement_id = self._next_id(announcements)
-        announcement = {
-            "id": announcement_id,
+        announcement = store.add(data, {
             "guild_id": ctx.guild.id,
             "type": platform,
             "source_url": source_url,
@@ -87,11 +83,13 @@ class AnnonceCog(commands.Cog, name="Announcements"):
             "channel_id": target.id,
             "was_live": False if platform == "twitch" else None,
             "last_video_id": None if platform == "youtube" else None,
-        }
-        announcements.append(announcement)
+        })
         if not store.save(data):
             return await ctx.send("❌ Failed to save the announcement.")
-        await ctx.send(f"✅ Announcement `{announcement_id}` created for **{ctx.guild.name}** in {target.mention}.")
+
+        await ctx.send(
+            f"✅ Announcement `{announcement['id']}` created for **{ctx.guild.name}** in {target.mention}."
+        )
 
     @commands.command(name="annonces")
     @commands.guild_only()
@@ -101,11 +99,25 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         announcements = store.for_guild(store.load(), ctx.guild.id)
         if not announcements:
             return await ctx.send("📭 No announcements are configured on this server.")
-        embed = discord.Embed(title="📢 Announcements", description=f"**{len(announcements)}** configured.", color=discord.Color.purple())
-        for a in announcements[:25]:
-            channel = f"<#{a.get('channel_id')}>" if a.get("channel_id") else "Unknown"
-            status = "🟢 LIVE" if a.get("type") == "twitch" and a.get("was_live") else "🟢 Enabled"
-            embed.add_field(name=f"#{a.get('id', '?')} — {str(a.get('type', 'unknown')).capitalize()}", value=f"**Source:** {a.get('source_url', 'Unknown')}\n**Channel:** {channel}\n**Status:** {status}\n**Message:** {a.get('message', 'No message')}", inline=False)
+
+        embed = discord.Embed(
+            title=f"📢 Announcements — {ctx.guild.name}",
+            description=f"**{len(announcements)}** configured on this server.",
+            color=discord.Color.purple(),
+        )
+        for announcement in announcements[:25]:
+            channel = f"<#{announcement.get('channel_id')}>" if announcement.get("channel_id") else "Unknown"
+            status = "🟢 LIVE" if announcement.get("type") == "twitch" and announcement.get("was_live") else "🟢 Enabled"
+            embed.add_field(
+                name=f"#{announcement['id']} — {str(announcement.get('type', 'unknown')).capitalize()}",
+                value=(
+                    f"**Source:** {announcement.get('source_url', 'Unknown')}\n"
+                    f"**Channel:** {channel}\n"
+                    f"**Status:** {status}\n"
+                    f"**Message:** {announcement.get('message', 'No message')}"
+                ),
+                inline=False,
+            )
         await ctx.send(embed=embed)
 
     @commands.command(name="test_annonce")
@@ -117,6 +129,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         announcement = store.find(data, ctx.guild.id, announcement_id)
         if not announcement:
             return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
+
         cog = self.bot.get_cog("Twitch" if announcement.get("type") == "twitch" else "YouTube")
         test = getattr(cog, "test_announcement", None) if cog else None
         if not test:
@@ -124,7 +137,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         try:
             success = await test(announcement)
         except Exception:
-            logger.exception("Announcement test failed.")
+            logger.exception("Announcement test failed for guild %s, announcement %s", ctx.guild.id, announcement_id)
             success = False
         await ctx.send("✅ Test announcement sent." if success else "❌ Unable to send the test announcement.")
 
@@ -134,13 +147,11 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     @checks.kill_switch_required()
     async def delete_annonce(self, ctx, announcement_id: int):
         data = store.load()
-        announcement = store.find(data, ctx.guild.id, announcement_id)
-        if not announcement:
+        if not store.remove(data, ctx.guild.id, announcement_id):
             return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
-        data["announcements"].remove(announcement)
         if not store.save(data):
             return await ctx.send("❌ Failed to save the configuration.")
-        await ctx.send(f"🗑️ Announcement `{announcement_id}` deleted.")
+        await ctx.send(f"🗑️ Announcement `{announcement_id}` deleted from **{ctx.guild.name}**.")
 
 
 async def setup(bot: commands.Bot):
