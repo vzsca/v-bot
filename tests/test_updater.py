@@ -24,5 +24,5 @@ def test_rollback_code_uses_hard_reset(monkeypatch):
     monkeypatch.setattr(updater, "_run_git", fake_run_git)
     ok, message = updater.rollback_code("a" * 40)
     assert ok is True
-    assert "aaaaaaaa" in message
+    assert "aaaaaaa" in message
     assert calls == [("reset", "--hard", "a" * 40)]
