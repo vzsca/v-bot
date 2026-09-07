@@ -2,9 +2,8 @@
 
 from discord.ext import commands
 
-import config
-import exceptions
-from state import state
+from core import config, exceptions
+from core.state import state
 
 
 def is_permanent_owner(user_id: int) -> bool:

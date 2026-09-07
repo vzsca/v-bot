@@ -42,7 +42,7 @@ def _parse_owner_id_list(raw: str | None) -> list[int]:
             raise SystemExit("OWNERS_SECONDARY_IDS contains a duplicate ID")
         ids.append(value)
     if len(ids) > MAX_SECONDARY_OWNERS:
-        raise SystemExit(f"OWNERS_SECONDARY_IDS cannot contain more than {MAX_SECONDARY_OWNERS} IDs")
+        raise SystemExit(f"OWNERS_SECONDARY_IDS supports at most {MAX_SECONDARY_OWNERS} secondary owners")
     return ids
 
 
@@ -58,6 +58,8 @@ if not TOKEN:
 
 OWNER_PRINCIPAL = _parse_owner_id(os.getenv("OWNER_PRINCIPAL_ID"), "OWNER_PRINCIPAL_ID")
 OWNERS_SECONDARY = [uid for uid in _parse_owner_id_list(os.getenv("OWNERS_SECONDARY_IDS")) if uid != OWNER_PRINCIPAL]
+if len(OWNERS_SECONDARY) > MAX_SECONDARY_OWNERS:
+    raise SystemExit(f"Maximum of {MAX_SECONDARY_OWNERS} secondary owners exceeded")
 PERMANENT_OWNERS = [OWNER_PRINCIPAL] + OWNERS_SECONDARY
 PERMANENT_OWNERS_SET = frozenset(PERMANENT_OWNERS)
 
@@ -73,4 +75,5 @@ TEMP_AUTH_CLEAN_INTERVAL = 10
 MENTION_RESPONSE_COOLDOWN = 5
 API_CACHE_TTL = 60
 API_BACKOFF_MAX = 15 * 60
+
 DANGEROUS_COMMANDS_ENABLED = _parse_bool(os.getenv("DANGEROUS_COMMANDS_ENABLED"), default=False)

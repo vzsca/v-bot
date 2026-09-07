@@ -1,9 +1,12 @@
-"""
-Initial dependency installation. Called once by start_bot.bat (before the
-venv\\.installed marker is created); subsequent launches skip this step.
-"""
+"""Initial dependency installation used by the launchers."""
 
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+APP_DIR = ROOT / "app"
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
 
 from deps import install_requirements
 
