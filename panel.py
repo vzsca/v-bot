@@ -21,7 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 import security_log
 from deps import install_requirements
-from updater import current_commit, repository_status, requirements_changed, update_code
+from updater import current_commit, repository_status, requirements_changed, rollback_code, update_code
 from version import VERSION
 
 ENV_PATH = ROOT / ".env"
@@ -202,19 +202,19 @@ def _owner_status() -> tuple[str, list[str]]:
     return principal, secondary
 
 
-def cmd_start() -> None:
+def cmd_start() -> bool:
     if is_running():
         print("The bot is already running.")
-        return
+        return True
     if not PYTHON_EXE.exists():
         print("[ERROR] Python virtual environment not found.")
         print(f"Expected Python executable: {PYTHON_EXE}")
         print("Run the initial setup first.")
-        return
+        return False
     main_file = ROOT / "main.py"
     if not main_file.exists():
         print("[ERROR] main.py was not found.")
-        return
+        return False
     print("Starting bot...")
     env = os.environ.copy()
     env["PYTHONUTF8"] = "1"
@@ -228,20 +228,21 @@ def cmd_start() -> None:
         BOT_PID_FILE.write_text(str(process.pid), encoding="utf-8")
     except (OSError, psutil.Error) as exc:
         print(f"[ERROR] Failed to start the bot: {exc}")
-        return
+        return False
     time.sleep(2)
     if is_running():
         print("Bot started.")
         print(f"PID: {process.pid}")
-    else:
-        print('Failed to start the bot. Type "logs" to see why.')
+        return True
+    print('Failed to start the bot. Type "logs" to see why.')
+    return False
 
 
-def cmd_stop() -> None:
+def cmd_stop() -> bool:
     pid = _get_bot_pid()
     if pid is None:
         print("The bot is not running.")
-        return
+        return True
     try:
         proc = psutil.Process(pid)
         for child in proc.children(recursive=True):
@@ -257,16 +258,18 @@ def cmd_stop() -> None:
         pass
     except psutil.Error as exc:
         print(f"[ERROR] Failed to stop the bot: {exc}")
-        return
+        return False
     _clear_pid_files()
     print("Bot stopped.")
+    return True
 
 
-def cmd_restart() -> None:
+def cmd_restart() -> bool:
     print("Restarting bot...")
-    cmd_stop()
+    if not cmd_stop():
+        return False
     time.sleep(2)
-    cmd_start()
+    return cmd_start()
 
 
 def cmd_status() -> None:
@@ -325,41 +328,60 @@ def cmd_uptime() -> None:
     print(f"The bot has been running for {_format_uptime(int(time.time() - metadata.get('started_at', time.time())))}.")
 
 
-def cmd_update() -> None:
+def cmd_update() -> bool:
     print("\n===== v-bot updater =====")
+    repo_ok, behind, ahead, message = repository_status(fetch=True)
+    if not repo_ok:
+        print(f"[ERROR] {message}")
+        return False
+    if behind == 0:
+        print("No update available; the bot was not stopped.")
+        return True
+    if ahead:
+        print("[ERROR] Local branch has commits not present on origin/main; update aborted.")
+        return False
+
     old_commit = current_commit()
     was_running = is_running()
+    if was_running and not cmd_stop():
+        return False
+    time.sleep(1)
 
-    if was_running:
-        print("Bot is running; it will be restarted after the code update.")
-        cmd_stop()
-        time.sleep(1)
-
-    ok, changed, message = update_code()
-    print(message)
+    ok, changed, update_message = update_code()
+    print(update_message)
     if not ok:
         if was_running:
-            print("Update aborted; starting the existing bot again.")
             cmd_start()
-        return
+        return False
 
     new_commit = current_commit()
     if changed and requirements_changed(old_commit, new_commit):
-        print("requirements.txt changed; synchronizing the existing virtual environment...")
+        print("requirements.txt changed; synchronizing dependencies...")
         if not install_requirements(upgrade=False):
-            print("[ERROR] Dependencies could not be synchronized.")
+            print("[ERROR] Dependency update failed; rolling back source code.")
+            rollback_ok, rollback_message = rollback_code(old_commit)
+            print(rollback_message)
+            if rollback_ok:
+                install_requirements(upgrade=False)
             if was_running:
                 cmd_start()
-            return
+            return False
     elif changed:
         print("No dependency changes detected; existing virtual environment kept.")
-    else:
-        print("No code changes detected; nothing needs to be installed.")
 
     if was_running:
         print("Starting the updated bot...")
-        cmd_start()
+        if not cmd_start():
+            print("[ERROR] Updated bot failed to start; rolling back source code.")
+            rollback_ok, rollback_message = rollback_code(old_commit)
+            print(rollback_message)
+            if rollback_ok and requirements_changed(new_commit, old_commit):
+                install_requirements(upgrade=False)
+            print("Starting the previous version...")
+            cmd_start()
+            return False
     print("Update complete. .env and ignored JSON data were not reset.")
+    return True
 
 
 def _display_log_file(file_path: Path, title: str, lines_count: int = 50) -> None:
@@ -488,7 +510,7 @@ COMMANDS = [
     ("restart", "restart the bot", cmd_restart),
     ("status", "full bot/process/repository status", cmd_status),
     ("uptime", "show bot uptime", cmd_uptime),
-    ("update", "pull latest code and update only changed dependencies", cmd_update),
+    ("update", "update source, sync dependencies, and restart safely", cmd_update),
     ("logs", "display bot.log", cmd_logs),
     ("security_logs", "display security.log", cmd_security_logs),
     ("servers", "list connected servers", cmd_servers),
