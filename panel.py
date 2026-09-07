@@ -10,6 +10,7 @@ Compatible with:
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -62,10 +63,49 @@ def _read_env_lines() -> list[str]:
 
 
 def _write_env_lines(lines: list[str]) -> None:
-    ENV_PATH.write_text(
-        "\n".join(lines) + "\n",
-        encoding="utf-8",
-    )
+    """Atomically replace .env without exposing a partial file."""
+    content = "\n".join(lines) + "\n"
+    temp_path: Path | None = None
+
+    try:
+        fd, temp_name = tempfile.mkstemp(
+            prefix=".env.",
+            suffix=".tmp",
+            dir=ROOT,
+            text=True,
+        )
+        temp_path = Path(temp_name)
+
+        # Keep secret-bearing files private on POSIX systems.
+        if not IS_WINDOWS:
+            try:
+                os.chmod(temp_path, 0o600)
+            except OSError:
+                pass
+
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as file:
+            file.write(content)
+            file.flush()
+            os.fsync(file.fileno())
+
+        os.replace(temp_path, ENV_PATH)
+        temp_path = None
+
+        # Ensure the resulting .env remains private when supported.
+        if not IS_WINDOWS:
+            try:
+                os.chmod(ENV_PATH, 0o600)
+            except OSError:
+                pass
+
+    except OSError as exc:
+        raise OSError(f"Unable to atomically write .env: {exc}") from exc
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def get_env_value(key: str) -> str:
@@ -79,6 +119,12 @@ def get_env_value(key: str) -> str:
 
 
 def set_env_value(key: str, value: str) -> None:
+    """Update one .env value using a single atomic file replacement."""
+    if not key or "=" in key or "\n" in key or "\r" in key:
+        raise ValueError("Invalid .env key.")
+    if "\n" in value or "\r" in value:
+        raise ValueError(".env values cannot contain newlines.")
+
     lines = _read_env_lines()
     prefix = f"{key}="
 
