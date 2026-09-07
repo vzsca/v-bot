@@ -13,8 +13,8 @@ class HelpCog(commands.Cog, name="Help"):
 
     @commands.command(name="help")
     @checks.kill_switch_required()
-    async def help(self, ctx, category: str = None):
-        is_owner = checks.is_owner_or_temp(ctx.author.id)
+    async def help(self, ctx, category: str | None = None):
+        is_owner = checks.is_owner_or_temp(ctx.author.id, ctx.guild.id if ctx.guild else None)
 
         general_embed = discord.Embed(
             title="📜 User Commands",
@@ -36,9 +36,9 @@ class HelpCog(commands.Cog, name="Help"):
         general_embed.add_field(name="🏠 `server_info`", value="Displays server information.", inline=False)
         general_embed.add_field(name="💬 `snipe [index]`", value="Displays a deleted message.", inline=False)
         general_embed.add_field(name="📺 `create_annonce`", value="Creates a new automatic Twitch live announcement.", inline=False)
-        general_embed.add_field(name="📋 `annonces`", value="Lists all configured Twitch live announcements.", inline=False)
-        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured Twitch announcement without waiting for a live stream.", inline=False)
-        general_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured Twitch live announcement.", inline=False)
+        general_embed.add_field(name="📋 `annonces`", value="Lists configured Twitch/YouTube announcements.", inline=False)
+        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured announcement without waiting for a live event.", inline=False)
+        general_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured announcement.", inline=False)
 
         owner_embed = discord.Embed(
             title="👑 Owner Commands",
@@ -49,10 +49,9 @@ class HelpCog(commands.Cog, name="Help"):
         owner_embed.add_field(name="📌 `add_temp @user duration`", value="Grants temporary authorization.", inline=False)
         owner_embed.add_field(name="📄 `owner_list`", value="Lists the bot owners.", inline=False)
         owner_embed.add_field(name="⚙️ `servers`", value="Server panel (selection + actions).", inline=False)
-        owner_embed.add_field(name="📩 « Invite » button (in `v!servers`)", value="Generates a temporary invite for the selected server.", inline=False)
+        owner_embed.add_field(name="📩 Invite button (in `v!servers`)", value="Generates a temporary invite for the selected server.", inline=False)
         owner_embed.add_field(name="🔁 `toggle_guild`", value="Enables/disables the bot on the current server.", inline=False)
         owner_embed.add_field(name="💬 `say <message>`", value="Makes the bot send a message.", inline=False)
-
 
         if config.DANGEROUS_COMMANDS_ENABLED:
             owner_embed.add_field(name="💣 `spam <amount> <message>`", value="Controlled message spam.", inline=False)
