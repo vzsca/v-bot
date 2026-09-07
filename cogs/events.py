@@ -12,6 +12,9 @@ from discord.ext import commands, tasks
 import checks
 import config
 import exceptions
+import security_log
+from rate_limit import rate_limiter
+from security import security
 from state import state
 
 logger = logging.getLogger("v-bot")
@@ -46,10 +49,10 @@ class EventsCog(commands.Cog):
     @tasks.loop(seconds=60)
     async def clean_snipes(self):
         state.clean_snipes(config.SNIPE_RETENTION_SECONDS)
-        now = time.time()
-        self._mention_cooldowns = {
-            key: expiry for key, expiry in self._mention_cooldowns.items() if expiry > now
-        }
+        rate_limiter.prune()
+        security.prune()
+        now = time.monotonic()
+        self._mention_cooldowns = {key: expiry for key, expiry in self._mention_cooldowns.items() if expiry > now}
 
     def _write_servers_file(self):
         try:
@@ -76,7 +79,6 @@ class EventsCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         logger.info("Connected as %s (ID: %s)", self.bot.user, self.bot.user.id)
-        # Sync once per process instead of on every Discord READY/reconnect.
         if not getattr(self.bot, "_commands_synced", False):
             try:
                 synced = await self.bot.tree.sync()
@@ -90,6 +92,24 @@ class EventsCog(commands.Cog):
             logger.exception("Unable to set Discord status")
         logger.info("The bot is connected to %s servers.", len(self.bot.guilds))
         self._write_servers_file()
+
+    @commands.Cog.listener()
+    async def on_command_completion(self, ctx):
+        command = getattr(ctx.command, "qualified_name", "unknown")
+        guild_id = ctx.guild.id if ctx.guild else 0
+        channel_id = ctx.channel.id if getattr(ctx.channel, "id", None) else 0
+        suspicious = security.record_command(
+            guild_id=guild_id,
+            channel_id=channel_id,
+            user_id=ctx.author.id,
+            command=command,
+            success=True,
+        )
+        security_log.log_security_event(
+            f"Command executed: guild={guild_id} channel={channel_id} user={ctx.author.id} command={command}"
+        )
+        if suspicious:
+            logger.warning("Suspicious command burst detected: guild=%s user=%s", guild_id, ctx.author.id)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
@@ -187,6 +207,7 @@ class EventsCog(commands.Cog):
             await ctx.send("❌ This command cannot be used in private messages.")
         elif isinstance(error, (exceptions.NotPermanentOwner, exceptions.NotOwnerOrTemp, exceptions.NotOwnerOrGuildOwner)):
             logger.warning("Permission denied for '%s' to %s (%s).", ctx.command, ctx.author, ctx.author.id)
+            security.record_command(guild_id=ctx.guild.id if ctx.guild else 0, channel_id=ctx.channel.id, user_id=ctx.author.id, command=getattr(ctx.command, "qualified_name", "unknown"), success=False)
             await ctx.send(str(error))
         elif isinstance(error, commands.CheckFailure):
             await ctx.send(str(error))
