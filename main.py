@@ -4,9 +4,11 @@ import asyncio
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot.log")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=[logging.StreamHandler(), logging.FileHandler(LOG_FILE, encoding="utf-8")])
+_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=[logging.StreamHandler(), _handler])
 logger = logging.getLogger("v-bot")
 
 try:
@@ -27,13 +29,11 @@ intents.members = True
 intents.messages = True
 intents.message_content = True
 intents.reactions = True
-
 bot = commands.Bot(command_prefix=config.PREFIXES, intents=intents, help_command=None)
 bot.add_check(checks.global_check)
 
 
-async def on_command_error(ctx: commands.Context, error: commands.CommandError) -> None:
-    """Centralized command error handling: never expose internal exception text."""
+async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         return
     if isinstance(error, commands.CheckFailure):
@@ -58,22 +58,13 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError) 
 bot.on_command_error = on_command_error
 
 
-async def on_error(event_method: str, *args, **kwargs) -> None:
+async def on_error(event_method, *args, **kwargs):
     logger.error("Unhandled error in event handler '%s'", event_method, exc_info=sys.exc_info())
 
 
 bot.on_error = on_error
 
-EXTENSIONS = [
-    "cogs.events",
-    "cogs.moderation",
-    "cogs.info",
-    "cogs.owner",
-    "cogs.help_cog",
-    "cogs.annonce",
-    "cogs.twitch",
-    "cogs.youtube",
-]
+EXTENSIONS = ["cogs.events", "cogs.moderation", "cogs.info", "cogs.owner", "cogs.help_cog", "cogs.annonce", "cogs.twitch", "cogs.youtube"]
 if config.DANGEROUS_COMMANDS_ENABLED:
     EXTENSIONS.append("cogs.dangerous")
     logger.warning("Sensitive commands ENABLED (raid, remove_raid, dmall, spam).")
