@@ -51,8 +51,8 @@ class AnnonceCog(commands.Cog, name="Announcements"):
             return await ctx.send("❌ Unsupported Twitch/YouTube URL.")
         if not integration_config.is_configured(ctx.guild.id, platform):
             return await ctx.send(
-                f"❌ Aucune API **{platform}** valide n'est configurée pour ce serveur. "
-                f"Utilise `v!set_api {'yt' if platform == 'youtube' else 'twitch'}` avant de créer l'annonce."
+                f"❌ No valid **{platform}** API is configured for this server. "
+                f"Use `v!set_api {'yt' if platform == 'youtube' else 'twitch'}` before creating the announcement."
             )
 
         placeholders = "`{streamer}` `{title}` `{game}` `{url}`" if platform == "twitch" else "`{channel}` `{title}` `{url}`"
