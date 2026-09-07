@@ -15,7 +15,7 @@ class Metrics:
     api_errors: Counter[str]
 
     @classmethod
-    def create(cls) -> "Metrics":
+    def create(cls) -> Metrics:
         return cls(Counter(), Counter(), Counter(), Counter(), Counter())
 
     def command(self, name: str, success: bool = True) -> None:
