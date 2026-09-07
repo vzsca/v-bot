@@ -1,0 +1,3 @@
+[lint.per-file-ignores]
+"main.py" = ["I001"]
+"panel.py" = ["I001", "BLE001"]
