@@ -6,13 +6,13 @@ from datetime import datetime
 
 class BotState:
     __slots__ = (
-        "kill_switch",
-        "disabled_guilds",
-        "temp_authorized_users",
-        "sniped_messages",
         "created_raid_channels",
         "created_raid_roles",
+        "disabled_guilds",
+        "kill_switch",
         "running_commands",
+        "sniped_messages",
+        "temp_authorized_users",
     )
 
     def __init__(self):
