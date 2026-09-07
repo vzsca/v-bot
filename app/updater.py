@@ -85,3 +85,16 @@ def update_code() -> tuple[bool, bool, str]:
         return False, False, pull.stderr.strip() or "Fast-forward update failed."
     after = current_commit()
     return True, after != before, f"Code updated from {before[:7]} to {after[:7]}."
+
+
+def rollback_code(commit: str) -> tuple[bool, str]:
+    """Rollback tracked source code to a known-good commit.
+
+    Ignored runtime/configuration files such as .env and JSON stores are kept.
+    """
+    if not commit:
+        return False, "No rollback commit is available."
+    result = _run_git("reset", "--hard", commit)
+    if result.returncode != 0:
+        return False, result.stderr.strip() or "Unable to rollback source code."
+    return True, f"Source code rolled back to {commit[:7]}."
