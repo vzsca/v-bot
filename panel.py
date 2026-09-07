@@ -21,6 +21,7 @@ if str(APP_DIR) not in sys.path:
 
 import security_log
 from deps import install_requirements
+from updater import current_commit, requirements_changed, update_code
 from version import VERSION
 
 ENV_PATH = ROOT / ".env"
@@ -307,13 +308,40 @@ def cmd_uptime() -> None:
 
 
 def cmd_update() -> None:
-    print("Updating dependencies:")
-    try:
-        install_requirements(upgrade=True)
-    except Exception as exc:
-        print(f"[ERROR] Failed to update dependencies: {exc}")
+    print("\n===== v-bot updater =====")
+    old_commit = current_commit()
+    was_running = is_running()
+
+    if was_running:
+        print("Bot is running; it will be restarted after the code update.")
+        cmd_stop()
+        time.sleep(1)
+
+    ok, changed, message = update_code()
+    print(message)
+    if not ok:
+        if was_running:
+            print("Update aborted; starting the existing bot again.")
+            cmd_start()
         return
-    print("Update complete.")
+
+    new_commit = current_commit()
+    if changed and requirements_changed(old_commit, new_commit):
+        print("requirements.txt changed; synchronizing the existing virtual environment...")
+        if not install_requirements(upgrade=False):
+            print("[ERROR] Dependencies could not be synchronized.")
+            if was_running:
+                cmd_start()
+            return
+    elif changed:
+        print("No dependency changes detected; existing virtual environment kept.")
+    else:
+        print("No code changes detected; nothing needs to be installed.")
+
+    if was_running:
+        print("Starting the updated bot...")
+        cmd_start()
+    print("Update complete. .env and ignored JSON data were not reset.")
 
 
 def _display_log_file(file_path: Path, title: str, lines_count: int = 50) -> None:
@@ -442,7 +470,7 @@ COMMANDS = [
     ("restart", "restart the bot", cmd_restart),
     ("status", "full bot/process status", cmd_status),
     ("uptime", "show bot uptime", cmd_uptime),
-    ("update", "update dependencies", cmd_update),
+    ("update", "pull latest code and update only changed dependencies", cmd_update),
     ("logs", "display bot.log", cmd_logs),
     ("security_logs", "display security.log", cmd_security_logs),
     ("servers", "list connected servers", cmd_servers),
