@@ -1,614 +1,152 @@
-"""
-Twitch integration and automatic stream announcements.
+"""Twitch integration and automatic guild-safe announcements."""
 
-This cog handles:
-- Twitch API authentication
-- Twitch live detection
-- Automatic Twitch announcements
-- Twitch announcement testing
-
-Announcement management is handled by annonce.py.
-"""
-
-import json
 import logging
-from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp
-import discord
 from discord.ext import commands, tasks
 
+import announcement_store as store
 import config
 
 logger = logging.getLogger("v-bot")
-
-ANNOUNCE_CONFIG_FILE = (
-    Path(__file__).resolve().parent.parent / "annonce_config.json"
-)
 
 
 class TwitchCog(commands.Cog, name="Twitch"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.twitch_access_token: str | None = None
-
-        self._ensure_config_file()
+        self.twitch_token_expires_at = 0.0
         self.twitch_task.start()
 
     def cog_unload(self):
         self.twitch_task.cancel()
 
-    # ==========================================================
-    # Configuration
-    # ==========================================================
-
-    def _ensure_config_file(self) -> None:
-        """Create annonce_config.json if it does not exist."""
-
-        if ANNOUNCE_CONFIG_FILE.exists():
-            return
-
-        try:
-            with open(
-                ANNOUNCE_CONFIG_FILE,
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    {"announcements": []},
-                    file,
-                    indent=4,
-                    ensure_ascii=False,
-                )
-
-        except OSError:
-            logger.exception(
-                "Unable to create annonce_config.json."
-            )
-
-    def _load_config(self) -> dict:
-        """Load announcement configuration."""
-
-        self._ensure_config_file()
-
-        try:
-            with open(
-                ANNOUNCE_CONFIG_FILE,
-                "r",
-                encoding="utf-8",
-            ) as file:
-                data = json.load(file)
-
-            if not isinstance(data, dict):
-                return {"announcements": []}
-
-            if not isinstance(
-                data.get("announcements"),
-                list,
-            ):
-                data["announcements"] = []
-
-            return data
-
-        except (
-            OSError,
-            json.JSONDecodeError,
-        ):
-            logger.exception(
-                "Unable to load annonce_config.json."
-            )
-
-            return {"announcements": []}
-
-    def _save_config(self, data: dict) -> bool:
-        """Save announcement configuration."""
-
-        try:
-            with open(
-                ANNOUNCE_CONFIG_FILE,
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    data,
-                    file,
-                    indent=4,
-                    ensure_ascii=False,
-                )
-
-            return True
-
-        except OSError:
-            logger.exception(
-                "Unable to save annonce_config.json."
-            )
-
-            return False
-
-    # ==========================================================
-    # Twitch URL
-    # ==========================================================
-
     @staticmethod
-    def _extract_twitch_login(
-        twitch_url: str,
-    ) -> str | None:
-        """Extract the Twitch username from a channel URL."""
-
+    def _extract_twitch_login(url: str) -> str | None:
         try:
-            from urllib.parse import urlparse
-
-            parsed = urlparse(
-                twitch_url.strip()
-            )
-
-            if parsed.scheme not in (
-                "http",
-                "https",
-            ):
+            parsed = urlparse(url.strip())
+            if parsed.scheme not in {"http", "https"} or parsed.netloc.lower().split(":")[0] not in {"twitch.tv", "www.twitch.tv"}:
                 return None
-
-            if parsed.netloc.lower() not in {
-                "twitch.tv",
-                "www.twitch.tv",
-            }:
+            login = parsed.path.strip("/").split("/")[0].lower()
+            if not login or login in {"directory", "downloads", "jobs", "p", "search", "settings", "subscriptions", "videos"}:
                 return None
-
-            path = parsed.path.strip("/")
-
-            if not path:
-                return None
-
-            login = path.split("/")[0].lower()
-
-            # Avoid accepting Twitch special pages.
-            if login in {
-                "directory",
-                "downloads",
-                "jobs",
-                "p",
-                "search",
-                "settings",
-                "subscriptions",
-                "videos",
-            }:
-                return None
-
             return login
-
-        except Exception:
+        except ValueError:
             return None
 
-    # ==========================================================
-    # Twitch API
-    # ==========================================================
-
-    async def _get_access_token(
-        self,
-        session: aiohttp.ClientSession,
-    ) -> str | None:
-        """Get a Twitch application access token."""
-
-        if (
-            not config.TWITCH_CLIENT_ID
-            or not config.TWITCH_CLIENT_SECRET
-        ):
-            logger.warning(
-                "Twitch API credentials are missing. "
-                "Set TWITCH_CLIENT_ID and "
-                "TWITCH_CLIENT_SECRET in .env."
-            )
+    async def _get_access_token(self, session: aiohttp.ClientSession) -> str | None:
+        if not config.TWITCH_CLIENT_ID or not config.TWITCH_CLIENT_SECRET:
             return None
-
         try:
-            async with session.post(
-                "https://id.twitch.tv/oauth2/token",
-                params={
-                    "client_id": (
-                        config.TWITCH_CLIENT_ID
-                    ),
-                    "client_secret": (
-                        config.TWITCH_CLIENT_SECRET
-                    ),
-                    "grant_type": (
-                        "client_credentials"
-                    ),
-                },
-            ) as response:
-
+            async with session.post("https://id.twitch.tv/oauth2/token", params={"client_id": config.TWITCH_CLIENT_ID, "client_secret": config.TWITCH_CLIENT_SECRET, "grant_type": "client_credentials"}) as response:
                 if response.status != 200:
-                    logger.error(
-                        "Unable to obtain Twitch access token "
-                        f"(HTTP {response.status})."
-                    )
+                    logger.error("Twitch authentication failed (HTTP %s).", response.status)
                     return None
-
                 data = await response.json()
-
-                token = data.get(
-                    "access_token"
-                )
-
+                token = data.get("access_token")
+                expires_in = int(data.get("expires_in", 0) or 0)
                 if not token:
-                    logger.error(
-                        "Twitch did not return an access token."
-                    )
                     return None
-
+                import time
                 self.twitch_access_token = token
-
+                self.twitch_token_expires_at = time.time() + max(0, expires_in - 60)
                 return token
-
-        except aiohttp.ClientError:
-            logger.exception(
-                "Twitch authentication request failed."
-            )
+        except (aiohttp.ClientError, ValueError):
+            logger.exception("Twitch authentication request failed.")
             return None
 
-    async def _get_stream_data(
-        self,
-        session: aiohttp.ClientSession,
-        twitch_login: str,
-    ) -> dict | None:
-        """
-        Return current Twitch stream data.
-
-        Returns None when the channel is offline.
-        """
-
-        if not self.twitch_access_token:
-            self.twitch_access_token = (
-                await self._get_access_token(
-                    session
-                )
-            )
-
-        if not self.twitch_access_token:
-            return None
-
-        headers = {
-            "Client-Id": (
-                config.TWITCH_CLIENT_ID
-            ),
-            "Authorization": (
-                f"Bearer {self.twitch_access_token}"
-            ),
-        }
-
+    async def _get_stream_data(self, session: aiohttp.ClientSession, login: str) -> dict | None:
+        import time
+        if not self.twitch_access_token or time.time() >= self.twitch_token_expires_at:
+            if not await self._get_access_token(session):
+                return None
+        headers = {"Client-Id": config.TWITCH_CLIENT_ID, "Authorization": f"Bearer {self.twitch_access_token}"}
         try:
-            async with session.get(
-                "https://api.twitch.tv/helix/streams",
-                headers=headers,
-                params={
-                    "user_login": twitch_login,
-                },
-            ) as response:
-
+            async with session.get("https://api.twitch.tv/helix/streams", headers=headers, params={"user_login": login}) as response:
                 if response.status == 401:
                     self.twitch_access_token = None
                     return None
-
-                if response.status != 200:
-                    logger.warning(
-                        "Twitch API returned HTTP "
-                        f"{response.status} for channel "
-                        f"{twitch_login}."
-                    )
+                if response.status == 429:
+                    logger.warning("Twitch rate limit reached.")
                     return None
-
-                data = await response.json()
-
-                streams = data.get(
-                    "data",
-                    [],
-                )
-
+                if response.status != 200:
+                    logger.warning("Twitch API returned HTTP %s for %s.", response.status, login)
+                    return None
+                streams = (await response.json()).get("data", [])
                 if not streams:
                     return None
-
                 stream = streams[0]
-
-                return {
-                    "streamer": twitch_login,
-                    "title": stream.get(
-                        "title",
-                        "",
-                    ),
-                    "game": stream.get(
-                        "game_name",
-                        "",
-                    ),
-                    "url": (
-                        f"https://www.twitch.tv/"
-                        f"{twitch_login}"
-                    ),
-                }
-
+                return {"streamer": login, "title": stream.get("title", ""), "game": stream.get("game_name", ""), "url": f"https://www.twitch.tv/{login}"}
         except aiohttp.ClientError:
-            logger.exception(
-                "Unable to check Twitch channel: "
-                f"{twitch_login}"
-            )
-
+            logger.exception("Unable to check Twitch channel %s.", login)
             return None
 
-    # ==========================================================
-    # Announcement helpers
-    # ==========================================================
-
     @staticmethod
-    def _format_message(
-        message: str,
-        stream_data: dict,
-    ) -> str:
-        """Replace Twitch announcement placeholders."""
+    def _format_message(message: str, data: dict) -> str:
+        for key in ("streamer", "title", "game", "url"):
+            message = message.replace("{" + key + "}", str(data.get(key, "")))
+        return message
 
-        return (
-            message
-            .replace(
-                "{streamer}",
-                str(
-                    stream_data.get(
-                        "streamer",
-                        "",
-                    )
-                ),
-            )
-            .replace(
-                "{title}",
-                str(
-                    stream_data.get(
-                        "title",
-                        "",
-                    )
-                ),
-            )
-            .replace(
-                "{game}",
-                str(
-                    stream_data.get(
-                        "game",
-                        "",
-                    )
-                ),
-            )
-            .replace(
-                "{url}",
-                str(
-                    stream_data.get(
-                        "url",
-                        "",
-                    )
-                ),
-            )
-        )
-
-    async def _send_announcement(
-        self,
-        announcement: dict,
-        stream_data: dict,
-    ) -> bool:
-        """Send a Twitch announcement."""
-
-        channel_id = announcement.get(
-            "channel_id"
-        )
-
-        message = announcement.get(
-            "message"
-        )
-
-        if not channel_id or not message:
+    async def _send_announcement(self, announcement: dict, stream_data: dict) -> bool:
+        channel_id = announcement.get("channel_id")
+        guild_id = announcement.get("guild_id")
+        message = announcement.get("message")
+        if not channel_id or not guild_id or not message:
             return False
-
-        channel = self.bot.get_channel(
-            int(channel_id)
-        )
-
-        if channel is None:
-            logger.warning(
-                "Discord channel "
-                f"{channel_id} was not found."
-            )
-            return False
-
-        formatted_message = self._format_message(
-            message,
-            stream_data,
-        )
-
         try:
-            await channel.send(
-                formatted_message
-            )
-
+            channel = self.bot.get_channel(int(channel_id))
+        except (TypeError, ValueError):
+            return False
+        if channel is None or getattr(channel.guild, "id", None) != guild_id:
+            logger.warning("Blocked Twitch announcement with mismatched guild/channel.")
+            return False
+        try:
+            await channel.send(self._format_message(message, stream_data))
             return True
-
-        except discord.Forbidden:
-            logger.warning(
-                "Missing permission to send "
-                f"messages in channel {channel_id}."
-            )
-
+        except Exception:
+            logger.exception("Failed to send Twitch announcement.")
             return False
 
-        except discord.HTTPException:
-            logger.exception(
-                "Failed to send Twitch announcement."
-            )
-
+    async def test_announcement(self, announcement: dict) -> bool:
+        login = self._extract_twitch_login(announcement.get("source_url", ""))
+        if not login:
             return False
-
-    # ==========================================================
-    # Test announcement
-    # ==========================================================
-
-    async def test_announcement(
-        self,
-        announcement: dict,
-    ) -> bool:
-        """Send a test Twitch announcement."""
-
-        source_url = announcement.get(
-            "source_url"
-        )
-
-        if not source_url:
-            return False
-
-        twitch_login = (
-            self._extract_twitch_login(
-                source_url
-            )
-        )
-
-        if not twitch_login:
-            return False
-
-        test_data = {
-            "streamer": twitch_login,
-            "title": "Test stream",
-            "game": "Test category",
-            "url": (
-                f"https://www.twitch.tv/"
-                f"{twitch_login}"
-            ),
-        }
-
-        return await self._send_announcement(
-            announcement,
-            test_data,
-        )
-
-    # ==========================================================
-    # Twitch background task
-    # ==========================================================
+        return await self._send_announcement(announcement, {"streamer": login, "title": "Test stream", "game": "Test category", "url": f"https://www.twitch.tv/{login}"})
 
     @tasks.loop(seconds=60)
     async def twitch_task(self):
-        """
-        Check all Twitch announcements every 60 seconds.
-
-        An announcement is sent only when a channel
-        changes from offline to live.
-        """
-
-        announcement_config = (
-            self._load_config()
-        )
-
-        announcements = (
-            announcement_config.get(
-                "announcements",
-                [],
-            )
-        )
-
-        twitch_announcements = [
-            announcement
-            for announcement in announcements
-            if announcement.get("type")
-            == "twitch"
-        ]
-
-        if not twitch_announcements:
+        data = store.load()
+        announcements = [a for a in data["announcements"] if a.get("type") == "twitch" and a.get("guild_id")]
+        if not announcements or not config.TWITCH_CLIENT_ID or not config.TWITCH_CLIENT_SECRET:
             return
-
-        if (
-            not config.TWITCH_CLIENT_ID
-            or not config.TWITCH_CLIENT_SECRET
-        ):
-            return
-
-        config_changed = False
-
-        async with aiohttp.ClientSession() as session:
-
-            for announcement in twitch_announcements:
-
-                source_url = announcement.get(
-                    "source_url"
-                )
-
-                if not source_url:
+        changed = False
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            # Deduplicate API requests when several guilds watch the same streamer.
+            cache: dict[str, dict | None] = {}
+            for announcement in announcements:
+                login = self._extract_twitch_login(announcement.get("source_url", ""))
+                if not login:
                     continue
-
-                twitch_login = (
-                    self._extract_twitch_login(
-                        source_url
-                    )
-                )
-
-                if not twitch_login:
-                    logger.warning(
-                        "Invalid Twitch URL: "
-                        f"{source_url}"
-                    )
-                    continue
-
-                stream_data = (
-                    await self._get_stream_data(
-                        session,
-                        twitch_login,
-                    )
-                )
-
-                is_live = (
-                    stream_data is not None
-                )
-
-                was_live = announcement.get(
-                    "was_live",
-                    False,
-                )
-
-                # --------------------------------------------------
-                # Offline -> Live
-                # --------------------------------------------------
-
-                if is_live and not was_live:
-
-                    success = (
-                        await self._send_announcement(
-                            announcement,
-                            stream_data,
-                        )
-                    )
-
-                    if success:
-                        announcement[
-                            "was_live"
-                        ] = True
-
-                        config_changed = True
-
-                # --------------------------------------------------
-                # Live -> Offline
-                # --------------------------------------------------
-
+                if login not in cache:
+                    cache[login] = await self._get_stream_data(session, login)
+                stream = cache[login]
+                is_live = stream is not None
+                was_live = bool(announcement.get("was_live", False))
+                if is_live and not was_live and await self._send_announcement(announcement, stream):
+                    announcement["was_live"] = True
+                    changed = True
                 elif not is_live and was_live:
-
-                    announcement[
-                        "was_live"
-                    ] = False
-
-                    config_changed = True
-
-        if config_changed:
-            self._save_config(
-                announcement_config
-            )
+                    announcement["was_live"] = False
+                    changed = True
+        if changed:
+            store.save(data)
 
     @twitch_task.before_loop
     async def before_twitch_task(self):
-        """Wait until the Discord bot is ready."""
-
         await self.bot.wait_until_ready()
 
 
-async def setup(
-    bot: commands.Bot,
-):
-    await bot.add_cog(
-        TwitchCog(bot)
-    )
+async def setup(bot: commands.Bot):
+    await bot.add_cog(TwitchCog(bot))
