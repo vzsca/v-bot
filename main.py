@@ -13,7 +13,11 @@ if APP_DIR not in sys.path:
 
 LOG_FILE = os.path.join(ROOT, "bot.log")
 _handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s", handlers=[logging.StreamHandler(), _handler])
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(), _handler],
+)
 logger = logging.getLogger("v-bot")
 
 try:
@@ -21,6 +25,7 @@ try:
     import config
     import discord
     from discord.ext import commands
+    from extensions import get_extensions, is_dangerous_extension
 except SystemExit as e:
     logger.critical("Bot could not start (invalid configuration): %s", e)
     sys.exit(1)
@@ -53,7 +58,11 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"⏳ Please wait {error.retry_after:.1f}s before trying again.")
         return
-    logger.error("Unhandled command error in %s", getattr(ctx.command, "qualified_name", "unknown"), exc_info=(type(error), error, error.__traceback__))
+    logger.error(
+        "Unhandled command error in %s",
+        getattr(ctx.command, "qualified_name", "unknown"),
+        exc_info=(type(error), error, error.__traceback__),
+    )
     try:
         await ctx.send("⚠️ An internal error occurred while executing the command.")
     except discord.HTTPException:
@@ -69,29 +78,20 @@ async def on_error(event_method, *args, **kwargs):
 
 bot.on_error = on_error
 
-EXTENSIONS = [
-    "cogs.events",
-    "cogs.moderation",
-    "cogs.info",
-    "cogs.owner",
-    "cogs.help_cog",
-    "cogs.api_config",
-    "cogs.annonce",
-    "cogs.twitch",
-    "cogs.youtube",
-]
-if config.DANGEROUS_COMMANDS_ENABLED:
-    EXTENSIONS.append("cogs.dangerous_safe")
-    logger.warning("Sensitive commands ENABLED with safety confirmations and guild-scoped cleanup.")
-else:
-    logger.info("Sensitive commands DISABLED - no sensitive cog loaded.")
-
 
 async def main():
+    extensions = get_extensions(config.DANGEROUS_COMMANDS_ENABLED)
+    if config.DANGEROUS_COMMANDS_ENABLED:
+        logger.warning("Sensitive commands ENABLED with safety confirmations and guild-scoped cleanup.")
+    else:
+        logger.info("Sensitive commands DISABLED - no sensitive cog loaded.")
+
     async with bot:
-        for extension in EXTENSIONS:
+        for extension in extensions:
             await bot.load_extension(extension)
             logger.info("Extension loaded: %s", extension)
+            if is_dangerous_extension(extension):
+                logger.warning("Loaded sensitive extension: %s", extension)
         await bot.start(config.TOKEN)
 
 
