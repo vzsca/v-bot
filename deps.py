@@ -24,12 +24,11 @@ def install_requirements(upgrade: bool = False) -> bool:
     else:
         cmd = [python, "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)]
     if upgrade:
-        # Upgrade the complete dependency set together, avoiding partial updates.
         if _has_uv():
             cmd.insert(3, "--upgrade")
         else:
             cmd.insert(4, "--upgrade")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print("[ERROR] Dependency installation failed.")
         print(result.stderr.strip()[-1500:])
