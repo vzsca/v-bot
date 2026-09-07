@@ -1,4 +1,4 @@
-"""Global, per-user and per-guild command rate limiting."""
+"""Global, per-user and per-command rate limiting."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import config
 
 
 class RateLimitExceeded(commands.CheckFailure):
-    """Raised when the global command limiter rejects a command."""
+    """Raised when a command exceeds the configured rate limit."""
 
     def __init__(self, retry_after: float):
         self.retry_after = max(0.1, retry_after)
@@ -19,30 +19,44 @@ class RateLimitExceeded(commands.CheckFailure):
 
 
 class CommandRateLimiter:
-    def __init__(self, limit: int = config.GLOBAL_COMMAND_LIMIT, window: float = config.GLOBAL_COMMAND_WINDOW):
-        self.limit = limit
-        self.window = window
-        self._hits: dict[tuple[int, int, str], deque[float]] = defaultdict(deque)
+    """Sliding-window limiter with global-user and per-command buckets."""
+
+    def __init__(self):
+        self._global: dict[tuple[int, int], deque[float]] = defaultdict(deque)
+        self._commands: dict[tuple[int, int, str], deque[float]] = defaultdict(deque)
+
+    @staticmethod
+    def _trim(hits: deque[float], cutoff: float) -> None:
+        while hits and hits[0] <= cutoff:
+            hits.popleft()
 
     def check(self, guild_id: int, user_id: int, command: str, *, owner: bool = False) -> None:
         now = time.monotonic()
-        key = (guild_id, user_id, command)
-        hits = self._hits[key]
-        cutoff = now - self.window
-        while hits and hits[0] <= cutoff:
-            hits.popleft()
-        limit = config.OWNER_COMMAND_LIMIT if owner else self.limit
-        if len(hits) >= limit:
-            raise RateLimitExceeded(self.window - (now - hits[0]))
-        hits.append(now)
+        cutoff = now - config.GLOBAL_COMMAND_WINDOW
+        global_key = (guild_id, user_id)
+        command_key = (guild_id, user_id, command)
+        global_hits = self._global[global_key]
+        command_hits = self._commands[command_key]
+        self._trim(global_hits, cutoff)
+        self._trim(command_hits, cutoff)
+
+        global_limit = config.OWNER_COMMAND_LIMIT if owner else config.GLOBAL_COMMAND_LIMIT
+        command_limit = max(2, global_limit // 2)
+        if len(global_hits) >= global_limit:
+            raise RateLimitExceeded(config.GLOBAL_COMMAND_WINDOW - (now - global_hits[0]))
+        if len(command_hits) >= command_limit:
+            raise RateLimitExceeded(config.GLOBAL_COMMAND_WINDOW - (now - command_hits[0]))
+
+        global_hits.append(now)
+        command_hits.append(now)
 
     def prune(self) -> None:
-        cutoff = time.monotonic() - self.window
-        for key, hits in list(self._hits.items()):
-            while hits and hits[0] <= cutoff:
-                hits.popleft()
-            if not hits:
-                self._hits.pop(key, None)
+        cutoff = time.monotonic() - config.GLOBAL_COMMAND_WINDOW
+        for buckets in (self._global, self._commands):
+            for key, hits in list(buckets.items()):
+                self._trim(hits, cutoff)
+                if not hits:
+                    buckets.pop(key, None)
 
 
 rate_limiter = CommandRateLimiter()
