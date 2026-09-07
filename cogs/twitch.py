@@ -1,5 +1,6 @@
-"""Twitch integration with per-guild API credentials and announcements."""
+"""Twitch integration with guild-safe credentials and shared API caching."""
 
+import asyncio
 import logging
 import time
 from urllib.parse import urlparse
@@ -16,18 +17,29 @@ logger = logging.getLogger("v-bot")
 class TwitchCog(commands.Cog, name="Twitch"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # client_id, client_secret, access_token, expires_at — all keyed by guild.
-        self._tokens: dict[int, tuple[str, str, str, float]] = {}
+        self._tokens: dict[tuple[str, str], tuple[str, float]] = {}
+        self._stream_cache: dict[tuple[str, str], tuple[dict | None, float]] = {}
+        self._backoff_until: dict[tuple[str, str], float] = {}
+        self._session: aiohttp.ClientSession | None = None
         self.twitch_task.start()
 
     def cog_unload(self):
         self.twitch_task.cancel()
+        if self._session and not self._session.closed:
+            asyncio.create_task(self._session.close())
+        self._session = None
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
+        return self._session
 
     @staticmethod
     def _extract_twitch_login(url: str) -> str | None:
         try:
             parsed = urlparse(url.strip())
-            if parsed.scheme not in {"http", "https"} or parsed.netloc.lower().split(":")[0] not in {"twitch.tv", "www.twitch.tv"}:
+            host = parsed.netloc.lower().split(":")[0]
+            if parsed.scheme not in {"http", "https"} or host not in {"twitch.tv", "www.twitch.tv"}:
                 return None
             login = parsed.path.strip("/").split("/")[0].lower()
             if not login or login in {"directory", "downloads", "jobs", "p", "search", "settings", "subscriptions", "videos"}:
@@ -41,72 +53,73 @@ class TwitchCog(commands.Cog, name="Twitch"):
         if not credentials:
             return None
         client_id, client_secret = credentials
-        cached = self._tokens.get(guild_id)
-        if cached and cached[0] == client_id and cached[1] == client_secret and time.time() < cached[3]:
-            return cached[0], cached[2]
+        key = (client_id, client_secret)
+        cached = self._tokens.get(key)
+        if cached and time.time() < cached[1]:
+            return client_id, cached[0]
         try:
-            async with session.post(
-                "https://id.twitch.tv/oauth2/token",
-                params={"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"},
-            ) as response:
+            async with session.post("https://id.twitch.tv/oauth2/token", params={"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"}) as response:
                 if response.status != 200:
-                    logger.error("Twitch authentication failed for guild %s (HTTP %s).", guild_id, response.status)
+                    logger.warning("Twitch authentication failed (HTTP %s).", response.status)
                     return None
                 data = await response.json()
                 token = data.get("access_token")
                 expires_in = int(data.get("expires_in", 0) or 0)
                 if not token:
                     return None
-                self._tokens[guild_id] = (client_id, client_secret, token, time.time() + max(0, expires_in - 60))
+                self._tokens[key] = (token, time.time() + max(30, expires_in - 60))
                 return client_id, token
         except (aiohttp.ClientError, ValueError):
-            logger.exception("Twitch authentication request failed for guild %s.", guild_id)
+            logger.exception("Twitch authentication request failed.")
             return None
 
     async def _get_stream_data(self, session: aiohttp.ClientSession, guild_id: int, login: str) -> dict | None:
+        credentials = integration_config.get_twitch_credentials(guild_id)
+        if not credentials:
+            return None
+        client_id, client_secret = credentials
+        credential_key = (client_id, client_secret)
+        if time.time() < self._backoff_until.get(credential_key, 0):
+            return None
+        cache_key = (client_id, login)
+        cached = self._stream_cache.get(cache_key)
+        if cached and time.time() - cached[1] < 60:
+            return cached[0]
         auth = await self._get_access_token(session, guild_id)
         if not auth:
             return None
         client_id, token = auth
         try:
-            async with session.get(
-                "https://api.twitch.tv/helix/streams",
-                headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"},
-                params={"user_login": login},
-            ) as response:
+            async with session.get("https://api.twitch.tv/helix/streams", headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"}, params={"user_login": login}) as response:
                 if response.status == 401:
-                    self._tokens.pop(guild_id, None)
+                    self._tokens.pop(credential_key, None)
                     return None
                 if response.status == 429:
-                    logger.warning("Twitch rate limit reached for guild %s.", guild_id)
+                    self._backoff_until[credential_key] = time.time() + 120
+                    logger.warning("Twitch rate limit reached; backing off for credential scope.")
                     return None
                 if response.status != 200:
-                    logger.warning("Twitch API returned HTTP %s for guild %s.", response.status, guild_id)
+                    logger.warning("Twitch API returned HTTP %s.", response.status)
                     return None
                 streams = (await response.json()).get("data", [])
-                if not streams:
-                    return None
-                stream = streams[0]
-                return {
-                    "streamer": login,
-                    "title": stream.get("title", ""),
-                    "game": stream.get("game_name", ""),
-                    "url": f"https://www.twitch.tv/{login}",
-                }
+                result = None
+                if streams:
+                    stream = streams[0]
+                    result = {"streamer": login, "title": stream.get("title", ""), "game": stream.get("game_name", ""), "url": f"https://www.twitch.tv/{login}"}
+                self._stream_cache[cache_key] = (result, time.time())
+                return result
         except aiohttp.ClientError:
-            logger.exception("Unable to check Twitch channel %s for guild %s.", login, guild_id)
+            logger.exception("Unable to check Twitch channel %s.", login)
             return None
 
     @staticmethod
     def _format_message(message: str, data: dict) -> str:
         for key in ("streamer", "title", "game", "url"):
             message = message.replace("{" + key + "}", str(data.get(key, "")))
-        return message
+        return message[:2000]
 
     async def _send_announcement(self, announcement: dict, stream_data: dict) -> bool:
-        channel_id = announcement.get("channel_id")
-        guild_id = announcement.get("guild_id")
-        message = announcement.get("message")
+        channel_id, guild_id, message = announcement.get("channel_id"), announcement.get("guild_id"), announcement.get("message")
         if not channel_id or not guild_id or not message:
             return False
         try:
@@ -119,8 +132,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
         try:
             await channel.send(self._format_message(message, stream_data))
             return True
-        except Exception:
-            logger.exception("Failed to send Twitch announcement for guild %s.", guild_id)
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
             return False
 
     async def test_announcement(self, announcement: dict) -> bool:
@@ -135,28 +148,26 @@ class TwitchCog(commands.Cog, name="Twitch"):
         announcements = [a for a in data["announcements"] if a.get("type") == "twitch" and a.get("guild_id")]
         if not announcements:
             return
-        timeout = aiohttp.ClientTimeout(total=15)
+        session = await self._get_session()
         changed = False
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            # Cache is scoped by (guild, streamer): credentials never cross guild boundaries.
-            cache: dict[tuple[int, str], dict | None] = {}
-            for announcement in announcements:
-                guild_id = int(announcement["guild_id"])
-                login = self._extract_twitch_login(announcement.get("source_url", ""))
-                if not login or not integration_config.get_twitch_credentials(guild_id):
-                    continue
-                key = (guild_id, login)
-                if key not in cache:
-                    cache[key] = await self._get_stream_data(session, guild_id, login)
-                stream = cache[key]
-                is_live = stream is not None
-                was_live = bool(announcement.get("was_live", False))
-                if is_live and not was_live and await self._send_announcement(announcement, stream):
-                    announcement["was_live"] = True
-                    changed = True
-                elif not is_live and was_live:
-                    announcement["was_live"] = False
-                    changed = True
+        cache: dict[tuple[int, str], dict | None] = {}
+        for announcement in announcements:
+            guild_id = int(announcement["guild_id"])
+            login = self._extract_twitch_login(announcement.get("source_url", ""))
+            if not login or not integration_config.get_twitch_credentials(guild_id):
+                continue
+            key = (guild_id, login)
+            if key not in cache:
+                cache[key] = await self._get_stream_data(session, guild_id, login)
+            stream = cache[key]
+            is_live = stream is not None
+            was_live = bool(announcement.get("was_live", False))
+            if is_live and not was_live and await self._send_announcement(announcement, stream):
+                announcement["was_live"] = True
+                changed = True
+            elif not is_live and was_live:
+                announcement["was_live"] = False
+                changed = True
         if changed:
             store.save(data)
 
