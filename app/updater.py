@@ -40,6 +40,8 @@ def repository_status(fetch: bool = True) -> tuple[bool, int, int, str]:
     if len(parts) != 2:
         return False, 0, 0, "Unexpected Git comparison result."
     ahead, behind = int(parts[0]), int(parts[1])
+    if behind and ahead:
+        return True, behind, ahead, f"Local branch diverged: {ahead} local commit(s), {behind} update(s) available."
     if behind:
         return True, behind, ahead, f"{behind} update(s) available from origin/main."
     if ahead:
@@ -55,7 +57,7 @@ def requirements_changed(old_commit: str, new_commit: str) -> bool:
 
 
 def update_code() -> tuple[bool, bool, str]:
-    """Fast-forward local code only; never resets ignored runtime/config data."""
+    """Synchronize tracked source code with origin/main; ignored runtime data is preserved."""
     status = _run_git("status", "--porcelain")
     if status.returncode != 0:
         return False, False, status.stderr.strip() or "Unable to inspect the Git working tree."
@@ -80,9 +82,9 @@ def update_code() -> tuple[bool, bool, str]:
     if ahead != 0:
         return False, False, "Local branch has diverged from origin/main; automatic update aborted."
 
-    pull = _run_git("merge", "--ff-only", "origin/main")
-    if pull.returncode != 0:
-        return False, False, pull.stderr.strip() or "Fast-forward update failed."
+    sync = _run_git("reset", "--hard", "origin/main")
+    if sync.returncode != 0:
+        return False, False, sync.stderr.strip() or "Source synchronization failed."
     after = current_commit()
     return True, after != before, f"Code updated from {before[:7]} to {after[:7]}."
 
