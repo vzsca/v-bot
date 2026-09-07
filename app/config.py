@@ -12,6 +12,14 @@ logger = logging.getLogger("v-bot")
 VERSION = version.VERSION
 MAX_SECONDARY_OWNERS = 5
 
+# Command and security limits.
+GLOBAL_COMMAND_LIMIT = 8
+GLOBAL_COMMAND_WINDOW = 10.0
+OWNER_COMMAND_LIMIT = 20
+SUSPICIOUS_ACTION_WINDOW = 30.0
+SUSPICIOUS_ACTION_THRESHOLD = 5
+AUDIT_LOG_RETENTION = 500
+
 
 def _parse_owner_id(raw: str | None, var_name: str) -> int:
     if not raw or not raw.strip():
@@ -50,7 +58,12 @@ def _parse_owner_id_list(raw: str | None) -> list[int]:
 def _parse_bool(raw: str | None, default: bool = False) -> bool:
     if raw is None or not raw.strip():
         return default
-    return raw.strip().lower() in ("1", "true", "on", "yes")
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "on", "yes"}:
+        return True
+    if normalized in {"0", "false", "off", "no"}:
+        return False
+    raise SystemExit("Boolean configuration contains an invalid value")
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -76,5 +89,4 @@ TEMP_AUTH_CLEAN_INTERVAL = 10
 MENTION_RESPONSE_COOLDOWN = 5
 API_CACHE_TTL = 60
 API_BACKOFF_MAX = 15 * 60
-
 DANGEROUS_COMMANDS_ENABLED = _parse_bool(os.getenv("DANGEROUS_COMMANDS_ENABLED"), default=False)
