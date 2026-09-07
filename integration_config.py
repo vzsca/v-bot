@@ -1,4 +1,4 @@
-"""Integration credentials with runtime-reloaded, guild-scoped configuration."""
+"""Integration credentials with global and guild-scoped configuration."""
 
 import os
 import threading
@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 import api_access
+import api_credentials
 
 _ENV_PATH = Path(__file__).resolve().parent / ".env"
 _LOCK = threading.RLock()
@@ -17,10 +18,8 @@ _ENV_CHECK_INTERVAL = 2.0
 _LAST_ENV_CHECK = 0.0
 
 
-def _guild_key(prefix: str, guild_id: int) -> str:
-    if not isinstance(guild_id, int) or guild_id <= 0:
-        raise ValueError("guild_id must be a positive integer")
-    return f"{prefix}_{guild_id}"
+def _valid_secret(value: str, minimum: int = 8) -> bool:
+    return minimum <= len(value) <= 512 and "\x00" not in value
 
 
 def _env() -> dict[str, str]:
@@ -35,8 +34,6 @@ def _env() -> dict[str, str]:
         except OSError:
             mtime = None
         if mtime != _ENV_MTIME_NS:
-            # Start with process environment for deployments that don't use .env,
-            # then let the local .env override it so panel changes take effect.
             merged = dict(os.environ)
             values = dotenv_values(_ENV_PATH)
             merged.update({str(k): str(v).strip() for k, v in values.items() if k and v is not None})
@@ -45,26 +42,30 @@ def _env() -> dict[str, str]:
         return _ENV_CACHE
 
 
-def _valid_secret(value: str, minimum: int = 8) -> bool:
-    return minimum <= len(value) <= 512 and "\x00" not in value
-
-
 def get_twitch_credentials(guild_id: int) -> tuple[str, str] | None:
-    env = _env()
     if api_access.is_allowed(guild_id):
+        env = _env()
         client_id = env.get("TWITCH_CLIENT_ID", "").strip()
         client_secret = env.get("TWITCH_CLIENT_SECRET", "").strip()
     else:
-        client_id = env.get(_guild_key("TWITCH_CLIENT_ID", guild_id), "").strip()
-        client_secret = env.get(_guild_key("TWITCH_CLIENT_SECRET", guild_id), "").strip()
+        credentials = api_credentials.get(guild_id, "twitch") or {}
+        client_id = str(credentials.get("client_id", "")).strip()
+        client_secret = str(credentials.get("client_secret", "")).strip()
     if not client_id or not _valid_secret(client_id) or not client_secret or not _valid_secret(client_secret):
         return None
     return client_id, client_secret
 
 
 def get_youtube_api_key(guild_id: int) -> str | None:
-    env = _env()
-    key = env.get("YOUTUBE_API_KEY", "").strip() if api_access.is_allowed(guild_id) else env.get(_guild_key("YOUTUBE_API_KEY", guild_id), "").strip()
-    if not key or not _valid_secret(key):
-        return None
-    return key
+    if api_access.is_allowed(guild_id):
+        key = _env().get("YOUTUBE_API_KEY", "").strip()
+    else:
+        credentials = api_credentials.get(guild_id, "youtube") or {}
+        key = str(credentials.get("api_key", "")).strip()
+    return key if _valid_secret(key) else None
+
+
+def is_configured(guild_id: int, platform: str) -> bool:
+    if api_access.is_allowed(guild_id):
+        return bool(get_twitch_credentials(guild_id) if platform == "twitch" else get_youtube_api_key(guild_id))
+    return api_credentials.configured(guild_id, platform)
