@@ -1,9 +1,12 @@
-"""YouTube integration with per-guild API credentials and announcements."""
+"""YouTube integration with guild-safe credentials and quota-aware polling."""
 
+import asyncio
 import logging
+import time
 from urllib.parse import urlparse
 
 import aiohttp
+import discord
 from discord.ext import commands, tasks
 
 import announcement_store as store
@@ -14,16 +17,27 @@ YOUTUBE_API_URL = "https://youtube.googleapis.com"
 
 
 class YouTubeCog(commands.Cog, name="YouTube"):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot):
         self.bot = bot
-        self._channel_cache: dict[tuple[int, str], str] = {}
+        self._channel_cache = {}
+        self._latest_cache = {}
+        self._backoff_until = {}
+        self._session = None
         self.youtube_task.start()
 
     def cog_unload(self):
         self.youtube_task.cancel()
+        if self._session and not self._session.closed:
+            asyncio.create_task(self._session.close())
+        self._session = None
+
+    async def _get_session(self):
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
+        return self._session
 
     @staticmethod
-    def _extract_identifier(url: str) -> tuple[str, str] | None:
+    def _extract_identifier(url):
         try:
             p = urlparse(url.strip())
             if p.scheme not in {"http", "https"} or p.netloc.lower().split(":")[0] not in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
@@ -42,29 +56,34 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             pass
         return None
 
-    async def _api_get(self, session: aiohttp.ClientSession, guild_id: int, endpoint: str, params: dict) -> tuple[dict | None, int | None]:
+    async def _api_get(self, session, guild_id, endpoint, params):
         api_key = integration_config.get_youtube_api_key(guild_id)
         if not api_key:
             return None, None
+        credential_scope = api_key
+        if time.time() < self._backoff_until.get(credential_scope, 0):
+            return None, 429
         try:
             async with session.get(f"{YOUTUBE_API_URL}/{endpoint}", params={**params, "key": api_key}) as response:
                 if response.status != 200:
                     if response.status in {403, 429}:
-                        logger.warning("YouTube API limit/error HTTP %s for guild %s.", response.status, guild_id)
+                        self._backoff_until[credential_scope] = time.time() + 120
+                        logger.warning("YouTube API limit/error HTTP %s; backing off.", response.status)
                     return None, response.status
-                return await response.json(), response.status
+                return await response.json(), 200
         except (aiohttp.ClientError, ValueError):
-            logger.exception("YouTube API request failed for guild %s.", guild_id)
+            logger.exception("YouTube API request failed.")
             return None, None
 
-    async def _resolve_channel_id(self, session: aiohttp.ClientSession, guild_id: int, source_url: str) -> str | None:
+    async def _resolve_channel_id(self, session, guild_id, source_url):
         identifier = self._extract_identifier(source_url)
         if not identifier:
             return None
         kind, value = identifier
         if kind == "channel_id":
             return value
-        cache_key = (guild_id, f"{kind}:{value}")
+        api_key = integration_config.get_youtube_api_key(guild_id)
+        cache_key = (api_key, f"{kind}:{value}")
         if cache_key in self._channel_cache:
             return self._channel_cache[cache_key]
         if kind == "handle":
@@ -83,24 +102,47 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             self._channel_cache[cache_key] = channel_id
         return channel_id
 
-    async def _get_latest_video(self, session: aiohttp.ClientSession, guild_id: int, channel_id: str) -> dict | None:
-        data, status = await self._api_get(session, guild_id, "youtube/v3/search", {"part": "snippet", "channelId": channel_id, "order": "date", "type": "video", "maxResults": 1})
+    async def _get_uploads_playlist(self, session, guild_id, channel_id):
+        api_key = integration_config.get_youtube_api_key(guild_id)
+        cache_key = (api_key, "playlist:" + channel_id)
+        if cache_key in self._channel_cache:
+            return self._channel_cache[cache_key]
+        data, status = await self._api_get(session, guild_id, "youtube/v3/channels", {"part": "contentDetails", "id": channel_id})
+        if status != 200 or not data or not data.get("items"):
+            return None
+        playlist_id = data["items"][0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+        if playlist_id:
+            self._channel_cache[cache_key] = playlist_id
+        return playlist_id
+
+    async def _get_latest_video(self, session, guild_id, channel_id):
+        api_key = integration_config.get_youtube_api_key(guild_id)
+        cache_key = (api_key, channel_id)
+        cached = self._latest_cache.get(cache_key)
+        if cached and time.time() - cached[1] < 60:
+            return cached[0]
+        playlist_id = await self._get_uploads_playlist(session, guild_id, channel_id)
+        if not playlist_id:
+            return None
+        data, status = await self._api_get(session, guild_id, "youtube/v3/playlistItems", {"part": "snippet,contentDetails", "playlistId": playlist_id, "maxResults": 1})
         if status != 200 or not data or not data.get("items"):
             return None
         item = data["items"][0]
-        video_id = item.get("id", {}).get("videoId")
+        video_id = item.get("contentDetails", {}).get("videoId")
         if not video_id:
             return None
         snippet = item.get("snippet", {})
-        return {"video_id": video_id, "channel": snippet.get("channelTitle", ""), "title": snippet.get("title", ""), "url": f"https://www.youtube.com/watch?v={video_id}"}
+        result = {"video_id": video_id, "channel": snippet.get("channelTitle", ""), "title": snippet.get("title", ""), "url": f"https://www.youtube.com/watch?v={video_id}"}
+        self._latest_cache[cache_key] = (result, time.time())
+        return result
 
     @staticmethod
-    def _format_message(message: str, data: dict) -> str:
+    def _format_message(message, data):
         for key in ("channel", "title", "url"):
             message = message.replace("{" + key + "}", str(data.get(key, "")))
-        return message
+        return message[:2000]
 
-    async def _send_announcement(self, announcement: dict, video_data: dict) -> bool:
+    async def _send_announcement(self, announcement, video_data):
         channel_id, guild_id, message = announcement.get("channel_id"), announcement.get("guild_id"), announcement.get("message")
         if not channel_id or not guild_id or not message:
             return False
@@ -114,11 +156,11 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         try:
             await channel.send(self._format_message(message, video_data))
             return True
-        except Exception:
-            logger.exception("Failed to send YouTube announcement for guild %s.", guild_id)
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            logger.warning("Failed to send YouTube announcement for guild %s.", guild_id)
             return False
 
-    async def test_announcement(self, announcement: dict) -> bool:
+    async def test_announcement(self, announcement):
         identifier = self._extract_identifier(announcement.get("source_url", ""))
         if not identifier:
             return False
@@ -131,34 +173,33 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         announcements = [a for a in data["announcements"] if a.get("type") == "youtube" and a.get("guild_id")]
         if not announcements:
             return
+        session = await self._get_session()
         changed = False
-        timeout = aiohttp.ClientTimeout(total=15)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            latest_cache: dict[tuple[int, str], dict | None] = {}
-            for announcement in announcements:
-                guild_id = int(announcement["guild_id"])
-                if not integration_config.get_youtube_api_key(guild_id):
-                    continue
-                source = announcement.get("source_url", "")
-                if not source:
-                    continue
-                channel_id = announcement.get("youtube_channel_id")
+        latest_cache = {}
+        for announcement in announcements:
+            guild_id = int(announcement["guild_id"])
+            if not integration_config.get_youtube_api_key(guild_id):
+                continue
+            source = announcement.get("source_url", "")
+            if not source:
+                continue
+            channel_id = announcement.get("youtube_channel_id")
+            if not channel_id:
+                channel_id = await self._resolve_channel_id(session, guild_id, source)
                 if not channel_id:
-                    channel_id = await self._resolve_channel_id(session, guild_id, source)
-                    if not channel_id:
-                        continue
-                    announcement["youtube_channel_id"] = channel_id
-                    changed = True
-                key = (guild_id, channel_id)
-                if key not in latest_cache:
-                    latest_cache[key] = await self._get_latest_video(session, guild_id, channel_id)
-                video = latest_cache[key]
-                if not video:
                     continue
-                if announcement.get("last_video_id") != video["video_id"]:
-                    if await self._send_announcement(announcement, video):
-                        announcement["last_video_id"] = video["video_id"]
-                        changed = True
+                announcement["youtube_channel_id"] = channel_id
+                changed = True
+            key = (guild_id, channel_id)
+            if key not in latest_cache:
+                latest_cache[key] = await self._get_latest_video(session, guild_id, channel_id)
+            video = latest_cache[key]
+            if not video:
+                continue
+            if announcement.get("last_video_id") != video["video_id"]:
+                if await self._send_announcement(announcement, video):
+                    announcement["last_video_id"] = video["video_id"]
+                    changed = True
         if changed:
             store.save(data)
 
@@ -167,5 +208,5 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         await self.bot.wait_until_ready()
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot):
     await bot.add_cog(YouTubeCog(bot))
