@@ -64,7 +64,17 @@ async def on_error(event_method, *args, **kwargs):
 
 bot.on_error = on_error
 
-EXTENSIONS = ["cogs.events", "cogs.moderation", "cogs.info", "cogs.owner", "cogs.help_cog", "cogs.annonce", "cogs.twitch", "cogs.youtube"]
+EXTENSIONS = [
+    "cogs.events",
+    "cogs.moderation",
+    "cogs.info",
+    "cogs.owner",
+    "cogs.help_cog",
+    "cogs.api_config",
+    "cogs.annonce",
+    "cogs.twitch",
+    "cogs.youtube",
+]
 if config.DANGEROUS_COMMANDS_ENABLED:
     EXTENSIONS.append("cogs.dangerous_safe")
     logger.warning("Sensitive commands ENABLED with safety confirmations and guild-scoped cleanup.")
