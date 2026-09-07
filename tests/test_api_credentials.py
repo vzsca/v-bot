@@ -1,5 +1,3 @@
-from api_credentials import BotState if False else None
-
 import api_credentials
 
 
