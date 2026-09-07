@@ -22,23 +22,17 @@ class InfoCog(commands.Cog, name="Information"):
     async def snipe(self, ctx, index: int = 1):
         if not 1 <= index <= 10:
             return await ctx.send("❌ Index must be between 1 and 10.")
-
         now = discord.utils.utcnow().timestamp()
-        msgs = [
-            msg for msg in state.sniped_messages.get(ctx.channel.id, [])
-            if now - msg.get("time", now).timestamp() <= SNIPE_RETENTION_SECONDS
-        ]
+        msgs = [m for m in state.sniped_messages.get(ctx.channel.id, []) if now - m.get("time", discord.utils.utcnow()).timestamp() <= SNIPE_RETENTION_SECONDS]
         if not msgs or index > len(msgs):
             return await ctx.send("❌ No deleted message found.")
-
         s = msgs[index - 1]
-        embed = discord.Embed(
-            title=f"🗑️ Deleted Message #{index}",
-            description=s.get("content") or "*(no text)*",
-            color=discord.Color.red(),
-            timestamp=s.get("time"),
-        )
-        embed.set_author(name=s.get("author", "Unknown"), icon_url=s.get("author_avatar") or discord.Embed.Empty)
+        embed = discord.Embed(title=f"🗑️ Deleted Message #{index}", description=s.get("content") or "*(no text)*", color=discord.Color.red(), timestamp=s.get("time"))
+        avatar = s.get("author_avatar")
+        if avatar:
+            embed.set_author(name=s.get("author", "Unknown"), icon_url=avatar)
+        else:
+            embed.set_author(name=s.get("author", "Unknown"))
         attachments = s.get("attachments") or []
         if attachments:
             embed.add_field(name="📎 Attachments", value="\n".join(attachments[:10]), inline=False)
@@ -50,8 +44,7 @@ class InfoCog(commands.Cog, name="Information"):
     async def user_info(self, ctx, member: Optional[discord.Member] = None):
         member = member or ctx.author
         embed = discord.Embed(title=f"Information about {member.display_name}", color=discord.Color.blue())
-        avatar_url = member.avatar.url if getattr(member, "avatar", None) else member.default_avatar.url
-        embed.set_thumbnail(url=avatar_url)
+        embed.set_thumbnail(url=(member.avatar.url if member.avatar else member.default_avatar.url))
         embed.add_field(name="ID", value=member.id, inline=True)
         embed.add_field(name="Username", value=member.name, inline=True)
         embed.add_field(name="Nickname", value=member.nick or "None", inline=True)
@@ -81,9 +74,8 @@ class InfoCog(commands.Cog, name="Information"):
     @checks.kill_switch_required()
     async def avatar(self, ctx, member: Optional[discord.Member] = None):
         member = member or ctx.author
-        avatar_url = member.avatar.url if getattr(member, "avatar", None) else member.default_avatar.url
         embed = discord.Embed(title=f"{member.display_name}'s Avatar", color=discord.Color.purple())
-        embed.set_image(url=avatar_url)
+        embed.set_image(url=(member.avatar.url if member.avatar else member.default_avatar.url))
         await ctx.send(embed=embed)
 
 
