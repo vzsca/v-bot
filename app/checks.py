@@ -1,9 +1,10 @@
-"""All bot permission logic, centralized here."""
+"""All bot permission and global safety checks, centralized here."""
 
 from discord.ext import commands
 
 import config
 import exceptions
+from rate_limit import rate_limiter
 from state import state
 
 
@@ -17,11 +18,15 @@ def is_owner_or_temp(user_id: int, guild_id: int | None = None) -> bool:
 
 
 async def global_check(ctx) -> bool:
-    if is_permanent_owner(ctx.author.id):
-        return True
-    if state.kill_switch:
+    guild_id = ctx.guild.id if ctx.guild else 0
+    owner = is_owner_or_temp(ctx.author.id, ctx.guild.id if ctx.guild else None)
+    if state.kill_switch and not is_permanent_owner(ctx.author.id):
         return False
-    return not (ctx.guild and ctx.guild.id in state.disabled_guilds)
+    if ctx.guild and ctx.guild.id in state.disabled_guilds and not is_permanent_owner(ctx.author.id):
+        return False
+    command_name = getattr(ctx.command, "qualified_name", "unknown")
+    rate_limiter.check(guild_id, ctx.author.id, command_name, owner=owner)
+    return True
 
 
 def owner_check():
