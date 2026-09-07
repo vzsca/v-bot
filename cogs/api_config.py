@@ -58,7 +58,7 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.command(name="set_api")
+    @commands.hybrid_command(name="set_api", description="Configure the Twitch or YouTube API for this server.")
     @commands.guild_only()
     @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
@@ -72,7 +72,7 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
         modal = TwitchAPIView(ctx.guild.id) if platform == "twitch" else YouTubeAPIView(ctx.guild.id)
         await ctx.send(f"🔐 Configuration **{platform}** : clique sur le bouton puis renseigne ta clé dans le formulaire.", view=OpenAPIView(ctx.author.id, modal))
 
-    @commands.command(name="api_status")
+    @commands.hybrid_command(name="api_status", description="Show the API configuration status for this server.")
     @commands.guild_only()
     @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
@@ -83,7 +83,7 @@ class APIConfigCog(commands.Cog, name="API Configuration"):
         youtube = bool(integration_config.get_youtube_api_key(guild_id))
         await ctx.send(f"🔑 API **{mode}** — Twitch: {'🟢 configurée' if twitch else '🔴 absente'} | YouTube: {'🟢 configurée' if youtube else '🔴 absente'}")
 
-    @commands.command(name="clear_api")
+    @commands.hybrid_command(name="clear_api", description="Remove the Twitch or YouTube API configuration for this server.")
     @commands.guild_only()
     @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
