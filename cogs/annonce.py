@@ -74,17 +74,19 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         if me is None or not target.permissions_for(me).send_messages:
             return await ctx.send("❌ I cannot send messages in that channel.")
 
-        data = store.load()
-        announcement = store.add(data, {
-            "guild_id": ctx.guild.id,
-            "type": platform,
-            "source_url": source_url,
-            "message": message,
-            "channel_id": target.id,
-            "was_live": False if platform == "twitch" else None,
-            "last_video_id": None if platform == "youtube" else None,
-        })
-        if not store.save(data):
+        def add_announcement(data):
+            return store.add(data, {
+                "guild_id": ctx.guild.id,
+                "type": platform,
+                "source_url": source_url,
+                "message": message,
+                "channel_id": target.id,
+                "was_live": False if platform == "twitch" else None,
+                "last_video_id": None if platform == "youtube" else None,
+            })
+
+        saved, announcement = store.transaction(add_announcement)
+        if not saved or not announcement:
             return await ctx.send("❌ Failed to save the announcement.")
 
         await ctx.send(
@@ -106,7 +108,7 @@ class AnnonceCog(commands.Cog, name="Announcements"):
             color=discord.Color.purple(),
         )
         for announcement in announcements[:25]:
-            channel = f"<#{announcement.get('channel_id')}>" if announcement.get("channel_id") else "Unknown"
+            channel = f"<#{announcement.get('channel_id')}>" if announcement.get('channel_id') else "Unknown"
             status = "🟢 LIVE" if announcement.get("type") == "twitch" and announcement.get("was_live") else "🟢 Enabled"
             embed.add_field(
                 name=f"#{announcement['id']} — {str(announcement.get('type', 'unknown')).capitalize()}",
@@ -146,11 +148,14 @@ class AnnonceCog(commands.Cog, name="Announcements"):
     @checks.owner_or_permission(administrator=True)
     @checks.kill_switch_required()
     async def delete_annonce(self, ctx, announcement_id: int):
-        data = store.load()
-        if not store.remove(data, ctx.guild.id, announcement_id):
-            return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
-        if not store.save(data):
+        def remove_announcement(data):
+            return store.remove(data, ctx.guild.id, announcement_id)
+
+        saved, removed = store.transaction(remove_announcement)
+        if not saved:
             return await ctx.send("❌ Failed to save the configuration.")
+        if not removed:
+            return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
         await ctx.send(f"🗑️ Announcement `{announcement_id}` deleted from **{ctx.guild.name}**.")
 
 
