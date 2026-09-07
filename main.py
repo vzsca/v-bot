@@ -48,15 +48,18 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError) 
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"⏳ Please wait {error.retry_after:.1f}s before trying again.")
         return
-    logger.exception("Unhandled command error in %s", getattr(ctx.command, "qualified_name", "unknown"), exc_info=error)
-    await ctx.send("⚠️ An internal error occurred while executing the command.")
+    logger.error("Unhandled command error in %s", getattr(ctx.command, "qualified_name", "unknown"), exc_info=(type(error), error, error.__traceback__))
+    try:
+        await ctx.send("⚠️ An internal error occurred while executing the command.")
+    except discord.HTTPException:
+        logger.exception("Could not report command error to Discord.")
 
 
 bot.on_command_error = on_command_error
 
 
 async def on_error(event_method: str, *args, **kwargs) -> None:
-    logger.exception("Unhandled error in event handler '%s'", event_method)
+    logger.error("Unhandled error in event handler '%s'", event_method, exc_info=sys.exc_info())
 
 
 bot.on_error = on_error
