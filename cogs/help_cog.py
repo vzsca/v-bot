@@ -1,4 +1,4 @@
-"""v!help command, with public and owner embeds."""
+"""Discord help command."""
 
 import discord
 from discord.ext import commands
@@ -15,79 +15,54 @@ class HelpCog(commands.Cog, name="Help"):
     @checks.kill_switch_required()
     async def help(self, ctx, category: str | None = None):
         is_owner = checks.is_owner_or_temp(ctx.author.id, ctx.guild.id if ctx.guild else None)
+        general = discord.Embed(title="📜 User Commands", description="Available with the `v!` prefix.", color=discord.Color.blue())
+        for name, description in (
+            ("mute @user <minutes> [reason]", "Temporarily mute a member."),
+            ("unmute @user", "Remove a mute."),
+            ("kick @user [reason]", "Kick a member."),
+            ("ban @user [reason]", "Ban a member."),
+            ("unban <id>", "Unban a user."),
+            ("give_role @user @role", "Give a role."),
+            ("clear <amount>", "Delete messages."),
+            ("slowmode <seconds>", "Configure slowmode."),
+            ("lock / unlock", "Lock or unlock the channel."),
+            ("avatar [@user]", "Display an avatar."),
+            ("user_info [@user]", "Display user information."),
+            ("server_info", "Display server information."),
+            ("snipe [index]", "Display a deleted message."),
+            ("set_api twitch|yt", "Configure this server's own API credentials."),
+            ("api_status", "Show API mode/status without exposing secrets."),
+            ("clear_api twitch|yt", "Remove this server's API credentials."),
+            ("create_annonce", "Create an automatic Twitch/YouTube announcement."),
+            ("annonces", "List configured announcements."),
+            ("test_annonce <id>", "Test an announcement."),
+            ("delete_annonce <id>", "Delete an announcement."),
+        ):
+            general.add_field(name=f"`{name}`", value=description, inline=False)
 
-        general_embed = discord.Embed(
-            title="📜 User Commands",
-            description="List of commands available to everyone.\nAvailable as `/slash` commands or with the `v!` prefix.",
-            color=discord.Color.blue(),
-        )
-        general_embed.add_field(name="🔇 `mute @user <minutes> [reason]`", value="Temporarily mutes a member.", inline=False)
-        general_embed.add_field(name="🔊 `unmute @user`", value="Removes a member's mute.", inline=False)
-        general_embed.add_field(name="🦵 `kick @user [reason]`", value="Kicks a member.", inline=False)
-        general_embed.add_field(name="⛔ `ban @user [reason]`", value="Bans a member.", inline=False)
-        general_embed.add_field(name="🔄 `unban <id>`", value="Unbans a user.", inline=False)
-        general_embed.add_field(name="🎭 `give_role @user @role`", value="Gives a role to a member.", inline=False)
-        general_embed.add_field(name="🗑️ `clear <amount>`", value="Deletes messages.", inline=False)
-        general_embed.add_field(name="⏳ `slowmode <seconds>`", value="Configures slowmode.", inline=False)
-        general_embed.add_field(name="🔒 `lock`", value="Locks the channel.", inline=False)
-        general_embed.add_field(name="🔓 `unlock`", value="Unlocks the channel.", inline=False)
-        general_embed.add_field(name="🖼️ `avatar <@user>`", value="Displays a user's avatar.", inline=False)
-        general_embed.add_field(name="👤 `user_info`", value="Displays user information.", inline=False)
-        general_embed.add_field(name="🏠 `server_info`", value="Displays server information.", inline=False)
-        general_embed.add_field(name="💬 `snipe [index]`", value="Displays a deleted message.", inline=False)
-        general_embed.add_field(name="🔑 `set_api twitch|yt`", value="Configure the current server's own API credentials.", inline=False)
-        general_embed.add_field(name="📋 `api_status`", value="Shows API mode and configuration status without exposing secrets.", inline=False)
-        general_embed.add_field(name="🗑️ `clear_api twitch|yt`", value="Removes the current server's API credentials.", inline=False)
-        general_embed.add_field(name="📺 `create_annonce`", value="Creates a Twitch or YouTube automatic announcement using the server's selected API.", inline=False)
-        general_embed.add_field(name="📋 `annonces`", value="Lists configured Twitch/YouTube announcements.", inline=False)
-        general_embed.add_field(name="🧪 `test_annonce`", value="Tests a configured announcement without waiting for an event.", inline=False)
-        general_embed.add_field(name="🗑️ `delete_annonce`", value="Deletes a configured announcement.", inline=False)
-
-        owner_embed = discord.Embed(
-            title="👑 Owner Commands",
-            description="Commands restricted to owners/authorized users.",
-            color=discord.Color.gold(),
-        )
-        owner_embed.add_field(name="📝 `embed <title> | <description>`", value="Sends a custom embed message.", inline=False)
-        owner_embed.add_field(name="📌 `add_temp @user duration`", value="Grants temporary authorization.", inline=False)
-        owner_embed.add_field(name="📄 `owner_list`", value="Lists the bot owners.", inline=False)
-        owner_embed.add_field(name="⚙️ `servers`", value="Server panel (selection + actions).", inline=False)
-        owner_embed.add_field(name="🔁 `toggle_guild`", value="Enables/disables the bot on the current server.", inline=False)
-        owner_embed.add_field(name="💬 `say <message>`", value="Makes the bot send a message.", inline=False)
-
-        if config.DANGEROUS_COMMANDS_ENABLED:
-            owner_embed.add_field(name="💣 `spam <amount> <message>`", value="Controlled message spam.", inline=False)
-            owner_embed.add_field(name="📨 `dmall <message>`", value="DMs all members.", inline=False)
-            owner_embed.add_field(name="⚔️ `raid <amount>`", value="Mass test creation.", inline=False)
-            owner_embed.add_field(name="🔙 `remove_raid`", value="Cleans up raid elements.", inline=False)
-            sensitive_status = "🟢 **ENABLED**"
-        else:
-            sensitive_status = "🔴 **DISABLED**"
-
-        owner_embed.add_field(
-            name="Sensitive commands (raid / remove_raid / dmall / spam)",
-            value=f"Status: {sensitive_status}\nToggled through the `start_bot.bat` panel and requires a restart.",
-            inline=False,
-        )
-        owner_embed.add_field(
-            name="🚨 `killswitch [true/false | on/off | 1/0]`",
-            value="Global security mode. Restricted to permanent owners only.",
-            inline=False,
-        )
+        owner = discord.Embed(title="👑 Owner Commands", description="Restricted administration commands.", color=discord.Color.gold())
+        for name, description in (
+            ("embed <title> | <description>", "Send a custom embed."),
+            ("add_temp @user <duration>", "Grant temporary authorization."),
+            ("owner_list", "List bot owners."),
+            ("servers", "Open server management."),
+            ("toggle_guild", "Enable/disable the bot on the current server."),
+            ("say <message>", "Make the bot send a message."),
+            ("killswitch [on/off]", "Toggle the global security mode."),
+        ):
+            owner.add_field(name=f"`{name}`", value=description, inline=False)
+        sensitive = "🟢 ENABLED" if config.DANGEROUS_COMMANDS_ENABLED else "🔴 DISABLED"
+        owner.add_field(name="Sensitive commands", value=f"`spam`, `dmall`, `raid`, `remove_raid` — {sensitive}", inline=False)
 
         if category == "owner":
-            if is_owner:
-                await ctx.send(embed=owner_embed)
-            else:
-                await ctx.send("❌ You do not have permission to access Owner commands.")
+            await ctx.send(embed=owner if is_owner else discord.Embed(description="❌ Owner commands are restricted."))
         elif category == "all":
             if is_owner:
-                await ctx.send(embed=general_embed)
-                await ctx.send(embed=owner_embed)
+                await ctx.send(embeds=[general, owner])
             else:
-                await ctx.send("❌ You do not have permission to display all commands.")
+                await ctx.send("❌ Owner commands are restricted.")
         else:
-            await ctx.send(embed=general_embed)
+            await ctx.send(embed=general)
 
 
 async def setup(bot: commands.Bot):
