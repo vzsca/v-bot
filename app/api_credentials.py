@@ -7,7 +7,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-CONFIG_FILE = Path(__file__).resolve().parent / "api_credentials.json"
+CONFIG_FILE = Path(__file__).resolve().parent.parent / "api_credentials.json"
 _LOCK = threading.RLock()
 
 
