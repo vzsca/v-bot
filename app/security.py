@@ -1,4 +1,4 @@
-"""Centralized runtime security services and sensitive-action authorization."""
+"""Sensitive-action authorization and security helpers."""
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ import re
 import secrets
 import threading
 import time
-from collections import defaultdict, deque
-from dataclasses import dataclass
 from pathlib import Path
 
 import discord
@@ -18,16 +16,6 @@ from safe_json import JsonStoreError, atomic_write, load_object
 
 import config
 import security_log
-
-
-@dataclass(frozen=True, slots=True)
-class AuditEntry:
-    timestamp: float
-    guild_id: int
-    channel_id: int
-    user_id: int
-    command: str
-    success: bool
 
 
 _ACTION_CODE_FILE = Path(__file__).resolve().parent.parent / "action_codes.json"
@@ -113,47 +101,3 @@ async def require_action_code(ctx, action: str) -> bool:
             await ctx.send(f"❌ Invalid security code. Attempt {attempts}/{config.ACTION_CODE_MAX_ATTEMPTS}.")
     await ctx.send("❌ Too many invalid security code attempts. Generate a new code in the local panel.")
     return False
-
-
-class SecurityService:
-    def __init__(self) -> None:
-        self.audit: deque[AuditEntry] = deque(maxlen=config.AUDIT_LOG_RETENTION)
-        self._actions: dict[tuple[int, int], deque[float]] = defaultdict(deque)
-        self._alert_cooldowns: dict[tuple[int, int], float] = {}
-
-    def record_command(self, *, guild_id: int, channel_id: int, user_id: int, command: str, success: bool) -> bool:
-        now = time.monotonic()
-        self.audit.append(AuditEntry(now, guild_id, channel_id, user_id, command, success))
-        if not success or guild_id <= 0:
-            return False
-        key = (guild_id, user_id)
-        actions = self._actions[key]
-        cutoff = now - config.SUSPICIOUS_ACTION_WINDOW
-        while actions and actions[0] <= cutoff:
-            actions.popleft()
-        actions.append(now)
-        if len(actions) < config.SUSPICIOUS_ACTION_THRESHOLD:
-            return False
-        cooldown_until = self._alert_cooldowns.get(key, 0.0)
-        if now < cooldown_until:
-            return False
-        self._alert_cooldowns[key] = now + config.SECURITY_ALERT_COOLDOWN
-        security_log.log_security_event(
-            f"Suspicious command burst: guild={guild_id} user={user_id} "
-            f"{len(actions)} successful commands in {config.SUSPICIOUS_ACTION_WINDOW:.0f}s; no automatic user or bot shutdown",
-            actor=str(user_id),
-        )
-        return True
-
-    def prune(self) -> None:
-        now = time.monotonic()
-        cutoff = now - config.SUSPICIOUS_ACTION_WINDOW
-        for key, actions in list(self._actions.items()):
-            while actions and actions[0] <= cutoff:
-                actions.popleft()
-            if not actions and self._alert_cooldowns.get(key, 0.0) <= now:
-                self._actions.pop(key, None)
-                self._alert_cooldowns.pop(key, None)
-
-
-security = SecurityService()
