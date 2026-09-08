@@ -12,6 +12,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 
+import discord
+
 from safe_json import atomic_write, load_object
 
 import config
