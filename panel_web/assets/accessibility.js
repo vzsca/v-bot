@@ -1,5 +1,6 @@
 export function initAccessibility() {
   const main = document.querySelector('.main');
+  const authGate = document.querySelector('#authGate');
   const mobileToggle = document.querySelector('#mobileToggle');
   const sidebar = document.querySelector('#sidebar');
   const backdrop = document.querySelector('#modalBackdrop');
@@ -9,22 +10,35 @@ export function initAccessibility() {
     main.setAttribute('tabindex', '-1');
   }
 
+  if (authGate) {
+    authGate.setAttribute('tabindex', '-1');
+  }
+
   let skip = document.querySelector('.skip-link');
   if (!skip) {
     skip = document.createElement('a');
     skip.className = 'skip-link';
-    skip.href = '#main-content';
     skip.textContent = 'Skip to main content';
     document.body.prepend(skip);
   }
 
-  skip.addEventListener('click', event => {
-    const target = document.querySelector('#main-content');
-    if (!target) return;
+  function updateSkipTarget() {
+    const authenticated = document.querySelector('.app') && !document.querySelector('.app').hidden;
+    const target = authenticated ? main : authGate;
+    if (target) skip.href = `#${target.id || (authenticated ? 'main-content' : 'authGate')}`;
+  }
+
+  function handleSkip(event) {
+    const href = skip.getAttribute('href');
+    const target = href ? document.querySelector(href) : null;
+    if (!target || target.hidden) return;
     event.preventDefault();
     target.focus({ preventScroll: true });
     target.scrollIntoView({ block: 'start' });
-  }, { once: true });
+  }
+
+  skip.addEventListener('click', handleSkip);
+  updateSkipTarget();
 
   document.querySelectorAll('.nav a').forEach(link => {
     if (!link.getAttribute('aria-label')) {
@@ -56,4 +70,6 @@ export function initAccessibility() {
     backdrop.setAttribute('aria-hidden', 'true');
     document.querySelector('#modalClose')?.setAttribute('aria-label', 'Close dialog');
   }
+
+  window.vBotAccessibility = { updateSkipTarget };
 }
