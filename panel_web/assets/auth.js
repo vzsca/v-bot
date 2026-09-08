@@ -17,6 +17,7 @@ export function initAuth() {
 
     const requestedPage = getRequestedPage();
     window.vBotNavigation?.showPage(requestedPage, { updateHash: false });
+    window.vBotAccessibility?.updateSkipTarget();
     document.querySelector('#main-content')?.focus({ preventScroll: false });
   }
 
