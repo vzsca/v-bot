@@ -14,7 +14,7 @@ from pathlib import Path
 
 import discord
 
-from safe_json import atomic_write, load_object
+from safe_json import JsonStoreError, atomic_write, load_object
 
 import config
 import security_log
@@ -53,7 +53,10 @@ def _consume_action_code(code: str) -> bool:
     if not _CODE_PATTERN.fullmatch(code):
         return False
     with _ACTION_CODE_LOCK:
-        data = load_object(_ACTION_CODE_FILE, {})
+        try:
+            data = load_object(_ACTION_CODE_FILE, {})
+        except JsonStoreError:
+            return False
         if not isinstance(data, dict):
             return False
         expected = data.get("code_hash")
@@ -61,7 +64,10 @@ def _consume_action_code(code: str) -> bool:
         if not isinstance(expected, str) or not isinstance(expires_at, int):
             return False
         if expires_at <= int(time.time()):
-            _ACTION_CODE_FILE.unlink(missing_ok=True)
+            try:
+                _ACTION_CODE_FILE.unlink(missing_ok=True)
+            except OSError:
+                pass
             return False
         valid = hmac.compare_digest(_code_hash(code), expected)
         if valid:
