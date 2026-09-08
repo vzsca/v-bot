@@ -109,20 +109,34 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             return
         if not await security.require_action_code(ctx, "raid"):
             return
+
         guild_id = ctx.guild.id
         roles = channels = 0
         try:
             for i in range(amount):
                 role = await ctx.guild.create_role(name=f"raid-test-{ctx.author.id}-{i}")
-                state.add_raid_role(guild_id, role.id)
+                if not state.add_raid_role(guild_id, role.id):
+                    try:
+                        await role.delete(reason="Rollback: sensitive resource tracking persistence failed")
+                    except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                        logger.exception("Unable to rollback untracked raid role %s", role.id)
+                    await ctx.send("❌ RAID TEST ABORTED: the resource could not be safely persisted for cleanup.")
+                    return
                 security_log.log_security_event(
                     f"Tracked sensitive resource created: role={role.id} guild={guild_id}",
                     actor=f"{ctx.author} ({ctx.author.id})",
                 )
                 roles += 1
+
             for i in range(amount):
                 channel = await ctx.guild.create_text_channel(name=f"raid-test-{ctx.author.id}-{i}")
-                state.add_raid_channel(guild_id, channel.id)
+                if not state.add_raid_channel(guild_id, channel.id):
+                    try:
+                        await channel.delete(reason="Rollback: sensitive resource tracking persistence failed")
+                    except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                        logger.exception("Unable to rollback untracked raid channel %s", channel.id)
+                    await ctx.send("❌ RAID TEST ABORTED: the resource could not be safely persisted for cleanup.")
+                    return
                 security_log.log_security_event(
                     f"Tracked sensitive resource created: channel={channel.id} guild={guild_id}",
                     actor=f"{ctx.author} ({ctx.author.id})",
@@ -132,6 +146,7 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
                     await channel.send("🧪 test raid system active")
                 except (discord.Forbidden, discord.HTTPException):
                     pass
+
             await ctx.send(f"✅ RAID TEST COMPLETED\n• Roles: {roles}\n• Channels: {channels}\n🧹 `v!remove_raid` to clean up")
         except discord.Forbidden:
             await ctx.send("❌ Insufficient permissions.")
@@ -147,7 +162,8 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
         if not await security.require_action_code(ctx, "remove_raid"):
             return
         guild_id = ctx.guild.id
-        deleted_channels = deleted_roles = deleted_messages = 0
+        deleted_channels = deleted_roles = 0
+
         for channel_id in list(state.created_raid_channels.get(guild_id, set())):
             channel = ctx.guild.get_channel(channel_id)
             if channel:
@@ -156,7 +172,10 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
                     deleted_channels += 1
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     logger.warning("Unable to delete raid channel %s", channel_id)
-            state.discard_raid_channel(guild_id, channel_id)
+                    continue
+            if not state.discard_raid_channel(guild_id, channel_id):
+                logger.error("Unable to persist removal of raid channel %s", channel_id)
+
         for role_id in list(state.created_raid_roles.get(guild_id, set())):
             role = ctx.guild.get_role(role_id)
             if role:
@@ -165,8 +184,14 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
                     deleted_roles += 1
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     logger.warning("Unable to delete raid role %s", role_id)
-            state.discard_raid_role(guild_id, role_id)
-        await ctx.send(f"🧹 Cleanup completed:\n• Channels: {deleted_channels}\n• Roles: {deleted_roles}\n• Messages: {deleted_messages}")
+                    continue
+            if not state.discard_raid_role(guild_id, role_id):
+                logger.error("Unable to persist removal of raid role %s", role_id)
+
+        await ctx.send(
+            f"🧹 Cleanup completed:\n• Channels: {deleted_channels}\n• Roles: {deleted_roles}\n"
+            "• Messages: 0"
+        )
 
 
 async def setup(bot: commands.Bot):
