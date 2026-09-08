@@ -2,7 +2,7 @@
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
 
-v-bot includes a **local control panel** for process management, configuration, owners, logs, updates, and sensitive features. The project targets Windows, Linux, and macOS.
+v-bot includes a **local control panel** for process management, configuration, owners, logs, and sensitive features. The project targets Windows, Linux, and macOS.
 
 ## ✨ Features
 
@@ -13,8 +13,6 @@ v-bot includes a **local control panel** for process management, configuration, 
 - 🧹 Deleted-message snipe
 - 🌐 Multi-server management
 - ⚙️ Cross-platform local panel
-- 🔄 Git-based code updates with automatic restart
-- 🧯 Automatic code rollback on dependency or startup failure
 - 📋 Standard and security logs
 - 📢 Automatic Twitch and YouTube announcements
 - 🔑 Global primary API + per-server API credentials
@@ -22,6 +20,7 @@ v-bot includes a **local control panel** for process management, configuration, 
 - 🚦 Rate limiting, audit logging, and anti-spam/anti-raid detection
 - 🧩 Modular Cogs and application modules
 - 📚 Permission-aware help system with category buttons
+- 🔐 One-time security codes for sensitive actions
 
 ---
 
@@ -33,7 +32,6 @@ v-bot includes a **local control panel** for process management, configuration, 
 - Python **3.13 recommended**
 - A Discord bot created through the Discord Developer Portal
 - Required Discord intents enabled
-- Git installed for panel-based updates
 
 ```bash
 git clone https://github.com/vzsca/v-bot.git
@@ -102,27 +100,14 @@ set_prefix
 set_twitch_api
 set_youtube_api
 toggle_dangerous
+action_code
 ```
 
-### Updates
+### `action_code`
 
-```text
-update
-```
+Generates a temporary **6-digit one-time security code** locally for sensitive Discord actions.
 
-`update`:
-
-1. checks whether `origin/main` actually contains new commits;
-2. does not restart the bot when no update is available;
-3. stops the bot only when an update is available;
-4. performs a Git fast-forward without overwriting tracked local changes;
-5. updates dependencies only when `requirements.txt` changed;
-6. restarts the bot with the updated code;
-7. restores the previous code commit when dependency installation or startup fails.
-
-Git-ignored runtime and configuration files remain in place during the process: `.env`, `api_credentials.json`, `annonce_config.json`, `api_config_access.json`, logs, and PID/runtime files.
-
-A divergent local branch or tracked local modifications block the automatic update to avoid destructive changes.
+The code is short-lived, stored only as a hash on disk, and invalidated after successful use. Do not share it with other users.
 
 ### `status`
 
@@ -134,7 +119,6 @@ A divergent local branch or tracked local modifications block the automatic upda
 - bot state, PID, and process information;
 - uptime;
 - CPU/RAM usage;
-- Git repository state and available commit count;
 - currently installed commit.
 
 ---
@@ -262,6 +246,8 @@ The `spam`, `dmall`, `raid`, and `remove_raid` commands are isolated and disable
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
+These actions also require a temporary **6-digit security code** generated from the local panel, in addition to their normal permission and confirmation checks.
+
 Volume limits, confirmations, and permission checks help prevent accidental use.
 
 ---
@@ -270,9 +256,11 @@ Volume limits, confirmations, and permission checks help prevent accidental use.
 
 - Permissions centralized in `app/checks.py`
 - Global, per-user, and per-command rate limiting
-- Audit logging and suspicious burst detection
+- Audit logging and suspicious burst detection with alert cooldown
 - Anti-spam and anti-raid detection
 - Temporary authorizations scoped to a server and automatically expired
+- One-time 6-digit codes for sensitive actions
+- Security codes stored as hashes and expired automatically
 - Secrets never written to security logs
 - `.env` and persistent configuration files written atomically
 - Corrupted JSON rejected instead of silently overwritten
@@ -280,8 +268,7 @@ Volume limits, confirmations, and permission checks help prevent accidental use.
 - Per-server API credentials isolated by `guild_id`
 - `api_credentials.json` excluded from Git
 - Sensitive commands separated and disabled by default
-- Git updates restricted to fast-forward operations
-- Automatic code rollback on critical update failures
+- Persistent kill-switch and disabled-server state
 
 ---
 
@@ -303,6 +290,7 @@ v-bot/
 │   ├── metrics.py
 │   ├── rate_limit.py
 │   ├── safe_json.py
+│   ├── security.py
 │   ├── security_log.py
 │   ├── state.py
 │   ├── updater.py
@@ -382,4 +370,6 @@ or any other file containing a token or API key.
 
 # 📄 License
 
-Personal project.
+This project is licensed under the **MIT License**. See [`LICENSE`](LICENSE) for the full license text.
+
+Copyright (c) 2026 vzsca.
