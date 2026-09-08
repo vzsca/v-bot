@@ -164,26 +164,95 @@ class EventsCog(commands.Cog):
         if checks.is_owner_or_temp(message.author.id, message.guild.id if message.guild else None):
             await message.channel.send(embed=self._build_owner_embed(message))
         else:
-            await message.channel.send(embed=self._build_general_embed())
+            await message.channel.send(embed=self._build_general_embed(message))
 
     def _build_owner_embed(self, message: discord.Message) -> discord.Embed:
         perms = message.guild.me.guild_permissions if message.guild and message.guild.me else None
         has_admin = perms.administrator if perms else False
         kill_status = "🚨 ENABLED" if state.kill_switch else "Disabled"
         color = discord.Color.red() if state.kill_switch else discord.Color.blue()
-        embed = discord.Embed(title=f"{self.bot.user.name} is operational!", color=color)
-        embed.add_field(name="System status", value=(f"• Administrator: **{has_admin}**\n"
-                                                      f"• Kill Switch: **{kill_status}**\n"
-                                                      f"• Prefix: `{config.PREFIXES[0]}`"), inline=False)
-        embed.add_field(name="Security & access", value="⚠️ Some commands may be restricted for security reasons.", inline=False)
-        embed.add_field(name="Enabled intents", value=self._build_intents_text(), inline=False)
-        embed.set_footer(text=f"Request sent by {message.author}", icon_url=message.author.avatar.url if getattr(message.author, "avatar", None) else None)
+        embed = discord.Embed(
+            title=f"⚙️ {self.bot.user.name} • Owner Panel",
+            description=(
+                "You are recognized as an authorized owner.\n"
+                "Here is the current bot status and the quickest commands to manage it."
+            ),
+            color=color,
+        )
+        embed.add_field(
+            name="🟢 System status",
+            value=(
+                f"• Kill Switch: **{kill_status}**\n"
+                f"• Bot Administrator: **{has_admin}**\n"
+                f"• Connected servers: **{len(self.bot.guilds)}**\n"
+                f"• Prefix: `{config.PREFIXES[0]}`\n"
+                f"• Version: **{config.VERSION}**"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🛠️ Useful commands",
+            value=(
+                f"`{config.PREFIXES[0]}help owner` — owner commands\n"
+                f"`{config.PREFIXES[0]}killswitch` — emergency bot control\n"
+                f"`{config.PREFIXES[0]}status` — bot/runtime information"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🔐 Security",
+            value=(
+                "Sensitive actions may require a one-time 6-digit security code. "
+                "Generate it from the local panel with `action_code`."
+            ),
+            inline=False,
+        )
+        embed.set_footer(
+            text=f"Owner request by {message.author} • Mention cooldown {config.MENTION_RESPONSE_COOLDOWN}s",
+            icon_url=message.author.display_avatar.url,
+        )
         return embed
 
-    def _build_general_embed(self) -> discord.Embed:
-        return discord.Embed(title=f"👋 Hi, I'm {self.bot.user.name}!",
-                              description=f"Use `{config.PREFIXES[0]}help` to see what I can do.",
-                              color=discord.Color.blue())
+    def _build_general_embed(self, message: discord.Message) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"👋 Hi, I'm {self.bot.user.name}!",
+            description=(
+                "I'm online and ready to help. Here are the main things you can use me for:\n\n"
+                "🛡️ **Moderation** • manage members, messages and server safety\n"
+                "📣 **Announcements** • Twitch / YouTube integrations\n"
+                "🔎 **Information** • bot, server and user information\n"
+                "⚙️ **Administration** • available to authorized staff"
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.add_field(
+            name="📖 Start here",
+            value=(
+                f"`{config.PREFIXES[0]}help` — browse available commands\n"
+                f"`{config.PREFIXES[0]}help general` — general commands\n"
+                f"`{config.PREFIXES[0]}help mod` — moderation commands (if authorized)\n"
+                f"`{config.PREFIXES[0]}ping` — check my response time"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🔗 Useful links",
+            value=(
+                f"[💻 GitHub]({GITHUB_URL}) • [📖 Documentation]({DOCS_URL}) • "
+                f"[💬 Official Support Server]({OFFICIAL_SERVER_URL})"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="💬 Need help?",
+            value=f"Use `{config.PREFIXES[0]}help` first, or join the [official support server]({OFFICIAL_SERVER_URL}).",
+            inline=False,
+        )
+        embed.set_footer(
+            text=f"Requested by {message.author} • Version {config.VERSION}",
+            icon_url=message.author.display_avatar.url,
+        )
+        return embed
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):
