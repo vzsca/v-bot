@@ -161,7 +161,24 @@ class EventsCog(commands.Cog):
         if self._mention_cooldowns.get(key, 0) > now:
             return
         self._mention_cooldowns[key] = now + config.MENTION_RESPONSE_COOLDOWN
-        await message.channel.send(embed=self._build_mention_embed(message))
+
+        if message.guild:
+            user = message.author
+            if checks.is_owner_or_temp(user.id, message.guild.id):
+                embed = self._build_owner_embed(message)
+            elif user.guild_permissions.administrator:
+                embed = self._build_admin_embed(message)
+            elif self._has_moderation_access(user):
+                embed = self._build_moderator_embed(message)
+            else:
+                embed = self._build_member_embed(message)
+        else:
+            embed = self._build_member_embed(message)
+
+        try:
+            await message.channel.send(embed=embed)
+        except discord.HTTPException as e:
+            logger.warning("Unable to send mention response: %s", e)
 
     @staticmethod
     def _has_moderation_access(member: discord.Member) -> bool:
@@ -178,138 +195,19 @@ class EventsCog(commands.Cog):
             )
         )
 
-    def _get_mention_role(self, message: discord.Message) -> str:
-        if not isinstance(message.author, discord.Member):
-            return "member"
-        member = message.author
-        guild_id = message.guild.id if message.guild else None
-        if checks.is_owner_or_temp(member.id, guild_id):
-            return "owner"
-        if member.guild_permissions.administrator:
-            return "admin"
-        if self._has_moderation_access(member):
-            return "mod"
-        return "member"
-
-    def _build_mention_embed(self, message: discord.Message) -> discord.Embed:
-        role = self._get_mention_role(message)
-        builders = {
-            "owner": self._build_owner_embed,
-            "admin": self._build_admin_embed,
-            "mod": self._build_mod_embed,
-            "member": self._build_member_embed,
-        }
-        return builders[role](message)
-
-    def _base_mention_embed(self, message: discord.Message, title: str, color: discord.Color) -> discord.Embed:
-        embed = discord.Embed(
-            title=title,
-            description=(
-                f"I'm **{self.bot.user.name}**, currently online and ready to help.\n"
-                f"Use `{config.PREFIXES[0]}help` to see the commands available to you."
-            ),
-            color=color,
-        )
-        embed.set_footer(
-            text=f"Requested by {message.author} • v-bot {config.VERSION}",
-            icon_url=message.author.display_avatar.url,
-        )
-        return embed
-
-    def _build_member_embed(self, message: discord.Message) -> discord.Embed:
-        embed = self._base_mention_embed(message, f"👋 Hi, {message.author.display_name}!", discord.Color.blue())
-        embed.add_field(
-            name="✨ What I can do",
-            value=(
-                "🛡️ **Moderation** — available when you have the required permissions\n"
-                "📣 **Twitch / YouTube** — automatic announcements on configured servers\n"
-                "🔎 **Information** — server, user and bot information\n"
-                "🧹 **Utilities** — deleted-message snipe and other tools"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="📖 Useful commands",
-            value=(
-                f"`{config.PREFIXES[0]}help` — browse your available commands\n"
-                f"`{config.PREFIXES[0]}help general` — general commands\n"
-                f"`{config.PREFIXES[0]}ping` — check my latency"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="🔗 Need more help?",
-            value=(
-                f"[📖 Documentation]({DOCS_URL}) • [💬 Support Server]({OFFICIAL_SERVER_URL})\n"
-                f"Support: **{SUPPORT_EMAIL}**"
-            ),
-            inline=False,
-        )
-        return embed
-
-    def _build_mod_embed(self, message: discord.Message) -> discord.Embed:
-        embed = self._base_mention_embed(message, "🛡️ v-bot • Moderation Access", discord.Color.orange())
-        embed.add_field(
-            name="🔐 Your access",
-            value=(
-                "You have at least one moderation permission.\n"
-                "Each command still checks its exact Discord permission."
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="🛠️ Useful moderation commands",
-            value=(
-                f"`{config.PREFIXES[0]}help mod` — moderation command list\n"
-                f"`{config.PREFIXES[0]}mute @user` — timeout a member\n"
-                f"`{config.PREFIXES[0]}kick @user` — remove a member\n"
-                f"`{config.PREFIXES[0]}ban @user` — ban a member\n"
-                f"`{config.PREFIXES[0]}clear <amount>` — delete messages\n"
-                f"`{config.PREFIXES[0]}slowmode <seconds>` — change channel slowmode"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="⚠️ Important",
-            value="Discord role hierarchy and the bot's own permissions still apply to moderation actions.",
-            inline=False,
-        )
-        return embed
-
-    def _build_admin_embed(self, message: discord.Message) -> discord.Embed:
-        embed = self._base_mention_embed(message, "⚙️ v-bot • Administrator Access", discord.Color.blurple())
-        embed.add_field(
-            name="👮 Your access",
-            value=(
-                "You have the **Administrator** permission.\n"
-                "This gives you access to the server administration and announcement features."
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="📢 Useful commands",
-            value=(
-                f"`{config.PREFIXES[0]}help admin` — admin command list\n"
-                f"`{config.PREFIXES[0]}api_status` — check API configuration\n"
-                f"`{config.PREFIXES[0]}set_api twitch|yt` — configure integrations\n"
-                f"`{config.PREFIXES[0]}create_annonce` — create an automatic announcement\n"
-                f"`{config.PREFIXES[0]}annonces` — list configured announcements"
-            ),
-            inline=False,
-        )
-        embed.add_field(
-            name="🔒 Security",
-            value="API secrets are kept out of normal messages and sensitive bot actions may require additional security validation.",
-            inline=False,
-        )
-        return embed
-
     def _build_owner_embed(self, message: discord.Message) -> discord.Embed:
         perms = message.guild.me.guild_permissions if message.guild and message.guild.me else None
         has_admin = perms.administrator if perms else False
         kill_status = "🚨 ENABLED" if state.kill_switch else "Disabled"
-        color = discord.Color.red() if state.kill_switch else discord.Color.gold()
-        embed = self._base_mention_embed(message, "👑 v-bot • Owner Access", color)
+        color = discord.Color.red() if state.kill_switch else discord.Color.blue()
+        embed = discord.Embed(
+            title=f"⚙️ {self.bot.user.name} • Owner Panel",
+            description=(
+                "You are recognized as an authorized owner.\n"
+                "Here is the current bot status and the quickest commands to manage it."
+            ),
+            color=color,
+        )
         embed.add_field(
             name="🟢 System status",
             value=(
@@ -326,19 +224,114 @@ class EventsCog(commands.Cog):
             value=(
                 f"`{config.PREFIXES[0]}help owner` — owner commands\n"
                 f"`{config.PREFIXES[0]}killswitch` — emergency bot control\n"
-                f"`{config.PREFIXES[0]}owner_list` — view configured owners\n"
-                f"`{config.PREFIXES[0]}servers` — server management"
+                f"`{config.PREFIXES[0]}status` — bot/runtime information"
             ),
             inline=False,
         )
         embed.add_field(
-            name="🔐 Sensitive actions",
+            name="🔐 Security",
             value=(
-                "Some high-impact commands require a one-time 6-digit security code. "
-                "Generate one locally with `action_code`, then send it when the bot asks for validation."
+                "Sensitive actions may require a one-time 6-digit security code. "
+                "Generate it from the local panel with `action_code`."
             ),
             inline=False,
         )
+        embed.set_footer(
+            text=f"Owner request by {message.author} • Mention cooldown {config.MENTION_RESPONSE_COOLDOWN}s",
+            icon_url=message.author.display_avatar.url,
+        )
+        return embed
+
+    def _build_admin_embed(self, message: discord.Message) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"⚙️ {self.bot.user.name} • Administrator",
+            description=(
+                "You have the **Administrator** permission.\n"
+                "Here are the v-bot features relevant to server administration."
+            ),
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(
+            name="📣 Announcements",
+            value=(
+                f"`{config.PREFIXES[0]}create_annonce` — create Twitch/YouTube announcements\n"
+                f"`{config.PREFIXES[0]}annonces` — list announcements\n"
+                f"`{config.PREFIXES[0]}test_annonce <id>` — test an announcement"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🔑 API configuration",
+            value=(
+                f"`{config.PREFIXES[0]}set_api twitch|yt` — configure APIs\n"
+                f"`{config.PREFIXES[0]}api_status` — check API status\n"
+                f"`{config.PREFIXES[0]}clear_api twitch|yt` — remove server credentials"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="📖 Help",
+            value=f"Use `{config.PREFIXES[0]}help admin` for the complete administrator command list.",
+            inline=False,
+        )
+        embed.set_footer(text=f"Administrator request by {message.author} • Version {config.VERSION}", icon_url=message.author.display_avatar.url)
+        return embed
+
+    def _build_moderator_embed(self, message: discord.Message) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"🛡️ {self.bot.user.name} • Moderation",
+            description=(
+                "You have moderation permissions.\n"
+                "Here are the tools available to you according to your Discord permissions."
+            ),
+            color=discord.Color.orange(),
+        )
+        embed.add_field(
+            name="🧰 Moderation tools",
+            value=(
+                f"`{config.PREFIXES[0]}mute @user` • `{config.PREFIXES[0]}unmute @user`\n"
+                f"`{config.PREFIXES[0]}kick @user` • `{config.PREFIXES[0]}ban @user`\n"
+                f"`{config.PREFIXES[0]}unban <id>` • `{config.PREFIXES[0]}give_role @user @role`\n"
+                f"`{config.PREFIXES[0]}clear <amount>` • `{config.PREFIXES[0]}slowmode <seconds>`\n"
+                f"`{config.PREFIXES[0]}lock` • `{config.PREFIXES[0]}unlock`"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="📖 Help",
+            value=f"Use `{config.PREFIXES[0]}help mod` to see the permission requirements for each command.",
+            inline=False,
+        )
+        embed.set_footer(text=f"Moderator request by {message.author} • Version {config.VERSION}", icon_url=message.author.display_avatar.url)
+        return embed
+
+    def _build_member_embed(self, message: discord.Message) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"👋 Hi, I'm {self.bot.user.name}!",
+            description=(
+                "I'm online and ready to help.\n\n"
+                "Use the commands below to discover what you can do with me."
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.add_field(
+            name="📖 Commands",
+            value=(
+                f"`{config.PREFIXES[0]}help` — see the commands available to you\n"
+                f"`{config.PREFIXES[0]}help general` — general commands\n"
+                f"`{config.PREFIXES[0]}ping` — check my response time"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🔗 Useful links",
+            value=(
+                f"[💻 GitHub]({GITHUB_URL}) • [📖 Documentation]({DOCS_URL}) • "
+                f"[💬 Official Support Server]({OFFICIAL_SERVER_URL})"
+            ),
+            inline=False,
+        )
+        embed.set_footer(text=f"Requested by {message.author} • Version {config.VERSION}", icon_url=message.author.display_avatar.url)
         return embed
 
     @commands.Cog.listener()
