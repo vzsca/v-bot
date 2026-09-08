@@ -1,27 +1,10 @@
 import { openModal, closeModal } from './modals.js';
 
 export function initActions() {
-  document.querySelectorAll('.btn').forEach(button => {
-    if (button.matches('.server-invite,.server-manage,.server-api,.server-leave')) return;
+  document.querySelectorAll('.btn[data-action]').forEach(button => {
     button.type = 'button';
-    const action = button.dataset.action || inferAction(button);
-    if (!action) return;
-    button.dataset.action = action;
-    button.addEventListener('click', () => runAction(action, button));
+    button.addEventListener('click', () => runAction(button.dataset.action, button));
   });
-}
-
-function inferAction(button) {
-  const label = button.textContent.trim().replace(/^[^A-Za-z]+/, '').toLowerCase();
-  const map = new Map([
-    ['open bot control', 'open-control'], ['open logs', 'open-logs'], ['view logs', 'open-logs'], ['manage servers', 'open-servers'],
-    ['start bot', 'start'], ['start', 'start'], ['stop bot', 'stop'], ['stop', 'stop'], ['restart', 'restart'],
-    ['refresh', 'refresh'], ['search', 'search-servers'], ['clear', 'clear-logs'],
-    ['add owner', 'add-owner'], ['add secondary owner', 'add-owner'], ['manage owners', 'manage-owners'], ['change owner', 'change-owner'], ['remove', 'remove-owner'],
-    ['save changes', 'save-changes'], ['edit', 'edit-integration'], ['generate code', 'generate-code'],
-    ['check for updates', 'check-updates'],
-  ]);
-  return map.get(label) || null;
 }
 
 function runAction(action, button) {
