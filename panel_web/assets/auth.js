@@ -3,16 +3,21 @@ export function initAuth() {
   const shell = document.querySelector('.app');
   const form = document.querySelector('#authForm');
   const idInput = document.querySelector('#panelId');
-  const passwordInput = document.querySelector('#panelPassword');
 
   if (!gate || !shell || !form) return;
+
+  function getRequestedPage() {
+    return location.hash.slice(1) || 'dashboard';
+  }
 
   function showPanel() {
     gate.hidden = true;
     shell.hidden = false;
     document.body.classList.remove('auth-required');
 
-    window.vBotNavigation?.showPage('dashboard', { updateHash: false });
+    const requestedPage = getRequestedPage();
+    window.vBotNavigation?.showPage(requestedPage, { updateHash: false });
+    document.querySelector('#main-content')?.focus({ preventScroll: false });
   }
 
   form.addEventListener('submit', event => {
@@ -25,5 +30,4 @@ export function initAuth() {
 
   document.title = 'v-bot • Login';
   idInput?.focus();
-  void passwordInput;
 }
