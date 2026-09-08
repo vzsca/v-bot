@@ -69,12 +69,12 @@ class OwnerCog(commands.Cog, name="Owner"):
             return
         normalized = mode.lower()
         if normalized in ("true", "on", "1"):
-            state.kill_switch = True
+            state.set_kill_switch(True)
             security_log.log_security_event("Kill switch ENABLED", actor=f"{ctx.author} ({ctx.author.id})")
             await ctx.send("🚨 Kill switch ENABLED: all sensitive commands are blocked.")
             return
         if normalized in ("false", "off", "0"):
-            state.kill_switch = False
+            state.set_kill_switch(False)
             security_log.log_security_event("Kill switch DISABLED", actor=f"{ctx.author} ({ctx.author.id})")
             await ctx.send("🟢 Kill switch DISABLED: bot fully operational.")
             return
@@ -86,12 +86,12 @@ class OwnerCog(commands.Cog, name="Owner"):
     @checks.kill_switch_required()
     async def toggle_guild(self, ctx):
         guild_id = ctx.guild.id
-        if guild_id in state.disabled_guilds:
-            state.disabled_guilds.discard(guild_id)
-            await ctx.send("🟢 Bot re-enabled on this server.")
-        else:
-            state.disabled_guilds.add(guild_id)
+        disabled = guild_id not in state.disabled_guilds
+        state.set_guild_disabled(guild_id, disabled)
+        if disabled:
             await ctx.send("🔴 Bot disabled on this server.")
+        else:
+            await ctx.send("🟢 Bot re-enabled on this server.")
 
     @commands.hybrid_command(name="say", description="Send a message as the bot.")
     @checks.owner_check()
