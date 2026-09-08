@@ -1,8 +1,4 @@
-"""
-Interactive cross-platform control panel for v-bot.
-
-Compatible with Windows, Linux and macOS.
-"""
+"""Interactive cross-platform control panel for v-bot."""
 
 import json
 import os
@@ -20,8 +16,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 import security_log
-from deps import install_requirements
-from updater import current_commit, repository_status, requirements_changed, rollback_code, update_code
+from security import issue_action_code
 from version import VERSION
 
 ENV_PATH = ROOT / ".env"
@@ -95,9 +90,9 @@ def set_env_value(key: str, value: str) -> None:
         raise ValueError(".env values cannot contain newlines.")
     lines = _read_env_lines()
     prefix = f"{key}="
-    for i, line in enumerate(lines):
+    for index, line in enumerate(lines):
         if line.startswith(prefix):
-            lines[i] = f"{key}={value}"
+            lines[index] = f"{key}={value}"
             _write_env_lines(lines)
             return
     lines.append(f"{key}={value}")
@@ -148,6 +143,11 @@ def _write_process_metadata(pid: int) -> None:
                 pass
 
 
+def _clear_pid_files() -> None:
+    BOT_PID_FILE.unlink(missing_ok=True)
+    BOT_START_FILE.unlink(missing_ok=True)
+
+
 def _get_bot_pid() -> int | None:
     if not BOT_PID_FILE.exists():
         return None
@@ -176,11 +176,6 @@ def _get_bot_pid() -> int | None:
         return None
 
 
-def _clear_pid_files() -> None:
-    BOT_PID_FILE.unlink(missing_ok=True)
-    BOT_START_FILE.unlink(missing_ok=True)
-
-
 def is_running() -> bool:
     return _get_bot_pid() is not None
 
@@ -202,7 +197,7 @@ def _format_uptime(seconds: int) -> str:
 
 def _owner_status() -> tuple[str, list[str]]:
     principal = get_env_value("OWNER_PRINCIPAL_ID") or "not configured"
-    secondary = [x.strip() for x in get_env_value("OWNERS_SECONDARY_IDS").split(",") if x.strip()]
+    secondary = [value.strip() for value in get_env_value("OWNERS_SECONDARY_IDS").split(",") if value.strip()]
     return principal, secondary
 
 
@@ -287,20 +282,22 @@ def cmd_status() -> None:
     print("Secondary owner count:", f"{len(secondary)}/5")
     print("Dangerous commands:", "enabled" if get_env_value("DANGEROUS_COMMANDS_ENABLED").lower() in {"1", "true", "yes", "on"} else "disabled")
     print(".env:", "present" if ENV_PATH.exists() else "missing")
-
-    repo_ok, behind, ahead, repo_message = repository_status(fetch=True)
-    if repo_ok:
-        if behind:
-            print(f"Repository: UPDATE AVAILABLE ({behind} commit(s))")
-        elif ahead:
-            print(f"Repository: local branch ahead by {ahead} commit(s)")
-        else:
-            print("Repository: up to date")
-    else:
-        print(f"Repository: unavailable ({repo_message})")
-    commit = current_commit()
-    if commit:
-        print("Current commit:", commit[:12])
+    commit = None
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode == 0:
+            commit = result.stdout.strip()
+    except OSError:
+        pass
+    print("Current commit:", commit[:12] if commit else "unavailable")
 
     pid = _get_bot_pid()
     if pid is None:
@@ -328,62 +325,6 @@ def cmd_uptime() -> None:
         print("Uptime unknown.")
         return
     print(f"The bot has been running for {_format_uptime(int(time.time() - metadata.get('started_at', time.time())))}.")
-
-
-def cmd_update() -> bool:
-    print("\n===== v-bot updater =====")
-    repo_ok, behind, ahead, message = repository_status(fetch=True)
-    if not repo_ok:
-        print(f"[ERROR] {message}")
-        return False
-    if behind == 0:
-        print("No update available; the bot was not stopped.")
-        return True
-    if ahead:
-        print("[ERROR] Local branch has commits not present on origin/main; update aborted.")
-        return False
-
-    old_commit = current_commit()
-    was_running = is_running()
-    if was_running and not cmd_stop():
-        return False
-    time.sleep(1)
-
-    ok, changed, update_message = update_code()
-    print(update_message)
-    if not ok:
-        if was_running:
-            cmd_start()
-        return False
-
-    new_commit = current_commit()
-    if changed and requirements_changed(old_commit, new_commit):
-        print("requirements.txt changed; synchronizing dependencies...")
-        if not install_requirements(upgrade=False):
-            print("[ERROR] Dependency update failed; rolling back source code.")
-            rollback_ok, rollback_message = rollback_code(old_commit)
-            print(rollback_message)
-            if rollback_ok:
-                install_requirements(upgrade=False)
-            if was_running:
-                cmd_start()
-            return False
-    elif changed:
-        print("No dependency changes detected; existing virtual environment kept.")
-
-    if was_running:
-        print("Starting the updated bot...")
-        if not cmd_start():
-            print("[ERROR] Updated bot failed to start; rolling back source code.")
-            rollback_ok, rollback_message = rollback_code(old_commit)
-            print(rollback_message)
-            if rollback_ok and requirements_changed(new_commit, old_commit):
-                install_requirements(upgrade=False)
-            print("Starting the previous version...")
-            cmd_start()
-            return False
-    print("Update complete. .env and ignored JSON data were not reset.")
-    return True
 
 
 def _display_log_file(file_path: Path, title: str, lines_count: int = 50) -> None:
@@ -452,7 +393,7 @@ def cmd_set_principal_owner() -> None:
     if not new_id or not new_id.isdigit():
         print("[ERROR] The ID must contain digits only.")
         return
-    secondary = [x.strip() for x in get_env_value("OWNERS_SECONDARY_IDS").split(",") if x.strip()]
+    secondary = [value.strip() for value in get_env_value("OWNERS_SECONDARY_IDS").split(",") if value.strip()]
     if new_id in secondary:
         print("[ERROR] This ID is already a secondary owner. Remove it first.")
         return
@@ -462,7 +403,7 @@ def cmd_set_principal_owner() -> None:
 
 
 def _dangerous_commands_enabled() -> bool:
-    return get_env_value("DANGEROUS_COMMANDS_ENABLED").strip().lower() in ("1", "true", "on", "yes")
+    return get_env_value("DANGEROUS_COMMANDS_ENABLED").strip().lower() in {"1", "true", "on", "yes"}
 
 
 def cmd_toggle_dangerous() -> None:
@@ -473,6 +414,20 @@ def cmd_toggle_dangerous() -> None:
     set_env_value("DANGEROUS_COMMANDS_ENABLED", value)
     security_log.log_security_event(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}", actor="panel")
     print(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}. Restart required.")
+
+
+def cmd_action_code() -> None:
+    try:
+        code, expires_at = issue_action_code()
+    except Exception as exc:
+        print(f"[ERROR] Failed to generate action code: {exc}")
+        return
+    remaining = max(0, expires_at - int(time.time()))
+    security_log.log_security_event("One-time sensitive action code generated", actor="panel")
+    print("\n===== sensitive action code =====")
+    print(f"Code: {code}")
+    print(f"Valid for approximately {remaining} seconds.")
+    print("The code is one-time use. Do not share it.")
 
 
 def cmd_set_prefix() -> None:
@@ -510,9 +465,8 @@ COMMANDS = [
     ("start", "start the bot", cmd_start),
     ("stop", "stop the bot", cmd_stop),
     ("restart", "restart the bot", cmd_restart),
-    ("status", "full bot/process/repository status", cmd_status),
+    ("status", "full bot/process status", cmd_status),
     ("uptime", "show bot uptime", cmd_uptime),
-    ("update", "update source, sync dependencies, and restart safely", cmd_update),
     ("logs", "display bot.log", cmd_logs),
     ("security_logs", "display security.log", cmd_security_logs),
     ("servers", "list connected servers", cmd_servers),
@@ -520,6 +474,7 @@ COMMANDS = [
     ("set_token", "set Discord token", cmd_set_token),
     ("set_principal_owner", "set principal owner", cmd_set_principal_owner),
     ("toggle_dangerous", "enable/disable sensitive commands", cmd_toggle_dangerous),
+    ("action_code", "generate a one-time code for a sensitive command", cmd_action_code),
     ("set_prefix", "set bot prefix", cmd_set_prefix),
     ("set_twitch_api", "set main Twitch API", cmd_set_twitch_api),
     ("set_youtube_api", "set main YouTube API", cmd_set_youtube_api),
