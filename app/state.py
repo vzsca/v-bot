@@ -43,7 +43,6 @@ class BotState:
         try:
             data = load_object(STATE_FILE, {})
         except JsonStoreError:
-            # Fail closed when security-critical state cannot be trusted.
             self.kill_switch = True
             return
         if not isinstance(data, dict):
@@ -90,27 +89,42 @@ class BotState:
         }
 
     def _save_persistent_state(self) -> bool:
-        payload = copy.deepcopy(self._persistent_payload())
         try:
-            atomic_write(STATE_FILE, payload, mode=0o600 if os.name == "posix" else None)
+            atomic_write(
+                STATE_FILE,
+                copy.deepcopy(self._persistent_payload()),
+                mode=0o600 if os.name == "posix" else None,
+            )
         except JsonStoreError:
             return False
         return True
 
-    def set_kill_switch(self, enabled: bool) -> None:
+    def set_kill_switch(self, enabled: bool) -> bool:
         with _STATE_LOCK:
+            previous = self.kill_switch
             self.kill_switch = bool(enabled)
-            self._save_persistent_state()
+            if self._save_persistent_state():
+                return True
+            if not enabled:
+                self.kill_switch = previous
+            return False
 
-    def set_guild_disabled(self, guild_id: int, disabled: bool) -> None:
+    def set_guild_disabled(self, guild_id: int, disabled: bool) -> bool:
         if guild_id <= 0:
             raise ValueError("guild_id must be positive")
         with _STATE_LOCK:
+            was_disabled = guild_id in self.disabled_guilds
             if disabled:
                 self.disabled_guilds.add(guild_id)
             else:
                 self.disabled_guilds.discard(guild_id)
-            self._save_persistent_state()
+            if self._save_persistent_state():
+                return True
+            if was_disabled:
+                self.disabled_guilds.add(guild_id)
+            else:
+                self.disabled_guilds.discard(guild_id)
+            return False
 
     def is_temp_authorized(self, guild_id: int | None, user_id: int) -> bool:
         if guild_id is None:
@@ -140,33 +154,33 @@ class BotState:
             self.temp_authorized_users.pop(key, None)
         return expired
 
-    def add_raid_channel(self, guild_id: int, channel_id: int) -> None:
+    def add_raid_channel(self, guild_id: int, channel_id: int) -> bool:
         with _STATE_LOCK:
             self.created_raid_channels.setdefault(guild_id, set()).add(channel_id)
-            self._save_persistent_state()
+            return self._save_persistent_state()
 
-    def add_raid_role(self, guild_id: int, role_id: int) -> None:
+    def add_raid_role(self, guild_id: int, role_id: int) -> bool:
         with _STATE_LOCK:
             self.created_raid_roles.setdefault(guild_id, set()).add(role_id)
-            self._save_persistent_state()
+            return self._save_persistent_state()
 
-    def discard_raid_channel(self, guild_id: int, channel_id: int) -> None:
+    def discard_raid_channel(self, guild_id: int, channel_id: int) -> bool:
         with _STATE_LOCK:
             bucket = self.created_raid_channels.get(guild_id)
             if bucket:
                 bucket.discard(channel_id)
                 if not bucket:
                     self.created_raid_channels.pop(guild_id, None)
-            self._save_persistent_state()
+            return self._save_persistent_state()
 
-    def discard_raid_role(self, guild_id: int, role_id: int) -> None:
+    def discard_raid_role(self, guild_id: int, role_id: int) -> bool:
         with _STATE_LOCK:
             bucket = self.created_raid_roles.get(guild_id)
             if bucket:
                 bucket.discard(role_id)
                 if not bucket:
                     self.created_raid_roles.pop(guild_id, None)
-            self._save_persistent_state()
+            return self._save_persistent_state()
 
     def add_sniped(self, channel_id: int, data: dict, limit: int) -> None:
         if limit < 1:
