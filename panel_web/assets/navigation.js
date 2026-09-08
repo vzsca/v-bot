@@ -3,34 +3,71 @@ export function initNavigation() {
   const links = [...document.querySelectorAll('[data-page]')];
   const title = document.querySelector('#pageTitle');
   const sidebar = document.querySelector('#sidebar');
-  const titles = Object.fromEntries(links.map(link => [link.dataset.page, link.textContent.trim()]));
+  const mobileToggle = document.querySelector('#mobileToggle');
 
-  function showPage(name) {
-    if (!titles[name]) name = 'dashboard';
-    views.forEach(view => { view.hidden = view.dataset.view !== name; });
+  const pageLabels = Object.fromEntries(
+    links.map(link => [link.dataset.page, getLinkLabel(link)])
+  );
+
+  function getLinkLabel(link) {
+    const label = link.getAttribute('aria-label');
+    if (label) return label;
+    const clone = link.cloneNode(true);
+    clone.querySelectorAll('.icon').forEach(icon => icon.remove());
+    return clone.textContent.trim();
+  }
+
+  function normalizePage(name) {
+    return Object.prototype.hasOwnProperty.call(pageLabels, name) ? name : 'dashboard';
+  }
+
+  function showPage(name, { updateHash = true } = {}) {
+    const page = normalizePage(name);
+
+    views.forEach(view => {
+      view.hidden = view.dataset.view !== page;
+    });
+
     links.forEach(link => {
-      const active = link.dataset.page === name;
+      const active = link.dataset.page === page;
       link.classList.toggle('active', active);
       link.setAttribute('aria-current', active ? 'page' : 'false');
     });
-    if (title) title.textContent = titles[name];
-    document.title = `v-bot • ${titles[name]}`;
-    history.replaceState(null, '', `#${name}`);
+
+    if (title) title.textContent = pageLabels[page];
+    document.title = `v-bot • ${pageLabels[page]}`;
+
+    if (updateHash && location.hash !== `#${page}`) {
+      location.hash = page;
+    }
+
+    closeMobileSidebar();
+  }
+
+  function closeMobileSidebar() {
     sidebar?.classList.remove('open');
+    mobileToggle?.setAttribute('aria-expanded', 'false');
   }
 
   links.forEach(link => {
-    link.setAttribute('aria-current', link.classList.contains('active') ? 'page' : 'false');
-    link.addEventListener('click', event => {
-      event.preventDefault();
-      showPage(link.dataset.page);
+    link.setAttribute('aria-label', pageLabels[link.dataset.page]);
+    link.addEventListener('click', () => {
+      // Let the native anchor update the URL so browser back/forward works.
+      closeMobileSidebar();
     });
   });
 
-  document.querySelector('#mobileToggle')?.addEventListener('click', () => {
-    sidebar?.classList.toggle('open');
+  window.addEventListener('hashchange', () => {
+    showPage(location.hash.slice(1), { updateHash: false });
+  });
+
+  mobileToggle?.setAttribute('aria-controls', 'sidebar');
+  mobileToggle?.setAttribute('aria-expanded', 'false');
+  mobileToggle?.addEventListener('click', () => {
+    const isOpen = sidebar?.classList.toggle('open') ?? false;
+    mobileToggle.setAttribute('aria-expanded', String(isOpen));
   });
 
   window.vBotNavigation = { showPage };
-  showPage(location.hash.slice(1) || 'dashboard');
+  showPage(location.hash.slice(1), { updateHash: false });
 }
