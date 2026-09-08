@@ -5,9 +5,10 @@
     loadStylesheet('assets/ui.css');
     loadStylesheet('assets/polish.css');
 
-    const [{ initAccessibility }, { initModals }, { initNavigation }, { initServers }, { initActions }] = await Promise.all([
+    const [{ initAccessibility }, { initModals }, { initAuth }, { initNavigation }, { initServers }, { initActions }] = await Promise.all([
       import('./accessibility.js'),
       import('./modals.js'),
+      import('./auth.js'),
       import('./navigation.js'),
       import('./servers.js'),
       import('./actions.js'),
@@ -15,6 +16,7 @@
 
     initAccessibility();
     initModals();
+    initAuth();
     initNavigation();
     initServers();
     initActions();
