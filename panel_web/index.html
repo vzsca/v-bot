@@ -17,7 +17,7 @@
     <div class="eyebrow">PANEL ACCESS</div>
     <h1 id="loginTitle">Connect to the panel</h1>
     <p class="auth-description">Enter your panel ID and password.</p>
-    <form id="authForm" class="stacked-form" autocomplete="on" onsubmit="return window.vBotConnect ? window.vBotConnect(event) : false;">
+    <form id="authForm" class="stacked-form" autocomplete="on" onsubmit="return window.vBotConnect(event)">
       <div class="field">
         <label for="panelId">Panel ID</label>
         <input id="panelId" name="panel-id" type="text" autocomplete="username">
@@ -30,6 +30,43 @@
     </form>
   </div>
 </section>
+
+<script>
+  // Frontend-only login placeholder. No credentials are validated or stored.
+  window.vBotConnect = function (event) {
+    event.preventDefault();
+    const gate = document.getElementById('authGate');
+    const app = document.querySelector('.app');
+    if (!gate || !app) return false;
+
+    gate.hidden = true;
+    app.hidden = false;
+    document.body.classList.remove('auth-required');
+
+    const requestedPage = location.hash.replace(/^#/, '') || 'dashboard';
+    const allowed = [...document.querySelectorAll('[data-page]')].some(
+      link => link.dataset.page === requestedPage
+    );
+    const page = allowed ? requestedPage : 'dashboard';
+    const views = document.querySelectorAll('[data-view]');
+    const links = document.querySelectorAll('[data-page]');
+    views.forEach(view => { view.hidden = view.dataset.view !== page; });
+    links.forEach(link => {
+      const active = link.dataset.page === page;
+      link.classList.toggle('active', active);
+      link.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+
+    const activeLink = [...links].find(link => link.dataset.page === page);
+    const label = activeLink ? activeLink.textContent.trim() : 'Dashboard';
+    const title = document.getElementById('pageTitle');
+    if (title) title.textContent = label;
+    document.title = `v-bot • ${label}`;
+    history.replaceState(null, '', `${location.pathname}${location.search}#${page}`);
+    document.getElementById('main-content')?.focus({ preventScroll: true });
+    return false;
+  };
+</script>
 
 <div class="app" hidden>
 <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
