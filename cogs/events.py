@@ -318,8 +318,7 @@ class EventsCog(commands.Cog):
             name="📖 Commands",
             value=(
                 f"`{config.PREFIXES[0]}help` — see the commands available to you\n"
-                f"`{config.PREFIXES[0]}help general` — general commands\n"
-                f"`{config.PREFIXES[0]}ping` — check my response time"
+                f"`{config.PREFIXES[0]}help general` — general commands"
             ),
             inline=False,
         )
