@@ -8,29 +8,26 @@
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="auth-required">
-<a class="skip-link" href="#main-content">Skip to main content</a>
-
 <section class="auth-gate" id="authGate" aria-labelledby="loginTitle">
   <div class="auth-card">
     <div class="auth-brand">
       <div class="brand-mark" aria-hidden="true">V</div>
       <div><strong>v-bot</strong><span>Local Control Panel</span></div>
     </div>
-    <div class="eyebrow">SECURE ACCESS</div>
+    <div class="eyebrow">PANEL ACCESS</div>
     <h1 id="loginTitle">Connect to the panel</h1>
-    <p class="auth-description">Enter your panel ID and password to continue.</p>
+    <p class="auth-description">Enter your panel ID and password.</p>
     <form id="authForm" class="stacked-form" autocomplete="on">
       <div class="field">
         <label for="panelId">Panel ID</label>
-        <input id="panelId" name="panel-id" type="text" autocomplete="username" required aria-describedby="authHint">
+        <input id="panelId" name="panel-id" type="text" autocomplete="username">
       </div>
       <div class="field">
         <label for="panelPassword">Password</label>
-        <input id="panelPassword" name="panel-password" type="password" autocomplete="current-password" required>
+        <input id="panelPassword" name="panel-password" type="password" autocomplete="current-password">
       </div>
       <button class="btn primary auth-submit" id="authSubmit" type="submit">Connect</button>
     </form>
-    <p class="auth-hint" id="authHint">Frontend preview only — credentials are not validated by a real backend yet.</p>
   </div>
 </section>
 
@@ -64,10 +61,6 @@
   </nav>
   <div class="sidebar-footer">
     <div class="user-chip"><div class="avatar" aria-hidden="true">O</div><div><strong>Local Owner</strong><span>Static preview</span></div></div>
-    <div class="sidebar-account-actions">
-      <button class="btn" type="button" data-action="change-password">Change password</button>
-      <button class="btn danger" type="button" data-action="logout">Log out</button>
-    </div>
   </div>
 </aside>
 
