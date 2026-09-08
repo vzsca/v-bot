@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import threading
 import time
 from datetime import datetime
@@ -37,11 +38,16 @@ class BotState:
         self._load_persistent_state()
 
     def _load_persistent_state(self) -> None:
+        if not STATE_FILE.exists():
+            return
         try:
             data = load_object(STATE_FILE, {})
         except JsonStoreError:
-            data = {}
+            # Fail closed when security-critical state cannot be trusted.
+            self.kill_switch = True
+            return
         if not isinstance(data, dict):
+            self.kill_switch = True
             return
 
         self.kill_switch = bool(data.get("kill_switch", False))
@@ -83,12 +89,13 @@ class BotState:
             },
         }
 
-    def _save_persistent_state(self) -> None:
+    def _save_persistent_state(self) -> bool:
         payload = copy.deepcopy(self._persistent_payload())
         try:
-            atomic_write(STATE_FILE, payload, mode=0o600 if __import__("os").name == "posix" else None)
+            atomic_write(STATE_FILE, payload, mode=0o600 if os.name == "posix" else None)
         except JsonStoreError:
-            raise
+            return False
+        return True
 
     def set_kill_switch(self, enabled: bool) -> None:
         with _STATE_LOCK:
