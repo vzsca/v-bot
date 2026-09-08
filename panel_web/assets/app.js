@@ -32,11 +32,6 @@
     }
   }
 
-  function go(page) {
-    history.replaceState(null, '', `${location.pathname}${location.search}#${page}`);
-    renderRoute(page);
-  }
-
   function showConnection() {
     const gate = document.getElementById('authGate');
     const app = document.querySelector('.app');
@@ -44,10 +39,9 @@
     if (app) app.hidden = true;
     document.body.classList.add('auth-required');
     document.title = 'v-bot • Connection';
-    document.querySelector('#panelId')?.focus();
   }
 
-  function showDashboard() {
+  function showPanel() {
     const gate = document.getElementById('authGate');
     const app = document.querySelector('.app');
     if (gate) gate.hidden = true;
@@ -59,7 +53,7 @@
     return new Set([...document.querySelectorAll('[data-page]')].map(link => link.dataset.page));
   }
 
-  function renderRoute(requestedPage) {
+  function renderPage(requestedPage) {
     if (!isConnected()) {
       showConnection();
       if (location.hash !== '#connexion') {
@@ -68,14 +62,11 @@
       return;
     }
 
-    showDashboard();
+    showPanel();
 
-    if (requestedPage === 'connexion' || !requestedPage) {
-      requestedPage = 'dashboard';
-    }
-
+    const target = requestedPage === 'connexion' ? 'dashboard' : (requestedPage || 'dashboard');
     const pageNames = getPageNames();
-    const page = pageNames.has(requestedPage) ? requestedPage : 'dashboard';
+    const page = pageNames.has(target) ? target : 'dashboard';
     const views = document.querySelectorAll('[data-view]');
     const links = document.querySelectorAll('[data-page]');
 
@@ -95,14 +86,14 @@
     if (title) title.textContent = label;
     document.title = `v-bot • ${label}`;
 
-    if (location.hash !== `#${page}`) {
-      history.replaceState(null, '', `${location.pathname}${location.search}#${page}`);
+    const desiredHash = `#${page}`;
+    if (location.hash !== desiredHash) {
+      history.replaceState(null, '', `${location.pathname}${location.search}${desiredHash}`);
     }
   }
 
   function enforceRoute() {
-    const requestedPage = location.hash.replace(/^#/, '');
-    renderRoute(requestedPage || 'dashboard');
+    renderPage(location.hash.replace(/^#/, ''));
   }
 
   function setupConnection() {
@@ -112,7 +103,7 @@
     window.vBotConnect = function (event) {
       event?.preventDefault();
       setConnected(true);
-      go('dashboard');
+      location.hash = '#dashboard';
       return false;
     };
 
@@ -127,16 +118,13 @@
       link.addEventListener('click', event => {
         if (!isConnected()) {
           event.preventDefault();
-          go('connexion');
+          location.hash = '#connexion';
           return;
         }
 
-        // Handle navigation ourselves so the connected state never
-        // accidentally falls back to dashboard on a hash navigation.
-        event.preventDefault();
-        go(link.dataset.page || 'dashboard');
         sidebar?.classList.remove('open');
         mobileToggle?.setAttribute('aria-expanded', 'false');
+        // Keep the native href/hash navigation. hashchange renders that exact page.
       });
     });
 
