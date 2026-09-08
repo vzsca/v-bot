@@ -235,15 +235,14 @@ class HelpCog(commands.Cog, name="Help"):
         embed.set_footer(text="v-bot • Help • Access is based on your current permissions")
         return embed
 
-    def buttons_unavailable_embed(self) -> discord.Embed:
+    def direct_command_embed(self) -> discord.Embed:
         return discord.Embed(
-            title="⚠️ Help Buttons Unavailable",
+            title="💡 Direct Help Access",
             description=(
-                "The category buttons are temporarily unavailable.\n"
-                "Use the command directly instead:\n\n"
+                "You can also access a help category directly without using the buttons:\n\n"
                 "`v!help general` • `v!help mod` • `v!help admin` • `v!help owner`"
             ),
-            color=discord.Color.orange(),
+            color=discord.Color.green(),
         )
 
     @commands.command(name="help")
@@ -285,6 +284,7 @@ class HelpCog(commands.Cog, name="Help"):
             return
 
         await ctx.send(embed=self.menu_embed(ctx), view=HelpCategoryView(self, ctx.author.id, categories))
+        await ctx.send(embed=self.direct_command_embed())
 
 
 async def setup(bot: commands.Bot):
