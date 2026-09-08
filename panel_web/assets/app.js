@@ -44,6 +44,7 @@
     if (app) app.hidden = true;
     document.body.classList.add('auth-required');
     document.title = 'v-bot • Connection';
+    document.querySelector('#panelId')?.focus();
   }
 
   function showDashboard() {
@@ -129,6 +130,11 @@
           go('connexion');
           return;
         }
+
+        // Handle navigation ourselves so the connected state never
+        // accidentally falls back to dashboard on a hash navigation.
+        event.preventDefault();
+        go(link.dataset.page || 'dashboard');
         sidebar?.classList.remove('open');
         mobileToggle?.setAttribute('aria-expanded', 'false');
       });
