@@ -76,11 +76,15 @@ async def require_action_code(ctx, action: str) -> bool:
         "🔐 This action requires a one-time 6-digit security code. "
         "Run `action_code` in the local panel, then send the code here within 60 seconds."
     )
-    for _ in range(config.ACTION_CODE_MAX_ATTEMPTS):
+    attempts = 0
+    deadline = time.monotonic() + config.ACTION_CODE_INPUT_TIMEOUT
+    while attempts < config.ACTION_CODE_MAX_ATTEMPTS:
+        attempts += 1
+        remaining = max(0.1, deadline - time.monotonic())
         try:
             message = await ctx.bot.wait_for(
                 "message",
-                timeout=config.ACTION_CODE_INPUT_TIMEOUT,
+                timeout=remaining,
                 check=lambda m: m.author.id == ctx.author.id and m.channel.id == ctx.channel.id,
             )
         except TimeoutError:
@@ -89,7 +93,7 @@ async def require_action_code(ctx, action: str) -> bool:
         code = message.content.strip()
         try:
             await message.delete()
-        except Exception:
+        except discord.HTTPException:
             pass
         if _consume_action_code(code):
             security_log.log_security_event(
@@ -97,8 +101,9 @@ async def require_action_code(ctx, action: str) -> bool:
                 actor=f"{ctx.author} ({ctx.author.id})",
             )
             return True
-        await ctx.send("❌ Invalid or expired security code. Please generate a new code in the local panel.")
-        return False
+        if attempts < config.ACTION_CODE_MAX_ATTEMPTS:
+            await ctx.send(f"❌ Invalid security code. Attempt {attempts}/{config.ACTION_CODE_MAX_ATTEMPTS}.")
+    await ctx.send("❌ Too many invalid security code attempts. Generate a new code in the local panel.")
     return False
 
 
@@ -127,17 +132,18 @@ class SecurityService:
         self._alert_cooldowns[key] = now + config.SECURITY_ALERT_COOLDOWN
         security_log.log_security_event(
             f"Suspicious command burst: guild={guild_id} user={user_id} "
-            f"{len(actions)} successful commands in {config.SUSPICIOUS_ACTION_WINDOW:.0f}s",
+            f"{len(actions)} successful commands in {config.SUSPICIOUS_ACTION_WINDOW:.0f}s; no automatic user or bot shutdown",
             actor=str(user_id),
         )
         return True
 
     def prune(self) -> None:
-        cutoff = time.monotonic() - config.SUSPICIOUS_ACTION_WINDOW
+        now = time.monotonic()
+        cutoff = now - config.SUSPICIOUS_ACTION_WINDOW
         for key, actions in list(self._actions.items()):
             while actions and actions[0] <= cutoff:
                 actions.popleft()
-            if not actions and self._alert_cooldowns.get(key, 0.0) <= time.monotonic():
+            if not actions and self._alert_cooldowns.get(key, 0.0) <= now:
                 self._actions.pop(key, None)
                 self._alert_cooldowns.pop(key, None)
 
