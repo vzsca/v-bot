@@ -1,0 +1,6 @@
+/* Final interaction/accessibility polish layered over the existing theme. */
+.skip-link{position:fixed;left:14px;top:14px;z-index:2000;transform:translateY(-160%);padding:9px 12px;border-radius:9px;background:#5865f2;color:#fff;font-size:12px;font-weight:750;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:transform .15s ease}.skip-link:focus{transform:translateY(0);outline:2px solid #fff;outline-offset:2px}
+.btn{cursor:pointer}.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}.btn:active{transform:translateY(0);filter:brightness(.98)}.btn[disabled]{opacity:.5;cursor:not-allowed;transform:none;filter:none}
+.nav a[aria-current="page"]{font-weight:700}
+input::placeholder{color:#5f6876}select:disabled,input:disabled{opacity:.7;cursor:not-allowed}
+@media(prefers-reduced-motion:reduce){.btn,.skip-link{transition:none!important}}
