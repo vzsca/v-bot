@@ -1,0 +1,43 @@
+/* Shared fixes for the static web-panel UI. Loaded by app.js so the existing HTML stays backend-independent. */
+
+[hidden]{display:none!important}
+button,.btn,a,input,select{ -webkit-tap-highlight-color: transparent; }
+button,.btn,a{outline:none}
+button:focus-visible,.btn:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7289da;outline-offset:2px}
+body.modal-open{overflow:hidden}
+
+/* Section headings used by the page markup. */
+.section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px}
+.section-heading h1{margin:4px 0 0;font-size:25px;letter-spacing:-.035em}
+.section-heading p{margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.6;max-width:680px}
+.eyebrow{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#748092;font-weight:800}
+
+/* Servers */
+.server-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.server-card{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 38%),var(--surface);border:1px solid var(--border);border-radius:18px;padding:18px;box-shadow:var(--shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.server-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,rgba(88,101,242,.9),rgba(114,137,218,.2));opacity:.55}
+.server-card:hover{transform:translateY(-3px);border-color:#343b4b;box-shadow:0 24px 55px rgba(0,0,0,.3)}
+.server-top{display:flex;align-items:center;gap:11px;min-width:0}
+.server-icon{width:46px;height:46px;flex:0 0 46px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#5865f2,#4149b8);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 24px rgba(88,101,242,.16);font-weight:850;font-size:13px;letter-spacing:.04em}
+.server-icon.purple{background:linear-gradient(145deg,#8b72da,#5f4b9f)}
+.server-icon.green{background:linear-gradient(145deg,#45c98a,#237a55)}
+.server-meta{min-width:0;flex:1}.server-meta h2{margin:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.server-meta span{display:block;margin-top:4px;color:#778191;font-size:10px}
+.server-top>.badge{flex:0 0 auto}
+.server-stats{display:grid;grid-template-columns:repeat(3,1fr);margin:17px 0 15px;padding:11px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);gap:8px}
+.server-stats>div{min-width:0}.server-stats>div+div{border-left:1px solid var(--border);padding-left:12px}.server-stats span{display:block;color:#727c8c;font-size:9px;text-transform:uppercase;letter-spacing:.06em}.server-stats strong{display:block;margin-top:5px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.server-actions{display:grid;grid-template-columns:1.15fr 1fr;gap:8px}.server-actions .btn{width:100%;text-align:center}
+
+/* Modal system */
+.modal-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(4,6,10,.72);backdrop-filter:blur(8px)}
+.modal{position:relative;width:min(560px,100%);max-height:min(760px,calc(100vh - 40px));overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),#11151d;border:1px solid #303746;border-radius:20px;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.5);animation:modalIn .16s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(7px) scale(.985)}to{opacity:1;transform:none}}
+.modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border:1px solid var(--border);border-radius:9px;background:#171c25;color:#aab3c0;font-size:22px;line-height:1;cursor:pointer}.modal-close:hover{color:var(--text);background:#1b212c}
+.modal-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:rgba(88,101,242,.11);border:1px solid rgba(88,101,242,.16);color:#c2c8ff;font-weight:850;margin-bottom:13px}.modal-icon.danger-text{background:rgba(237,91,97,.1);border-color:rgba(237,91,97,.16);color:#ff9ea1}
+.modal h2{margin:5px 45px 0 0;font-size:20px;letter-spacing:-.025em}.modal-description{margin:8px 0 18px;color:#929baa;font-size:12px;line-height:1.7}.modal-hint{display:block;margin-top:12px;color:#707a89;font-size:10px;line-height:1.5}
+.modal-list,.access-list{display:grid;gap:9px}.access-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.018)}.access-row strong{display:block;font-size:12px}.access-row span{display:block;margin-top:3px;color:#798493;font-size:10px}
+.switch{position:relative;width:42px;height:24px;flex:0 0 auto}.switch input{position:absolute;opacity:0;pointer-events:none}.switch>span{display:block;width:100%;height:100%;border-radius:999px;background:#272d39;border:1px solid #343c4a;transition:.16s ease}.switch>span:before{content:"";position:absolute;top:4px;left:4px;width:14px;height:14px;border-radius:50%;background:#9ca5b3;transition:.16s ease}.switch input:checked+span{background:rgba(88,101,242,.45);border-color:rgba(88,101,242,.55)}.switch input:checked+span:before{transform:translateX(18px);background:#fff}
+.invite-box{display:grid;grid-template-columns:1fr auto;gap:8px}.invite-box input{min-width:0}.confirm-box{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;border:1px solid rgba(237,91,97,.16);background:rgba(237,91,97,.055);border-radius:11px;color:#b6beca;font-size:11px}.modal-actions{margin-top:18px}
+
+@media(max-width:1200px){.server-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.section-heading{align-items:flex-start;flex-direction:column;gap:12px}.server-grid{grid-template-columns:1fr}.server-actions{grid-template-columns:1fr 1fr}.modal{padding:21px;border-radius:16px}.confirm-box{align-items:flex-start;flex-direction:column}.invite-box{grid-template-columns:1fr}.modal-actions .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}
