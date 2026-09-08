@@ -3,6 +3,7 @@
 (async () => {
   try {
     loadStylesheet('assets/ui.css');
+    loadStylesheet('assets/polish.css');
 
     const [{ initAccessibility }, { initModals }, { initNavigation }, { initServers }, { initActions }] = await Promise.all([
       import('./accessibility.js'),
