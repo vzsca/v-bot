@@ -21,6 +21,7 @@ v-bot includes a **local control panel** for process management, configuration, 
 - 🧩 Modular Cogs and application modules
 - 📚 Permission-aware help system with category buttons
 - 🔐 One-time security codes for sensitive actions
+- 💬 Permission-aware automatic responses when the bot is mentioned
 
 ---
 
@@ -144,6 +145,27 @@ v!help owner
 ```
 
 Users who only have access to General receive the General help embed directly.
+
+---
+
+# 💬 Bot mentions
+
+Mentioning the bot at the start of a message triggers a permission-aware information embed.
+
+The response is adapted to the current user:
+
+- 👤 **Member** — general features, useful commands, help, documentation and support.
+- 🛡️ **Moderator** — moderation-related commands and permissions in addition to the general information.
+- ⚙️ **Administrator** — server administration, API configuration and announcement-related information.
+- 👑 **Owner** — bot status, owner controls, connected servers and security information.
+
+The mention response uses the same access model as the help system and includes a short cooldown to prevent repeated mention spam.
+
+Example:
+
+```text
+@v-bot
+```
 
 ---
 
