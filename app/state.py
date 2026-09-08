@@ -156,31 +156,51 @@ class BotState:
 
     def add_raid_channel(self, guild_id: int, channel_id: int) -> bool:
         with _STATE_LOCK:
-            self.created_raid_channels.setdefault(guild_id, set()).add(channel_id)
-            return self._save_persistent_state()
+            bucket = self.created_raid_channels.setdefault(guild_id, set())
+            bucket.add(channel_id)
+            if self._save_persistent_state():
+                return True
+            bucket.discard(channel_id)
+            if not bucket:
+                self.created_raid_channels.pop(guild_id, None)
+            return False
 
     def add_raid_role(self, guild_id: int, role_id: int) -> bool:
         with _STATE_LOCK:
-            self.created_raid_roles.setdefault(guild_id, set()).add(role_id)
-            return self._save_persistent_state()
+            bucket = self.created_raid_roles.setdefault(guild_id, set())
+            bucket.add(role_id)
+            if self._save_persistent_state():
+                return True
+            bucket.discard(role_id)
+            if not bucket:
+                self.created_raid_roles.pop(guild_id, None)
+            return False
 
     def discard_raid_channel(self, guild_id: int, channel_id: int) -> bool:
         with _STATE_LOCK:
             bucket = self.created_raid_channels.get(guild_id)
-            if bucket:
-                bucket.discard(channel_id)
+            if not bucket or channel_id not in bucket:
+                return self._save_persistent_state()
+            bucket.remove(channel_id)
+            if self._save_persistent_state():
                 if not bucket:
                     self.created_raid_channels.pop(guild_id, None)
-            return self._save_persistent_state()
+                return True
+            bucket.add(channel_id)
+            return False
 
     def discard_raid_role(self, guild_id: int, role_id: int) -> bool:
         with _STATE_LOCK:
             bucket = self.created_raid_roles.get(guild_id)
-            if bucket:
-                bucket.discard(role_id)
+            if not bucket or role_id not in bucket:
+                return self._save_persistent_state()
+            bucket.remove(role_id)
+            if self._save_persistent_state():
                 if not bucket:
                     self.created_raid_roles.pop(guild_id, None)
-            return self._save_persistent_state()
+                return True
+            bucket.add(role_id)
+            return False
 
     def add_sniped(self, channel_id: int, data: dict, limit: int) -> None:
         if limit < 1:
