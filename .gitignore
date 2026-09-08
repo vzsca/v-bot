@@ -1,5 +1,7 @@
 .env
 api_credentials.json
+bot_state.json
+action_codes.json
 venv/
 __pycache__/
 *.pyc
