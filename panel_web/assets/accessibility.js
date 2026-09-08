@@ -44,12 +44,16 @@ export function initAccessibility() {
   mobileToggle?.setAttribute('aria-label', 'Open navigation menu');
   sidebar?.setAttribute('aria-label', 'Main navigation');
 
+  document.querySelectorAll('.content[data-view]').forEach((view, index) => {
+    const heading = view.querySelector('h1, h2');
+    if (!heading) return;
+    if (!heading.id) heading.id = `page-heading-${index}`;
+    view.setAttribute('role', 'region');
+    view.setAttribute('aria-labelledby', heading.id);
+  });
+
   if (backdrop) {
     backdrop.setAttribute('aria-hidden', 'true');
     document.querySelector('#modalClose')?.setAttribute('aria-label', 'Close dialog');
   }
-
-  document.querySelectorAll('.content[data-view]').forEach(view => {
-    view.setAttribute('role', 'region');
-  });
 }
