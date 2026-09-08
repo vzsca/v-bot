@@ -17,7 +17,7 @@
     <div class="eyebrow">PANEL ACCESS</div>
     <h1 id="loginTitle">Connect to the panel</h1>
     <p class="auth-description">Enter your panel ID and password.</p>
-    <form id="authForm" class="stacked-form" autocomplete="on">
+    <form id="authForm" class="stacked-form" autocomplete="on" onsubmit="return window.vBotConnect ? window.vBotConnect(event) : false;">
       <div class="field">
         <label for="panelId">Panel ID</label>
         <input id="panelId" name="panel-id" type="text" autocomplete="username">
