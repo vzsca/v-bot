@@ -3,11 +3,11 @@
 import asyncio
 import logging
 
-import discord
 from discord.ext import commands
 
-import checks
 import config
+import security
+import checks
 import exceptions
 from state import state
 
@@ -43,20 +43,22 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             confirmation = "confirm"
             message = parts[1].strip() if len(parts) == 2 else ""
         if not message:
-            await ctx.send("❌ Message vide. Utilise `v!spam <amount> <message>` ou confirme avec `confirm` pour plusieurs messages.")
+            await ctx.send("❌ Empty message. Use `v!spam <amount> <message>` or confirm with `confirm` for multiple messages.")
             return
         if not 1 <= times <= config.MAX_SPAM:
-            await ctx.send(f"❌ times doit être entre 1 et {config.MAX_SPAM}.")
+            await ctx.send(f"❌ times must be between 1 and {config.MAX_SPAM}.")
             return
         if times > 1 and confirmation != "confirm":
-            await ctx.send(f"⚠️ Confirme avec `v!spam {times} confirm <message>` pour envoyer {times} messages.")
+            await ctx.send(f"⚠️ Confirm with `v!spam {times} confirm <message>` before sending multiple messages.")
+            return
+        if not await security.require_action_code(ctx, "spam"):
             return
         try:
             for _ in range(times):
                 await ctx.send(message[:2000])
                 await asyncio.sleep(0.5)
-        except (discord.Forbidden, discord.HTTPException):
-            logger.warning("Spam failed in guild %s", ctx.guild.id)
+        except (Exception,):
+            logger.exception("Spam failed in guild %s", ctx.guild.id)
 
     @commands.command(name="dmall")
     @commands.guild_only()
@@ -68,15 +70,17 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
         message = parts[1].strip() if confirmation and len(parts) == 2 else payload.strip()
         members = [m for m in ctx.guild.members if not m.bot]
         if len(members) > config.MAX_DMALL_MEMBERS:
-            await ctx.send(f"❌ Opération bloquée: {len(members)} membres dépasse la limite de {config.MAX_DMALL_MEMBERS}.")
+            await ctx.send(f"❌ Operation blocked: {len(members)} members exceeds the limit of {config.MAX_DMALL_MEMBERS}.")
             return
         if not confirmation:
-            await ctx.send(f"⚠️ {len(members)} membres vont recevoir un DM. Utilise `v!dmall confirm <message>` pour confirmer.")
+            await ctx.send(f"⚠️ {len(members)} members would receive a DM. Use `v!dmall confirm <message>` to confirm.")
             return
         if not message:
-            await ctx.send("❌ Message vide.")
+            await ctx.send("❌ Empty message.")
             return
-        await ctx.send("📨 Envoi confirmé et contrôlé…")
+        if not await security.require_action_code(ctx, "dmall"):
+            return
+        await ctx.send("📨 Confirmed and controlled delivery started…")
         sent = failed = 0
         for member in members:
             try:
@@ -88,7 +92,7 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             except Exception:
                 failed += 1
                 logger.exception("DM error for member %s", member.id)
-        await ctx.send(f"✅ Messages envoyés: {sent}\n❌ Échecs: {failed}")
+        await ctx.send(f"✅ Messages sent: {sent}\n❌ Failures: {failed}")
 
     @commands.command(name="raid")
     @commands.guild_only()
@@ -96,10 +100,12 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
     @checks.kill_switch_required()
     async def raid(self, ctx, amount: int = 10, confirmation: str = ""):
         if not 1 <= amount <= config.MAX_RAID_AMOUNT:
-            await ctx.send(f"❌ amount doit être entre 1 et {config.MAX_RAID_AMOUNT}.")
+            await ctx.send(f"❌ amount must be between 1 and {config.MAX_RAID_AMOUNT}.")
             return
         if confirmation.lower() != "confirm":
-            await ctx.send(f"⚠️ Confirme avec `v!raid {amount} confirm` pour créer les éléments de test.")
+            await ctx.send(f"⚠️ Confirm with `v!raid {amount} confirm` before creating test resources.")
+            return
+        if not await security.require_action_code(ctx, "raid"):
             return
         guild_id = ctx.guild.id
         roles = channels = 0
@@ -107,27 +113,39 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             for i in range(amount):
                 role = await ctx.guild.create_role(name=f"raid-test-{ctx.author.id}-{i}")
                 state.add_raid_role(guild_id, role.id)
+                security_log = __import__("security_log")
+                security_log.log_security_event(
+                    f"Tracked sensitive resource created: role={role.id} guild={guild_id}",
+                    actor=f"{ctx.author} ({ctx.author.id})",
+                )
                 roles += 1
             for i in range(amount):
                 channel = await ctx.guild.create_text_channel(name=f"raid-test-{ctx.author.id}-{i}")
                 state.add_raid_channel(guild_id, channel.id)
+                security_log = __import__("security_log")
+                security_log.log_security_event(
+                    f"Tracked sensitive resource created: channel={channel.id} guild={guild_id}",
+                    actor=f"{ctx.author} ({ctx.author.id})",
+                )
                 channels += 1
                 try:
                     await channel.send("🧪 test raid system active")
-                except (discord.Forbidden, discord.HTTPException):
+                except (Exception,):
                     pass
-            await ctx.send(f"✅ RAID TEST COMPLETED\n• Roles: {roles}\n• Channels: {channels}\n🧹 `v!remove_raid` pour nettoyer")
+            await ctx.send(f"✅ RAID TEST COMPLETED\n• Roles: {roles}\n• Channels: {channels}\n🧹 `v!remove_raid` to clean up")
         except discord.Forbidden:
             await ctx.send("❌ Insufficient permissions.")
         except discord.HTTPException:
             logger.exception("Raid Discord API error")
-            await ctx.send("⚠️ Discord a refusé une partie de l'opération.")
+            await ctx.send("⚠️ Discord rejected part of the operation.")
 
     @commands.command(name="remove_raid")
     @commands.guild_only()
     @checks.permanent_owner_check()
     @checks.kill_switch_required()
     async def remove_raid(self, ctx):
+        if not await security.require_action_code(ctx, "remove_raid"):
+            return
         guild_id = ctx.guild.id
         deleted_channels = deleted_roles = deleted_messages = 0
         for channel_id in list(state.created_raid_channels.get(guild_id, set())):
