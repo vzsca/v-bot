@@ -3,49 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080a0f">
   <title>v-bot • Dashboard</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="app">
-<aside class="sidebar">
+<aside class="sidebar" id="sidebar">
   <div class="brand"><div class="brand-mark">V</div><div><strong>v-bot</strong><span>Local Control Panel</span></div></div>
-
   <div class="nav-section">Overview</div>
-  <nav class="nav">
-    <a href="#dashboard" data-page="dashboard" class="active"><span class="icon">⌂</span>Dashboard</a>
-  </nav>
-
+  <nav class="nav"><a href="#dashboard" data-page="dashboard" class="active"><span class="icon">⌂</span>Dashboard</a></nav>
   <div class="nav-section">Bot</div>
   <nav class="nav">
     <a href="#status" data-page="status"><span class="icon">◉</span>Status</a>
     <a href="#control" data-page="control"><span class="icon">▶</span>Bot Control</a>
     <a href="#servers" data-page="servers"><span class="icon">◎</span>Servers</a>
   </nav>
-
   <div class="nav-section">Monitoring</div>
   <nav class="nav">
     <a href="#logs" data-page="logs"><span class="icon">≡</span>Bot Logs</a>
     <a href="#security" data-page="security"><span class="icon">◆</span>Security Logs</a>
   </nav>
-
   <div class="nav-section">Configuration</div>
   <nav class="nav">
     <a href="#owners" data-page="owners"><span class="icon">♙</span>Owners</a>
     <a href="#discord" data-page="discord"><span class="icon">◈</span>Discord</a>
     <a href="#integrations" data-page="integrations"><span class="icon">◌</span>Integrations</a>
   </nav>
-
   <div class="nav-section">System</div>
   <nav class="nav">
     <a href="#security-settings" data-page="security-settings"><span class="icon">⌁</span>Security</a>
     <a href="#updates" data-page="updates"><span class="icon">↻</span>Updates</a>
     <a href="#about" data-page="about"><span class="icon">i</span>About</a>
   </nav>
-
-  <div class="sidebar-footer">
-    <div class="user-chip"><div class="avatar">O</div><div><strong>Local Owner</strong><span>Static preview</span></div></div>
-  </div>
+  <div class="sidebar-footer"><div class="user-chip"><div class="avatar">O</div><div><strong>Local Owner</strong><span>Static preview</span></div></div></div>
 </aside>
 
 <main class="main">
@@ -54,41 +45,57 @@
     <button class="mobile-toggle" id="mobileToggle" type="button">☰</button>
     <div><div class="page-title" id="pageTitle">Dashboard</div><div class="page-subtitle">v-bot local control panel</div></div>
   </div>
-  <div class="status-pill"><span class="dot"></span> Preview only</div>
+  <div class="top-actions"><div class="status-pill"><span class="dot"></span> Preview only</div></div>
 </header>
 
 <section class="content" data-view="dashboard">
-  <div class="hero"><h1>v-bot Control Panel</h1><p>Static front-end preview only. No bot, API, process, authentication or file system connection is implemented.</p></div>
-  <div class="grid stats" style="margin-top:16px">
-    <div class="card"><div class="muted">Bot status</div><div class="metric">ONLINE</div><div class="metric-small">Example value</div></div>
-    <div class="card"><div class="muted">Version</div><div class="metric">3.8.2</div><div class="metric-small">Example value</div></div>
-    <div class="card"><div class="muted">Servers</div><div class="metric">12</div><div class="metric-small">Example value</div></div>
-    <div class="card"><div class="muted">Memory</div><div class="metric">82 MB</div><div class="metric-small">Example value</div></div>
+  <div class="hero"><h1>Control everything from one place.</h1><p>A clean front-end concept for the future v-bot web panel. Everything shown here is static UI and does not communicate with the bot yet.</p><div class="actions hero-actions"><button class="btn primary" type="button">Open Bot Control</button><button class="btn" type="button">View Logs</button></div></div>
+  <div class="section-title">Overview</div>
+  <div class="grid stats">
+    <div class="card"><div class="metric-line"><div class="stat-icon">◉</div><div class="muted">Bot status</div></div><div class="metric">ONLINE</div><div class="metric-small">Running normally</div></div>
+    <div class="card"><div class="metric-line"><div class="stat-icon">↻</div><div class="muted">Version</div></div><div class="metric">3.8.2</div><div class="metric-small">Current release</div></div>
+    <div class="card"><div class="metric-line"><div class="stat-icon">◎</div><div class="muted">Servers</div></div><div class="metric">12</div><div class="metric-small">Connected guilds</div></div>
+    <div class="card"><div class="metric-line"><div class="stat-icon">▣</div><div class="muted">Memory</div></div><div class="metric">82 MB</div><div class="metric-small">Process RSS</div></div>
   </div>
-  <div class="grid two" style="margin-top:16px">
-    <div class="card"><div class="card-head"><h2>Quick actions</h2></div><div class="actions"><button class="btn primary">Start Bot</button><button class="btn danger">Stop Bot</button><button class="btn">Restart</button><button class="btn">Open Logs</button></div></div>
-    <div class="card"><div class="card-head"><h2>Latest update</h2></div><div class="notice update"><strong>v3.8.2</strong><br>Security and architecture improvements.</div></div>
+  <div class="section-title">At a glance</div>
+  <div class="grid two">
+    <div class="card"><div class="card-head"><h2>Quick actions</h2><span class="badge">Static</span></div><div class="actions"><button class="btn success">▶ Start Bot</button><button class="btn danger">■ Stop Bot</button><button class="btn">↻ Restart</button><button class="btn">≡ Open Logs</button></div></div>
+    <div class="card"><div class="card-head"><h2>Latest release</h2><span class="badge success">Up to date</span></div><div class="notice update"><strong>v3.8.2</strong><br>Security architecture, audit handling and dangerous command reliability improvements.</div></div>
   </div>
 </section>
 
-<section class="content" data-view="status" hidden><div class="card"><div class="card-head"><h2>System & Bot Status</h2><span class="badge success">ACTIVE</span></div><div class="grid three"><div><div class="muted">PID</div><div class="metric">12488</div></div><div><div class="muted">Uptime</div><div class="metric">3h 21m</div></div><div><div class="muted">CPU</div><div class="metric">1.4%</div></div><div><div class="muted">RAM</div><div class="metric">82 MB</div></div><div><div class="muted">Python</div><div style="margin-top:9px;font-weight:650">3.13</div></div><div><div class="muted">Platform</div><div style="margin-top:9px;font-weight:650">Windows</div></div></div></div></section>
-<section class="content" data-view="control" hidden><div class="card"><div class="card-head"><h2>Bot Control</h2><span class="badge success">RUNNING</span></div><p class="muted">Controls are visual only in this static version.</p><div class="actions"><button class="btn success">▶ Start</button><button class="btn danger">■ Stop</button><button class="btn">↻ Restart</button></div></div></section>
-<section class="content" data-view="servers" hidden><div class="card"><div class="card-head"><h2>Connected Servers</h2></div><div class="table-wrap"><table><thead><tr><th>Server</th><th>ID</th><th>Status</th><th>Members</th></tr></thead><tbody><tr><td>Example Community</td><td>123456789</td><td><span class="badge success">ONLINE</span></td><td>420</td></tr><tr><td>Gaming Hub</td><td>987654321</td><td><span class="badge success">ONLINE</span></td><td>182</td></tr><tr><td>Development</td><td>456789123</td><td><span class="badge success">ONLINE</span></td><td>56</td></tr></tbody></table></div></div></section>
-<section class="content" data-view="logs" hidden><div class="card"><div class="card-head"><h2>Bot Logs</h2><span class="badge">Preview data</span></div><div class="log"><span class="ok">[INFO]</span> Bot started successfully
+<section class="content" data-view="status" hidden>
+  <div class="grid two"><div class="card"><div class="card-head"><h2>Bot process</h2><span class="badge success">ACTIVE</span></div><div class="grid three"><div><div class="muted">PID</div><div class="metric">12488</div></div><div><div class="muted">Uptime</div><div class="metric">3h 21m</div></div><div><div class="muted">CPU</div><div class="metric">1.4%</div></div><div><div class="muted">RAM</div><div class="metric">82 MB</div></div><div><div class="muted">Python</div><div class="metric">3.13</div></div><div><div class="muted">Platform</div><div class="metric">Windows</div></div></div></div><div class="card"><div class="card-head"><h2>Configuration</h2></div><div class="list"><div class="row"><span>Principal owner</span><span class="badge">Configured</span></div><div class="row"><span>Secondary owners</span><span>2 / 5</span></div><div class="row"><span>Dangerous commands</span><span class="badge danger">DISABLED</span></div><div class="row"><span>.env</span><span class="badge success">PRESENT</span></div></div></div></div>
+</section>
+
+<section class="content" data-view="control" hidden><div class="card"><div class="card-head"><div><h2>Bot Control</h2><div class="metric-small">Process actions are visual placeholders.</div></div><span class="badge success">RUNNING</span></div><div class="notice">The buttons below are not wired to v-bot. They are UI-only until a backend is introduced.</div><div class="actions" style="margin-top:16px"><button class="btn success">▶ Start</button><button class="btn danger">■ Stop</button><button class="btn">↻ Restart</button></div><div class="divider"></div><div class="list"><div class="row"><span>Current PID</span><strong>12488</strong></div><div class="row"><span>Process state</span><span class="badge success">RUNNING</span></div><div class="row"><span>Uptime</span><strong>3h 21m</strong></div></div></div></section>
+
+<section class="content" data-view="servers" hidden><div class="card"><div class="card-head"><div><h2>Connected Servers</h2><div class="metric-small">Example data for the front-end concept.</div></div><span class="badge">12 servers</span></div><div class="table-wrap"><table><thead><tr><th>Server</th><th>ID</th><th>Status</th><th>Members</th><th>Activity</th></tr></thead><tbody><tr><td>Example Community</td><td>123456789</td><td><span class="badge success">ONLINE</span></td><td>420</td><td>Normal</td></tr><tr><td>Gaming Hub</td><td>987654321</td><td><span class="badge success">ONLINE</span></td><td>182</td><td>Normal</td></tr><tr><td>Development</td><td>456789123</td><td><span class="badge success">ONLINE</span></td><td>56</td><td>Quiet</td></tr></tbody></table></div></div></section>
+
+<section class="content" data-view="logs" hidden><div class="card"><div class="card-head"><div><h2>Bot Logs</h2><div class="metric-small">Readable log viewer concept.</div></div><div class="actions"><button class="btn">Refresh</button><button class="btn">Search</button></div></div><div class="log"><span class="ok">[INFO]</span> Bot started successfully
 <span class="ok">[INFO]</span> Connected to Discord
 <span class="ok">[INFO]</span> Loaded extension: moderation
+<span class="ok">[INFO]</span> Loaded extension: owner
 <span class="warn">[WARN]</span> Example warning message
 <span class="ok">[INFO]</span> Ready</div></div></section>
-<section class="content" data-view="security" hidden><div class="card"><div class="card-head"><h2>Security Logs</h2><span class="badge">Audit preview</span></div><div class="log"><span class="ok">[AUDIT]</span> Owner action authenticated
+
+<section class="content" data-view="security" hidden><div class="card"><div class="card-head"><div><h2>Security Logs</h2><div class="metric-small">Audit and security activity concept.</div></div><span class="badge success">AUDIT ENABLED</span></div><div class="log"><span class="ok">[AUDIT]</span> Owner action authenticated
 <span class="ok">[AUDIT]</span> Sensitive action code generated
 <span class="warn">[ALERT]</span> Example suspicious activity event
-<span class="ok">[AUDIT]</span> Security state persisted</div></div></section>
-<section class="content" data-view="owners" hidden><div class="card"><div class="card-head"><h2>Owner Management</h2></div><div class="form-grid"><div class="field"><label>Principal Owner ID</label><input value="Example ID" readonly></div><div class="field"><label>Secondary Owners</label><input value="Example IDs" readonly></div></div><div class="actions" style="margin-top:14px"><button class="btn primary">Add Owner</button><button class="btn">Manage Owners</button></div></div></section>
-<section class="content" data-view="discord" hidden><div class="card"><div class="card-head"><h2>Discord Configuration</h2></div><div class="form-grid"><div class="field"><label>Bot Prefix</label><input value="v!" readonly></div><div class="field"><label>Bot Credential</label><input value="Not connected" readonly></div></div><div class="actions" style="margin-top:14px"><button class="btn primary">Save Changes</button></div></div></section>
-<section class="content" data-view="integrations" hidden><div class="grid two"><div class="card"><div class="card-head"><h2>Twitch</h2><span class="badge success">Configured</span></div><div class="field"><label>Client ID</label><input value="Preview value" readonly></div></div><div class="card"><div class="card-head"><h2>YouTube</h2><span class="badge success">Configured</span></div><div class="field"><label>API Key</label><input value="Preview value" readonly></div></div></div></section>
-<section class="content" data-view="security-settings" hidden><div class="card"><div class="card-head"><h2>Security</h2><span class="badge warning">Sensitive</span></div><div class="list"><div class="row"><span>Dangerous commands</span><span class="badge danger">DISABLED</span></div><div class="row"><span>One-time action codes</span><span class="badge success">ENABLED</span></div><div class="row"><span>Audit logging</span><span class="badge success">ENABLED</span></div><div class="row"><span>Kill switch</span><span class="badge success">OFF</span></div></div></div></section>
-<section class="content" data-view="updates" hidden><div class="card"><div class="card-head"><h2>Updates</h2><span class="badge success">Up to date</span></div><div class="notice update"><strong>No new version detected.</strong><br>Current version: 3.8.2<br>Latest version: 3.8.2</div></div></section>
-<section class="content" data-view="about" hidden><div class="hero"><h1>About v-bot</h1><p>A modular Discord bot with moderation, owner controls, integrations, local control and security features.</p></div><div class="card" style="margin-top:16px"><div class="list"><div class="row"><span>Version</span><strong>3.8.2</strong></div><div class="row"><span>Panel mode</span><span class="badge">Static preview</span></div><div class="row"><span>Backend connected</span><span class="badge danger">NO</span></div></div></div></section>
+<span class="ok">[AUDIT]</span> Security state persisted
+<span class="ok">[AUDIT]</span> Raid resource tracking updated</div></div></section>
+
+<section class="content" data-view="owners" hidden><div class="grid two"><div class="card"><div class="card-head"><h2>Principal Owner</h2><span class="badge success">CONFIGURED</span></div><div class="field"><label>Discord User ID</label><input value="123456789012345678" readonly></div><div class="actions" style="margin-top:14px"><button class="btn">Change Owner</button></div></div><div class="card"><div class="card-head"><h2>Secondary Owners</h2><span class="badge">2 / 5</span></div><div class="list"><div class="row"><span>123456789012345679</span><span class="badge success">ACTIVE</span></div><div class="row"><span>123456789012345680</span><span class="badge success">ACTIVE</span></div></div><div class="actions" style="margin-top:14px"><button class="btn primary">Add Owner</button></div></div></div></section>
+
+<section class="content" data-view="discord" hidden><div class="card"><div class="card-head"><div><h2>Discord Configuration</h2><div class="metric-small">Visual configuration form.</div></div><span class="badge">Static</span></div><div class="form-grid"><div class="field"><label>Bot Prefix</label><input value="v!" readonly></div><div class="field"><label>Dangerous Commands</label><select disabled><option>Disabled</option></select></div><div class="field"><label>Discord Token</label><input value="••••••••••••••••••••" readonly></div><div class="field"><label>.env Status</label><input value="Present" readonly></div></div><div class="actions" style="margin-top:16px"><button class="btn primary">Save Changes</button></div></div></section>
+
+<section class="content" data-view="integrations" hidden><div class="card-grid"><div class="card"><div class="card-head"><h2>Twitch</h2><span class="badge success">CONFIGURED</span></div><div class="field"><label>Client ID</label><input value="••••••••••••" readonly></div><div class="field" style="margin-top:12px"><label>Client Secret</label><input value="••••••••••••" readonly></div><div class="actions" style="margin-top:14px"><button class="btn">Edit</button></div></div><div class="card"><div class="card-head"><h2>YouTube</h2><span class="badge success">CONFIGURED</span></div><div class="field"><label>API Key</label><input value="••••••••••••" readonly></div><div class="actions" style="margin-top:14px"><button class="btn">Edit</button></div></div><div class="card"><div class="card-head"><h2>Integration health</h2><span class="badge">Preview</span></div><div class="list"><div class="row"><span>Twitch API</span><span class="badge success">READY</span></div><div class="row"><span>YouTube API</span><span class="badge success">READY</span></div></div></div></div></section>
+
+<section class="content" data-view="security-settings" hidden><div class="grid two"><div class="card"><div class="card-head"><h2>Security Controls</h2><span class="badge warning">SENSITIVE</span></div><div class="list"><div class="row"><span>Dangerous commands</span><span class="badge danger">DISABLED</span></div><div class="row"><span>One-time action codes</span><span class="badge success">ENABLED</span></div><div class="row"><span>Audit logging</span><span class="badge success">ENABLED</span></div><div class="row"><span>Kill switch</span><span class="badge success">OFF</span></div></div></div><div class="card"><div class="card-head"><h2>Action Code</h2><span class="badge">One-time</span></div><div class="notice">Sensitive actions will require a temporary security code once the backend is connected.</div><div class="actions" style="margin-top:14px"><button class="btn primary">Generate Code</button></div></div></div></section>
+
+<section class="content" data-view="updates" hidden><div class="grid two"><div class="card"><div class="card-head"><h2>Current version</h2><span class="badge success">LATEST</span></div><div class="metric">3.8.2</div><div class="metric-small">No update available in this static preview.</div></div><div class="card"><div class="card-head"><h2>Update notification</h2></div><div class="notice update"><strong>Update checker UI</strong><br>The final panel can display release notifications, changelogs and release dates from GitHub.</div><div class="actions" style="margin-top:14px"><button class="btn">Check for updates</button></div></div></div></section>
+
+<section class="content" data-view="about" hidden><div class="hero"><h1>About v-bot</h1><p>A modular Discord bot with moderation, owner controls, integrations, local control and security features.</p></div><div class="card" style="margin-top:16px"><div class="list"><div class="row"><span>Version</span><strong>3.8.2</strong></div><div class="row"><span>Panel mode</span><span class="badge">Static front-end</span></div><div class="row"><span>Backend connected</span><span class="badge danger">NO</span></div><div class="row"><span>Navigation</span><span class="badge success">READY</span></div></div></div></section>
 
 </main></div>
 <script src="assets/app.js"></script>
