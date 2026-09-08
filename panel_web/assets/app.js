@@ -1,35 +1,15 @@
-/* Frontend-only panel routing and authentication state. */
+/* v-bot frontend route controller. */
 (() => {
   'use strict';
 
   const AUTH_KEY = 'vbot-panel-connected';
 
-  document.addEventListener('DOMContentLoaded', init);
+  const isConnected = () => sessionStorage.getItem(AUTH_KEY) === 'true';
+  const setConnected = value => sessionStorage.setItem(AUTH_KEY, value ? 'true' : 'false');
+  const currentHash = () => window.location.hash.replace(/^#/, '');
 
-  function isConnected() {
-    return sessionStorage.getItem(AUTH_KEY) === 'true';
-  }
-
-  function setConnected(value) {
-    if (value) sessionStorage.setItem(AUTH_KEY, 'true');
-    else sessionStorage.removeItem(AUTH_KEY);
-  }
-
-  function init() {
-    loadPanelStyles();
-    setupConnection();
-    setupNavigation();
-    enforceRoute();
-  }
-
-  function loadPanelStyles() {
-    for (const path of ['assets/ui.css', 'assets/polish.css', 'assets/auth.css']) {
-      if (document.querySelector(`link[href="${path}"]`)) continue;
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = path;
-      document.head.appendChild(link);
-    }
+  function pageExists(page) {
+    return [...document.querySelectorAll('[data-page]')].some(link => link.dataset.page === page);
   }
 
   function showConnection() {
@@ -49,96 +29,79 @@
     document.body.classList.remove('auth-required');
   }
 
-  function getPageNames() {
-    return new Set([...document.querySelectorAll('[data-page]')].map(link => link.dataset.page));
-  }
-
-  function renderPage(requestedPage) {
+  function render(page) {
     if (!isConnected()) {
-      showConnection();
-      if (location.hash !== '#connexion') {
+      if (currentHash() !== 'connexion') {
         history.replaceState(null, '', `${location.pathname}${location.search}#connexion`);
       }
+      showConnection();
       return;
     }
 
     showPanel();
+    const target = page && page !== 'connexion' && pageExists(page) ? page : 'dashboard';
 
-    const target = requestedPage === 'connexion' ? 'dashboard' : (requestedPage || 'dashboard');
-    const pageNames = getPageNames();
-    const page = pageNames.has(target) ? target : 'dashboard';
-    const views = document.querySelectorAll('[data-view]');
-    const links = document.querySelectorAll('[data-page]');
-
-    views.forEach(view => {
-      view.hidden = view.dataset.view !== page;
+    document.querySelectorAll('[data-view]').forEach(view => {
+      view.hidden = view.dataset.view !== target;
     });
 
-    links.forEach(link => {
-      const active = link.dataset.page === page;
+    document.querySelectorAll('[data-page]').forEach(link => {
+      const active = link.dataset.page === target;
       link.classList.toggle('active', active);
       link.setAttribute('aria-current', active ? 'page' : 'false');
     });
 
-    const activeLink = [...links].find(link => link.dataset.page === page);
-    const label = activeLink ? getLinkLabel(activeLink) : 'Dashboard';
+    const activeLink = [...document.querySelectorAll('[data-page]')].find(link => link.dataset.page === target);
+    const label = activeLink ? activeLink.textContent.replace(/[^A-Za-zÀ-ÿ0-9 ]/g, '').trim() : 'Dashboard';
     const title = document.getElementById('pageTitle');
     if (title) title.textContent = label;
     document.title = `v-bot • ${label}`;
+  }
 
-    const desiredHash = `#${page}`;
-    if (location.hash !== desiredHash) {
-      history.replaceState(null, '', `${location.pathname}${location.search}${desiredHash}`);
+  function navigate(page) {
+    if (!isConnected()) {
+      history.replaceState(null, '', `${location.pathname}${location.search}#connexion`);
+      showConnection();
+      return;
+    }
+    history.replaceState(null, '', `${location.pathname}${location.search}#${page}`);
+    render(page);
+  }
+
+  function connect(event) {
+    event?.preventDefault?.();
+    setConnected(true);
+    navigate('dashboard');
+    return false;
+  }
+
+  function init() {
+    window.vBotConnect = connect;
+    document.getElementById('authForm')?.addEventListener('submit', connect);
+
+    /* Intercept navigation before any other click handler or native hash navigation. */
+    document.addEventListener('click', event => {
+      const link = event.target.closest?.('[data-page]');
+      if (!link) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      navigate(link.dataset.page || 'dashboard');
+    }, true);
+
+    window.addEventListener('hashchange', () => render(currentHash()));
+
+    const requested = currentHash();
+    if (isConnected()) {
+      render(requested || 'dashboard');
+    } else {
+      history.replaceState(null, '', `${location.pathname}${location.search}#connexion`);
+      showConnection();
     }
   }
 
-  function enforceRoute() {
-    renderPage(location.hash.replace(/^#/, ''));
-  }
-
-  function setupConnection() {
-    const form = document.getElementById('authForm');
-    if (!form) return;
-
-    window.vBotConnect = function (event) {
-      event?.preventDefault();
-      setConnected(true);
-      location.hash = '#dashboard';
-      return false;
-    };
-
-    form.addEventListener('submit', window.vBotConnect);
-  }
-
-  function setupNavigation() {
-    const sidebar = document.getElementById('sidebar');
-    const mobileToggle = document.getElementById('mobileToggle');
-
-    document.querySelectorAll('[data-page]').forEach(link => {
-      link.addEventListener('click', event => {
-        if (!isConnected()) {
-          event.preventDefault();
-          location.hash = '#connexion';
-          return;
-        }
-
-        sidebar?.classList.remove('open');
-        mobileToggle?.setAttribute('aria-expanded', 'false');
-        // Keep the native href/hash navigation. hashchange renders that exact page.
-      });
-    });
-
-    mobileToggle?.addEventListener('click', () => {
-      const open = sidebar?.classList.toggle('open') ?? false;
-      mobileToggle.setAttribute('aria-expanded', String(open));
-    });
-
-    window.addEventListener('hashchange', enforceRoute);
-  }
-
-  function getLinkLabel(link) {
-    const clone = link.cloneNode(true);
-    clone.querySelectorAll('.icon').forEach(icon => icon.remove());
-    return clone.textContent.trim();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
   }
 })();
