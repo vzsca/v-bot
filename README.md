@@ -13,6 +13,7 @@ v-bot includes a **local control panel** for process management, configuration, 
 - 🧹 Deleted-message snipe
 - 🌐 Multi-server management
 - ⚙️ Cross-platform local panel
+- 🌐 Frontend web panel in development
 - 📋 Standard and security logs
 - 📢 Automatic Twitch and YouTube announcements
 - 🔑 Global primary API + per-server API credentials
@@ -121,6 +122,59 @@ The code is short-lived, stored only as a hash on disk, and invalidated after su
 - uptime;
 - CPU/RAM usage;
 - currently installed commit.
+
+---
+
+# 🌐 Web panel — In Process
+
+A new **HTML/CSS/JavaScript web control panel** is currently **in process**.
+
+The web panel is being designed as a modern frontend for the future v-bot administration interface. It currently runs as a **frontend-only preview** and is intentionally not connected to the Discord bot, local processes, configuration files, or APIs.
+
+### Current web panel features
+
+- 📊 Dashboard with bot overview and quick actions
+- 📈 Status page with process and configuration information
+- ▶️ Bot Control interface
+- 🌐 Server management interface
+- 📋 Bot Logs and Security Logs views
+- 👑 Owner management interface
+- 💬 Discord configuration interface
+- 🔗 Twitch / YouTube integration views
+- 🔐 Security settings view
+- 🔄 Update status view
+- ℹ️ About page
+- 🧭 Sidebar navigation with hash-based routing
+- 📱 Responsive/mobile sidebar
+- 🪟 Interactive frontend modals for server and management actions
+- ♿ Accessibility improvements including keyboard navigation, focus handling, modal focus trapping and reduced-motion support
+
+### Web panel architecture
+
+```text
+panel_web/
+├── README.md
+├── index.html
+└── assets/
+    ├── app.js
+    ├── navigation.js
+    ├── modals.js
+    ├── servers.js
+    ├── actions.js
+    ├── accessibility.js
+    ├── ui.css
+    └── polish.css
+```
+
+The frontend is deliberately separated into navigation, modal handling, server actions, generic actions, and accessibility logic so it can later be connected to a real backend without mixing UI concerns with bot logic.
+
+### Current state
+
+> 🚧 **Web panel: IN PROCESS**
+>
+> The interface and frontend interaction layer are under active development. Backend/API integration is planned for a later stage.
+
+Open `panel_web/index.html` directly in a browser to preview the current interface.
 
 ---
 
@@ -332,6 +386,18 @@ v-bot/
 │   ├── youtube.py
 │   ├── help_cog.py
 │   └── dangerous_safe.py
+├── panel_web/
+│   ├── README.md
+│   ├── index.html
+│   └── assets/
+│       ├── app.js
+│       ├── navigation.js
+│       ├── modals.js
+│       ├── servers.js
+│       ├── actions.js
+│       ├── accessibility.js
+│       ├── ui.css
+│       └── polish.css
 ├── tests/
 ├── main.py
 ├── panel.py
@@ -346,6 +412,8 @@ v-bot/
 Security-sensitive command auditing is handled by the single `AuditManager` in `app/audit.py`. `app/security.py` is dedicated to one-time sensitive-action authorization and does not duplicate audit/burst detection.
 
 Persistent runtime security state is handled by `app/state.py`, including the kill switch, disabled servers, and tracked sensitive resources.
+
+The `panel_web` frontend is kept separate from the Python bot and local CLI panel. It is currently a static UI and does not execute bot or system operations.
 
 ---
 
@@ -372,6 +440,9 @@ The version displayed by the bot and panel therefore follows Git instead of requ
 
 - Python 3.13
 - discord.py
+- HTML5
+- CSS3
+- JavaScript (ES modules)
 - python-dotenv
 - psutil
 - aiohttp
