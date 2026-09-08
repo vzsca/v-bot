@@ -4,6 +4,7 @@
   try {
     loadStylesheet('assets/ui.css');
     loadStylesheet('assets/polish.css');
+    loadStylesheet('assets/auth.css');
 
     const [{ initAccessibility }, { initModals }, { initAuth }, { initNavigation }, { initServers }, { initActions }] = await Promise.all([
       import('./accessibility.js'),
