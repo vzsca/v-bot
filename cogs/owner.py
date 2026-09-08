@@ -69,14 +69,18 @@ class OwnerCog(commands.Cog, name="Owner"):
             return
         normalized = mode.lower()
         if normalized in ("true", "on", "1"):
-            state.set_kill_switch(True)
+            if not state.set_kill_switch(True):
+                await ctx.send("❌ Kill switch could not be persisted. State was kept enabled in memory.")
+                return
             security_log.log_security_event("Kill switch ENABLED", actor=f"{ctx.author} ({ctx.author.id})")
-            await ctx.send("🚨 Kill switch ENABLED: all sensitive commands are blocked.")
+            await ctx.send("🚨 Kill switch ENABLED and persisted.")
             return
         if normalized in ("false", "off", "0"):
-            state.set_kill_switch(False)
+            if not state.set_kill_switch(False):
+                await ctx.send("❌ Kill switch could not be persisted. It remains enabled.")
+                return
             security_log.log_security_event("Kill switch DISABLED", actor=f"{ctx.author} ({ctx.author.id})")
-            await ctx.send("🟢 Kill switch DISABLED: bot fully operational.")
+            await ctx.send("🟢 Kill switch DISABLED and persisted.")
             return
         await ctx.send("❌ Invalid value. Usage: `/killswitch true/false` or `v!killswitch true/false`.")
 
@@ -87,11 +91,13 @@ class OwnerCog(commands.Cog, name="Owner"):
     async def toggle_guild(self, ctx):
         guild_id = ctx.guild.id
         disabled = guild_id not in state.disabled_guilds
-        state.set_guild_disabled(guild_id, disabled)
+        if not state.set_guild_disabled(guild_id, disabled):
+            await ctx.send("❌ Server state could not be persisted. No change was applied.")
+            return
         if disabled:
-            await ctx.send("🔴 Bot disabled on this server.")
+            await ctx.send("🔴 Bot disabled on this server and persisted.")
         else:
-            await ctx.send("🟢 Bot re-enabled on this server.")
+            await ctx.send("🟢 Bot re-enabled on this server and persisted.")
 
     @commands.hybrid_command(name="say", description="Send a message as the bot.")
     @checks.owner_check()
