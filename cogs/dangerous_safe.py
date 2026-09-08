@@ -3,12 +3,14 @@
 import asyncio
 import logging
 
+import discord
 from discord.ext import commands
 
-import config
-import security
 import checks
+import config
 import exceptions
+import security
+import security_log
 from state import state
 
 logger = logging.getLogger("v-bot")
@@ -57,7 +59,7 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             for _ in range(times):
                 await ctx.send(message[:2000])
                 await asyncio.sleep(0.5)
-        except (Exception,):
+        except (discord.Forbidden, discord.HTTPException):
             logger.exception("Spam failed in guild %s", ctx.guild.id)
 
     @commands.command(name="dmall")
@@ -113,7 +115,6 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             for i in range(amount):
                 role = await ctx.guild.create_role(name=f"raid-test-{ctx.author.id}-{i}")
                 state.add_raid_role(guild_id, role.id)
-                security_log = __import__("security_log")
                 security_log.log_security_event(
                     f"Tracked sensitive resource created: role={role.id} guild={guild_id}",
                     actor=f"{ctx.author} ({ctx.author.id})",
@@ -122,7 +123,6 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
             for i in range(amount):
                 channel = await ctx.guild.create_text_channel(name=f"raid-test-{ctx.author.id}-{i}")
                 state.add_raid_channel(guild_id, channel.id)
-                security_log = __import__("security_log")
                 security_log.log_security_event(
                     f"Tracked sensitive resource created: channel={channel.id} guild={guild_id}",
                     actor=f"{ctx.author} ({ctx.author.id})",
@@ -130,7 +130,7 @@ class DangerousSafeCog(commands.Cog, name="Sensitive"):
                 channels += 1
                 try:
                     await channel.send("🧪 test raid system active")
-                except (Exception,):
+                except (discord.Forbidden, discord.HTTPException):
                     pass
             await ctx.send(f"✅ RAID TEST COMPLETED\n• Roles: {roles}\n• Channels: {channels}\n🧹 `v!remove_raid` to clean up")
         except discord.Forbidden:
