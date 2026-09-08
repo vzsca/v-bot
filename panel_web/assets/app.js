@@ -1,32 +1,33 @@
-/* Standalone frontend bootstrap for panel_web.
-   No ES module imports are used here so the preview also works from file://. */
+/* Standalone frontend bootstrap for panel_web. */
 
 (() => {
   'use strict';
 
-  const state = {
-    modal: null,
-    lastFocused: null,
-    previousHash: '',
-  };
-
-  const pageLabels = () => Object.fromEntries(
-    [...document.querySelectorAll('[data-page]')].map(link => [link.dataset.page, getLinkLabel(link)])
-  );
+  const AUTH_KEY = 'vbot-panel-connected';
+  const state = { modal: null, lastFocused: null };
 
   document.addEventListener('DOMContentLoaded', init);
+
+  function isConnected() {
+    return sessionStorage.getItem(AUTH_KEY) === 'true';
+  }
+
+  function setConnected(value) {
+    if (value) sessionStorage.setItem(AUTH_KEY, 'true');
+    else sessionStorage.removeItem(AUTH_KEY);
+  }
 
   function init() {
     injectStylesheet('assets/ui.css');
     injectStylesheet('assets/polish.css');
     injectStylesheet('assets/auth.css');
-
     initAccessibility();
     initModals();
-    initAuth();
+    initAuthRouting();
     initNavigation();
     initServers();
     initActions();
+    enforceAuthRoute();
   }
 
   function injectStylesheet(path) {
@@ -37,39 +38,70 @@
     document.head.appendChild(link);
   }
 
-  function initAuth() {
+  function goToConnection() {
+    history.replaceState(null, '', `${location.pathname}${location.search}#connexion`);
+    showConnectionPage();
+  }
+
+  function goToDashboard() {
+    history.replaceState(null, '', `${location.pathname}${location.search}#dashboard`);
+    showDashboardPage();
+  }
+
+  function showConnectionPage() {
     const gate = document.querySelector('#authGate');
     const shell = document.querySelector('.app');
+    if (gate) gate.hidden = false;
+    if (shell) shell.hidden = true;
+    document.body.classList.add('auth-required');
+    document.title = 'v-bot • Connection';
+    document.querySelector('#panelId')?.focus();
+  }
+
+  function showDashboardPage() {
+    const gate = document.querySelector('#authGate');
+    const shell = document.querySelector('.app');
+    if (gate) gate.hidden = true;
+    if (shell) shell.hidden = false;
+    document.body.classList.remove('auth-required');
+    initNavigationPage('dashboard');
+  }
+
+  function enforceAuthRoute() {
+    if (!isConnected()) {
+      goToConnection();
+      return;
+    }
+    goToDashboard();
+  }
+
+  function initAuthRouting() {
     const form = document.querySelector('#authForm');
-    const button = document.querySelector('#authSubmit');
-    const idInput = document.querySelector('#panelId');
+    if (!form) return;
 
-    if (!gate || !shell || !form || !button) return;
-
-    const connect = event => {
-      event?.preventDefault?.();
-      gate.hidden = true;
-      shell.hidden = false;
-      document.body.classList.remove('auth-required');
-      initNavigationPage('dashboard');
+    window.vBotConnect = function (event) {
+      event?.preventDefault();
+      setConnected(true);
+      goToDashboard();
+      return false;
     };
 
-    button.addEventListener('click', connect);
-    form.addEventListener('submit', connect);
-
-    document.title = 'v-bot • Login';
-    idInput?.focus();
+    form.addEventListener('submit', window.vBotConnect);
   }
 
   function initNavigation() {
     const links = [...document.querySelectorAll('[data-page]')];
     const sidebar = document.querySelector('#sidebar');
     const mobileToggle = document.querySelector('#mobileToggle');
-    const pageTitle = document.querySelector('#pageTitle');
 
     links.forEach(link => {
       link.setAttribute('aria-label', getLinkLabel(link));
-      link.addEventListener('click', () => {
+      link.addEventListener('click', event => {
+        if (!isConnected()) {
+          event.preventDefault();
+          goToConnection();
+          return;
+        }
         sidebar?.classList.remove('open');
         mobileToggle?.setAttribute('aria-expanded', 'false');
       });
@@ -82,41 +114,25 @@
       mobileToggle.setAttribute('aria-expanded', String(open));
     });
 
-    window.addEventListener('hashchange', () => {
-      initNavigationPage(location.hash.slice(1));
-    });
-
+    window.addEventListener('hashchange', enforceAuthRoute);
     window.vBotNavigation = { showPage: initNavigationPage };
-    initNavigationPage(location.hash.slice(1) || 'dashboard');
-
-    function setTitle(page) {
-      if (pageTitle) pageTitle.textContent = pageLabels()[page] || 'Dashboard';
-      document.title = `v-bot • ${pageLabels()[page] || 'Dashboard'}`;
-    }
-
-    function updateActive(page) {
-      links.forEach(link => {
-        const active = link.dataset.page === page;
-        link.classList.toggle('active', active);
-        link.setAttribute('aria-current', active ? 'page' : 'false');
-      });
-    }
-
-    void setTitle;
-    void updateActive;
   }
 
   function initNavigationPage(name) {
-    const labels = pageLabels();
+    if (!isConnected()) {
+      goToConnection();
+      return;
+    }
+
+    const labels = Object.fromEntries(
+      [...document.querySelectorAll('[data-page]')].map(link => [link.dataset.page, getLinkLabel(link)])
+    );
     const page = Object.prototype.hasOwnProperty.call(labels, name) ? name : 'dashboard';
     const views = [...document.querySelectorAll('[data-view]')];
     const links = [...document.querySelectorAll('[data-page]')];
     const title = document.querySelector('#pageTitle');
 
-    views.forEach(view => {
-      view.hidden = view.dataset.view !== page;
-    });
-
+    views.forEach(view => { view.hidden = view.dataset.view !== page; });
     links.forEach(link => {
       const active = link.dataset.page === page;
       link.classList.toggle('active', active);
@@ -125,7 +141,6 @@
 
     if (title) title.textContent = labels[page] || 'Dashboard';
     document.title = `v-bot • ${labels[page] || 'Dashboard'}`;
-
     if (location.hash.slice(1) !== page) {
       history.replaceState(null, '', `${location.pathname}${location.search}#${page}`);
     }
@@ -150,14 +165,6 @@
       document.body.prepend(skip);
     }
 
-    skip.addEventListener('click', event => {
-      const target = document.querySelector('#main-content');
-      if (!target) return;
-      event.preventDefault();
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: 'start' });
-    });
-
     sidebar?.setAttribute('aria-label', 'Main navigation');
     mobileToggle?.setAttribute('aria-controls', 'sidebar');
 
@@ -168,16 +175,11 @@
       view.setAttribute('role', 'region');
       view.setAttribute('aria-labelledby', heading.id);
     });
-
-    document.querySelectorAll('.btn').forEach(button => {
-      button.type = 'button';
-    });
   }
 
   function initModals() {
     state.modal = document.querySelector('#modalBackdrop');
     if (!state.modal) return;
-
     state.modal.setAttribute('aria-hidden', 'true');
     document.querySelector('#modalClose')?.addEventListener('click', closeModal);
     state.modal.addEventListener('click', event => {
@@ -192,41 +194,32 @@
   function openModal(html, title = 'Dialog') {
     const backdrop = state.modal;
     const container = document.querySelector('#modalContent');
-    if (!backdrop || !container) return;
-
+    if (!backdrop || !container || !isConnected()) return;
     state.lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     container.innerHTML = html;
-
     const dialog = backdrop.querySelector('.modal');
     if (!dialog) return;
-
     const heading = dialog.querySelector('h2, h1');
     const description = dialog.querySelector('.modal-description');
     if (heading) {
       heading.id = 'modalTitle';
       dialog.setAttribute('aria-labelledby', 'modalTitle');
-    } else {
-      dialog.setAttribute('aria-label', title);
-    }
+    } else dialog.setAttribute('aria-label', title);
     if (description) {
       description.id = 'modalDescription';
       dialog.setAttribute('aria-describedby', 'modalDescription');
     }
-
     dialog.setAttribute('tabindex', '-1');
     backdrop.hidden = false;
     backdrop.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
-
-    const focusables = getFocusable(dialog);
-    (focusables[0] || dialog).focus();
+    (getFocusable(dialog)[0] || dialog).focus();
   }
 
   function closeModal() {
     const backdrop = state.modal;
     const container = document.querySelector('#modalContent');
     if (!backdrop || !container) return;
-
     backdrop.hidden = true;
     backdrop.setAttribute('aria-hidden', 'true');
     container.innerHTML = '';
@@ -257,118 +250,63 @@
   }
 
   function initServers() {
+    // Existing server interactions remain unchanged in spirit and are frontend-only.
     document.querySelectorAll('.server-invite').forEach(button => button.addEventListener('click', () => {
       const name = button.dataset.server || 'Server';
       const url = button.dataset.invite || 'https://discord.gg/example';
-      openModal(`
-        <div class="modal-icon" aria-hidden="true">↗</div>
-        <div class="eyebrow">SERVER INVITE</div>
-        <h2>Invite ${escapeHtml(name)}</h2>
-        <p class="modal-description">Copy or open the server invite link.</p>
-        <div class="invite-box"><input id="inviteUrl" value="${escapeAttribute(url)}" readonly aria-label="Server invite link"><button class="btn primary" id="copyInvite" type="button">Copy</button></div>
-        <span class="modal-hint">Frontend preview only — no invite is generated or fetched.</span>
-      `);
+      openModal(`<div class="modal-icon" aria-hidden="true">↗</div><div class="eyebrow">SERVER INVITE</div><h2>${escapeHtml(name)}</h2><p class="modal-description">Copy or open the server invite link.</p><div class="invite-box"><input id="inviteUrl" value="${escapeAttribute(url)}" readonly><button class="btn primary" id="copyInvite" type="button">Copy</button></div>`);
       document.querySelector('#copyInvite')?.addEventListener('click', async event => {
-        try { await navigator.clipboard?.writeText(url); } catch (_) { /* file:// may not expose clipboard */ }
+        try { await navigator.clipboard?.writeText(url); } catch (_) {}
         event.currentTarget.textContent = 'Copied ✓';
       });
     }));
 
     document.querySelectorAll('.server-manage').forEach(button => button.addEventListener('click', () => {
-      const name = button.dataset.server || 'Server';
-      openModal(`
-        <div class="modal-icon" aria-hidden="true">⚙</div>
-        <div class="eyebrow">SERVER MANAGEMENT</div>
-        <h2>${escapeHtml(name)}</h2>
-        <p class="modal-description">Manage server settings, permissions and server-specific features.</p>
-        <div class="modal-list">
-          ${statusRow('Moderation', 'ENABLED', 'success')}
-          ${statusRow('Announcements', 'ENABLED', 'success')}
-          ${statusRow('Dangerous commands', 'DISABLED', 'danger')}
-          ${statusRow('Bot permission level', 'ADMIN', '')}
-        </div>
-        <div class="actions modal-actions"><button class="btn primary" type="button" data-preview-action="server-settings">Server Settings</button><button class="btn" type="button" data-preview-action="permissions">Permissions</button></div>
-      `);
-      bindPreviewActions();
+      openModal(`<div class="modal-icon" aria-hidden="true">⚙</div><div class="eyebrow">SERVER MANAGEMENT</div><h2>${escapeHtml(button.dataset.server || 'Server')}</h2><p class="modal-description">Manage server settings, permissions and server-specific features.</p><div class="modal-list">${statusRow('Moderation','ENABLED','success')}${statusRow('Announcements','ENABLED','success')}${statusRow('Dangerous commands','DISABLED','danger')}${statusRow('Bot permission level','ADMIN','')}</div>`);
     }));
 
     document.querySelectorAll('.server-api').forEach(button => button.addEventListener('click', () => {
-      const name = button.dataset.server || 'Server';
-      openModal(`
-        <div class="modal-icon" aria-hidden="true">⌁</div>
-        <div class="eyebrow">API ACCESS</div>
-        <h2>${escapeHtml(name)}</h2>
-        <p class="modal-description">Choose which integrations are allowed for this server.</p>
-        <div class="access-list">${accessRow('Discord API', 'Core bot access', true)}${accessRow('Twitch', 'Stream notifications', true)}${accessRow('YouTube', 'Video notifications', false)}</div>
-        <div class="actions modal-actions"><button class="btn primary" id="saveApiPreview" type="button">Save Access</button><button class="btn" id="rotateApiPreview" type="button">Rotate Access</button></div>
-      `);
-      document.querySelector('#saveApiPreview')?.addEventListener('click', event => { event.currentTarget.textContent = 'Saved in preview ✓'; });
-      document.querySelector('#rotateApiPreview')?.addEventListener('click', event => { event.currentTarget.textContent = 'Rotation preview ✓'; });
+      openModal(`<div class="modal-icon" aria-hidden="true">⌁</div><div class="eyebrow">API ACCESS</div><h2>${escapeHtml(button.dataset.server || 'Server')}</h2><p class="modal-description">Choose which integrations are allowed for this server.</p><div class="access-list">${accessRow('Discord API','Core bot access',true)}${accessRow('Twitch','Stream notifications',true)}${accessRow('YouTube','Video notifications',false)}</div>`);
     }));
 
     document.querySelectorAll('.server-leave').forEach(button => button.addEventListener('click', () => {
-      const name = button.dataset.server || 'Server';
-      openModal(`
-        <div class="modal-icon danger-text" aria-hidden="true">!</div>
-        <div class="eyebrow">DANGEROUS ACTION</div>
-        <h2>Leave ${escapeHtml(name)}?</h2>
-        <p class="modal-description">This would make the bot leave the selected server once a real backend is connected.</p>
-        <div class="confirm-box"><span>This action cannot be undone from the server.</span><span class="badge danger">CONFIRMATION REQUIRED</span></div>
-        <div class="actions modal-actions"><button class="btn danger" id="confirmLeave" type="button">Leave Server</button><button class="btn" id="cancelLeave" type="button">Cancel</button></div>
-      `);
-      document.querySelector('#confirmLeave')?.addEventListener('click', event => { event.currentTarget.textContent = 'Preview only ✓'; });
+      openModal(`<div class="modal-icon danger-text" aria-hidden="true">!</div><div class="eyebrow">DANGEROUS ACTION</div><h2>Leave ${escapeHtml(button.dataset.server || 'Server')}?</h2><p class="modal-description">This action is only a frontend preview.</p><div class="actions modal-actions"><button class="btn danger" type="button">Leave Server</button><button class="btn" id="cancelLeave" type="button">Cancel</button></div>`);
       document.querySelector('#cancelLeave')?.addEventListener('click', closeModal);
     }));
   }
 
   function initActions() {
     document.querySelectorAll('.btn[data-action]').forEach(button => {
-      button.addEventListener('click', () => runAction(button.dataset.action, button));
+      button.addEventListener('click', () => runAction(button.dataset.action));
     });
   }
 
-  function runAction(action, button) {
+  function runAction(action) {
+    if (!isConnected()) return goToConnection();
     switch (action) {
       case 'open-control': initNavigationPage('control'); break;
       case 'open-logs': initNavigationPage('logs'); break;
       case 'open-servers': initNavigationPage('servers'); break;
-      case 'start': actionModal('BOT CONTROL', 'Start bot', 'The button is ready for backend integration. No process is started in this frontend-only version.', 'success'); break;
-      case 'stop': actionModal('BOT CONTROL', 'Stop bot', 'The button is ready for backend integration. No process is stopped in this frontend-only version.', 'danger'); break;
-      case 'restart': actionModal('BOT CONTROL', 'Restart bot', 'Restart behavior is simulated only. Nothing is executed.', 'primary'); break;
-      case 'refresh': actionModal('SYSTEM', 'Refresh', 'Fresh data can be requested here once a backend is connected.', 'primary'); break;
-      case 'clear-logs': actionModal('LOG MANAGEMENT', 'Clear logs', 'Log deletion is intentionally not executed in this frontend-only version.', 'danger'); break;
-      case 'add-owner':
-        openModal(`<div class="modal-icon" aria-hidden="true">+</div><div class="eyebrow">OWNER MANAGEMENT</div><h2>Add Secondary Owner</h2><p class="modal-description">Add a Discord user ID as a secondary owner.</p><div class="field"><label for="secondaryOwnerId">Discord User ID</label><input id="secondaryOwnerId" inputmode="numeric" placeholder="123456789012345678"></div><div class="actions modal-actions"><button class="btn primary" id="confirmAddOwner" type="button">Add Owner</button><button class="btn" id="cancelAddOwner" type="button">Cancel</button></div>`);
-        document.querySelector('#confirmAddOwner')?.addEventListener('click', event => { event.currentTarget.textContent = 'Added in preview ✓'; });
-        document.querySelector('#cancelAddOwner')?.addEventListener('click', closeModal);
-        break;
-      case 'remove-owner': actionModal('OWNER MANAGEMENT', 'Remove secondary owner', 'This owner would be removed once a backend is connected. No configuration is changed in this preview.', 'danger'); break;
-      case 'manage-owners': actionModal('OWNER MANAGEMENT', 'Manage owners', 'The owner-management workflow is prepared for future backend integration.', 'primary'); break;
-      case 'save-changes': actionModal('CONFIGURATION', 'Save changes', 'The form flow is simulated. No file or bot configuration is modified.', 'primary'); break;
-      case 'generate-code': actionModal('SECURITY', 'Generate security code', 'The real security-code service is not called by this frontend.', 'primary'); break;
-      case 'check-updates': actionModal('UPDATES', 'Check for updates', 'The future updater can query GitHub releases. No network request is made here.', 'primary'); break;
-      case 'search-servers':
-        openModal(`<div class="modal-icon" aria-hidden="true">⌕</div><div class="eyebrow">SERVERS</div><h2>Search servers</h2><p class="modal-description">The search interface is ready for a backend query.</p><div class="field"><label for="serverSearch">Server name or ID</label><input id="serverSearch" placeholder="Gaming Hub"></div><div class="actions modal-actions"><button class="btn primary" id="confirmSearch" type="button">Search</button><button class="btn" id="cancelSearch" type="button">Cancel</button></div>`);
-        document.querySelector('#confirmSearch')?.addEventListener('click', event => { event.currentTarget.textContent = 'Preview only ✓'; });
-        document.querySelector('#cancelSearch')?.addEventListener('click', closeModal);
-        break;
-      default:
-        void button;
-        break;
+      case 'start': actionModal('BOT CONTROL', 'Start bot'); break;
+      case 'stop': actionModal('BOT CONTROL', 'Stop bot'); break;
+      case 'restart': actionModal('BOT CONTROL', 'Restart bot'); break;
+      case 'refresh': actionModal('SYSTEM', 'Refresh'); break;
+      case 'clear-logs': actionModal('LOG MANAGEMENT', 'Clear logs'); break;
+      case 'add-owner': actionModal('OWNER MANAGEMENT', 'Add Secondary Owner'); break;
+      case 'remove-owner': actionModal('OWNER MANAGEMENT', 'Remove secondary owner'); break;
+      case 'manage-owners': actionModal('OWNER MANAGEMENT', 'Manage owners'); break;
+      case 'save-changes': actionModal('CONFIGURATION', 'Save changes'); break;
+      case 'generate-code': actionModal('SECURITY', 'Generate security code'); break;
+      case 'check-updates': actionModal('UPDATES', 'Check for updates'); break;
+      case 'search-servers': actionModal('SERVERS', 'Search servers'); break;
+      default: break;
     }
   }
 
-  function actionModal(eyebrow, title, description, kind) {
-    const confirmClass = kind === 'danger' ? 'danger' : kind === 'success' ? 'success' : 'primary';
-    openModal(`<div class="modal-icon ${kind === 'danger' ? 'danger-text' : ''}" aria-hidden="true">${kind === 'danger' ? '!' : '✓'}</div><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p class="modal-description">${description}</p><div class="actions modal-actions"><button class="btn ${confirmClass}" id="genericConfirm" type="button">Confirm</button><button class="btn" id="genericCancel" type="button">Cancel</button></div>`);
+  function actionModal(eyebrow, title) {
+    openModal(`<div class="modal-icon" aria-hidden="true">✓</div><div class="eyebrow">${eyebrow}</div><h2>${title}</h2><p class="modal-description">Frontend preview only.</p><div class="actions modal-actions"><button class="btn primary" id="genericConfirm" type="button">Confirm</button><button class="btn" id="genericCancel" type="button">Cancel</button></div>`);
     document.querySelector('#genericConfirm')?.addEventListener('click', event => { event.currentTarget.textContent = 'Preview only ✓'; });
     document.querySelector('#genericCancel')?.addEventListener('click', closeModal);
-  }
-
-  function bindPreviewActions() {
-    document.querySelectorAll('[data-preview-action]').forEach(button => button.addEventListener('click', event => {
-      event.currentTarget.textContent = 'Ready ✓';
-    }));
   }
 
   function getLinkLabel(link) {
@@ -390,7 +328,5 @@
     return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   }
 
-  function escapeAttribute(value) {
-    return escapeHtml(value);
-  }
+  function escapeAttribute(value) { return escapeHtml(value); }
 })();
