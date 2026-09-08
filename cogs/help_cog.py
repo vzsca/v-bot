@@ -283,8 +283,8 @@ class HelpCog(commands.Cog, name="Help"):
             await ctx.send(embed=self.general_embed())
             return
 
-        await ctx.send(embed=self.menu_embed(ctx), view=HelpCategoryView(self, ctx.author.id, categories))
         await ctx.send(embed=self.direct_command_embed())
+        await ctx.send(embed=self.menu_embed(ctx), view=HelpCategoryView(self, ctx.author.id, categories))
 
 
 async def setup(bot: commands.Bot):
