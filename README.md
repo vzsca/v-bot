@@ -154,12 +154,12 @@ Mentioning the bot at the start of a message triggers a permission-aware informa
 
 The response is adapted to the current user:
 
-- 👤 **Member** — general features, useful commands, help, documentation and support.
-- 🛡️ **Moderator** — moderation-related commands and permissions in addition to the general information.
+- 👤 **Member** — only general commands, documentation and support relevant to regular members.
+- 🛡️ **Moderator** — moderation-related commands and permission guidance.
 - ⚙️ **Administrator** — server administration, API configuration and announcement-related information.
 - 👑 **Owner** — bot status, owner controls, connected servers and security information.
 
-The mention response uses the same access model as the help system and includes a short cooldown to prevent repeated mention spam.
+The response uses the same access model as the help system and includes a short cooldown to prevent repeated mention spam. Information for higher privilege levels is not shown to users who do not have those permissions.
 
 Example:
 
@@ -270,7 +270,9 @@ DANGEROUS_COMMANDS_ENABLED=false
 
 These actions also require a temporary **6-digit security code** generated from the local panel, in addition to their normal permission and confirmation checks.
 
-Volume limits, confirmations, and permission checks help prevent accidental use.
+Sensitive raid resources are persisted as they are created. When persistence fails, the operation is aborted and the newly created resource is rolled back when Discord permissions allow it. Cleanup only removes resource references from persistent state after the corresponding Discord resource has been successfully deleted (or is already absent).
+
+Volume limits, confirmations, persistence checks, and permission checks help prevent accidental or partially tracked operations.
 
 ---
 
@@ -278,7 +280,8 @@ Volume limits, confirmations, and permission checks help prevent accidental use.
 
 - Permissions centralized in `app/checks.py`
 - Global, per-user, and per-command rate limiting
-- Audit logging and suspicious burst detection with alert cooldown
+- Single `AuditManager` for command audit events and suspicious burst detection
+- Suspicious burst alerts use a cooldown and never automatically stop users or the bot
 - Anti-spam and anti-raid detection
 - Temporary authorizations scoped to a server and automatically expired
 - One-time 6-digit codes for sensitive actions
@@ -291,6 +294,8 @@ Volume limits, confirmations, and permission checks help prevent accidental use.
 - `api_credentials.json` excluded from Git
 - Sensitive commands separated and disabled by default
 - Persistent kill-switch and disabled-server state
+- Persistent tracking for sensitive resources created by raid tests
+- Failed resource-state persistence triggers rollback/abort instead of continuing blindly
 
 ---
 
@@ -315,7 +320,6 @@ v-bot/
 │   ├── security.py
 │   ├── security_log.py
 │   ├── state.py
-│   ├── updater.py
 │   └── version.py
 ├── cogs/
 │   ├── events.py
@@ -338,6 +342,10 @@ v-bot/
 ```
 
 `main.py` remains limited to bootstrap, logging, global checks, and extension loading. Business logic belongs in application modules and Cogs.
+
+Security-sensitive command auditing is handled by the single `AuditManager` in `app/audit.py`. `app/security.py` is dedicated to one-time sensitive-action authorization and does not duplicate audit/burst detection.
+
+Persistent runtime security state is handled by `app/state.py`, including the kill switch, disabled servers, and tracked sensitive resources.
 
 ---
 
