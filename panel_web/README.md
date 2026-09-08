@@ -4,14 +4,15 @@ This directory contains the frontend-only preview of the future v-bot web contro
 
 ## Current state
 
-The panel is **in process**. It currently provides the complete UI/interaction layer, but it is not connected to the real bot or a backend yet.
+The panel is **in process**. It currently provides the UI and interaction layer, but it is not connected to the real bot or a backend yet.
 
 - HTML/CSS/JS only.
 - Login screen with panel ID and password fields.
-- Frontend-only session login/logout flow.
-- Change-password interface prepared for backend integration.
+- The Connect button currently enters the panel without validating credentials.
+- No account creation or authentication backend exists yet.
 - Sidebar navigation with hash-based pages.
 - Browser Back/Forward navigation support.
+- Direct page URLs are preserved through the login screen.
 - Server management popups and confirmation dialogs.
 - Frontend-only actions for bot control, logs, owners and configuration.
 - Keyboard and screen-reader accessibility improvements.
@@ -20,11 +21,27 @@ The panel is **in process**. It currently provides the complete UI/interaction l
 
 ## Authentication preview
 
-The login screen is only a **mock authentication layer** at the moment. Any non-empty panel ID and password can pass the frontend check so the UI can be tested.
+The login screen is currently **UI-only**. The ID and password fields are present so the final authentication flow can be implemented later.
 
-The session state is kept in `sessionStorage` and is cleared when the user logs out or the browser session ends.
+The current Connect action only opens the panel and does not store credentials or create a session.
 
-The future backend must perform the real ID/password validation and server-side authorization.
+The future backend must perform the real ID/password validation, session management and server-side authorization.
+
+## Local preview
+
+Because the panel uses JavaScript modules, it should be served through a small local HTTP server rather than opened directly with `file://`.
+
+From the repository root:
+
+```bash
+python -m http.server 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000/panel_web/
+```
 
 ## Structure
 
@@ -45,5 +62,3 @@ panel_web/
     ├── ui.css
     └── polish.css
 ```
-
-Open `index.html` directly in a browser to preview the interface.
