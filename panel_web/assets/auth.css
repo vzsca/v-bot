@@ -1,0 +1,9 @@
+/* Authentication and session UI. Loaded separately to keep page styles modular. */
+.auth-gate{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{width:min(440px,100%);padding:30px;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 35%),var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:0 30px 90px rgba(0,0,0,.38)}
+.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.auth-brand strong{display:block;font-size:16px}.auth-brand span{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.auth-card h1{margin:7px 0 0;font-size:26px;letter-spacing:-.035em}.auth-description{margin:9px 0 20px;color:var(--muted);font-size:12px;line-height:1.6}
+.stacked-form{display:grid;gap:14px}.auth-submit{width:100%;margin-top:3px;cursor:pointer}.auth-hint{margin:15px 0 0;color:#707a89;font-size:10px;line-height:1.6}
+.sidebar-account-actions{display:grid;gap:7px;margin-top:10px}.sidebar-account-actions .btn{width:100%;text-align:left;cursor:pointer}
+@media(max-width:760px){.auth-gate{padding:16px}.auth-card{padding:23px}}
