@@ -41,23 +41,24 @@
     const gate = document.querySelector('#authGate');
     const shell = document.querySelector('.app');
     const form = document.querySelector('#authForm');
+    const button = document.querySelector('#authSubmit');
     const idInput = document.querySelector('#panelId');
-    const passwordInput = document.querySelector('#panelPassword');
 
-    if (!gate || !shell || !form) return;
+    if (!gate || !shell || !form || !button) return;
 
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      const target = location.hash.slice(1);
+    const connect = event => {
+      event?.preventDefault?.();
       gate.hidden = true;
       shell.hidden = false;
       document.body.classList.remove('auth-required');
-      initNavigationPage(target || 'dashboard');
-    });
+      initNavigationPage('dashboard');
+    };
+
+    button.addEventListener('click', connect);
+    form.addEventListener('submit', connect);
 
     document.title = 'v-bot • Login';
     idInput?.focus();
-    void passwordInput;
   }
 
   function initNavigation() {
