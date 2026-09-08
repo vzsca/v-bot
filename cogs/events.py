@@ -9,12 +9,12 @@ import time
 import discord
 from discord.ext import commands, tasks
 
+import audit
 import checks
 import config
 import exceptions
 import security_log
 from rate_limit import rate_limiter
-from security import security
 from state import state
 
 logger = logging.getLogger("v-bot")
@@ -32,7 +32,6 @@ SUPPORT_EMAIL = "support.v.bot@gmail.com"
 class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self._intents_text: str | None = None
         self._mention_cooldowns: dict[tuple[int, int], float] = {}
         self.clean_expired_users.start()
         self.clean_snipes.start()
@@ -50,7 +49,7 @@ class EventsCog(commands.Cog):
     async def clean_snipes(self):
         state.clean_snipes(config.SNIPE_RETENTION_SECONDS)
         rate_limiter.prune()
-        security.prune()
+        audit.manager.prune()
         now = time.monotonic()
         self._mention_cooldowns = {key: expiry for key, expiry in self._mention_cooldowns.items() if expiry > now}
 
@@ -63,18 +62,6 @@ class EventsCog(commands.Cog):
                 f.write("\n")
         except OSError as e:
             logger.warning("Unable to write %s: %s", SERVERS_FILE, e)
-
-    def _build_intents_text(self) -> str:
-        if self._intents_text is None:
-            intents = self.bot.intents
-            self._intents_text = "\n".join([
-                f"• intents.guilds: **{intents.guilds}**",
-                f"• intents.members: **{intents.members}**",
-                f"• intents.message_content: **{intents.message_content}**",
-                f"• intents.messages: **{intents.messages}**",
-                f"• intents.reactions: **{intents.reactions}**",
-            ])
-        return self._intents_text
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -97,16 +84,15 @@ class EventsCog(commands.Cog):
     async def on_command_completion(self, ctx):
         command = getattr(ctx.command, "qualified_name", "unknown")
         guild_id = ctx.guild.id if ctx.guild else 0
-        channel_id = ctx.channel.id if getattr(ctx.channel, "id", None) else 0
-        suspicious = security.record_command(
+        suspicious = audit.manager.record(
             guild_id=guild_id,
-            channel_id=channel_id,
-            user_id=ctx.author.id,
-            command=command,
+            actor_id=ctx.author.id,
+            action=command,
             success=True,
         )
         security_log.log_security_event(
-            f"Command executed: guild={guild_id} channel={channel_id} user={ctx.author.id} command={command}"
+            f"Command executed: guild={guild_id} channel={getattr(ctx.channel, 'id', 0)} "
+            f"user={ctx.author.id} command={command}"
         )
         if suspicious:
             logger.warning("Suspicious command burst detected: guild=%s user=%s", guild_id, ctx.author.id)
@@ -355,7 +341,12 @@ class EventsCog(commands.Cog):
             await ctx.send("❌ This command cannot be used in private messages.")
         elif isinstance(error, (exceptions.NotPermanentOwner, exceptions.NotOwnerOrTemp, exceptions.NotOwnerOrGuildOwner)):
             logger.warning("Permission denied for '%s' to %s (%s).", ctx.command, ctx.author, ctx.author.id)
-            security.record_command(guild_id=ctx.guild.id if ctx.guild else 0, channel_id=ctx.channel.id, user_id=ctx.author.id, command=getattr(ctx.command, "qualified_name", "unknown"), success=False)
+            audit.manager.record(
+                ctx.guild.id if ctx.guild else 0,
+                ctx.author.id,
+                getattr(ctx.command, "qualified_name", "unknown"),
+                success=False,
+            )
             await ctx.send(str(error))
         elif isinstance(error, commands.CheckFailure):
             await ctx.send(str(error))
