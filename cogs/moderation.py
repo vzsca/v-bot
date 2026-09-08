@@ -6,10 +6,7 @@ import discord
 from discord.ext import commands
 
 import checks
-
-MAX_MUTE_MINUTES = 28 * 24 * 60
-MAX_SLOWMODE_SECONDS = 6 * 60 * 60
-MAX_CLEAR_AMOUNT = 100
+import config
 
 
 class ModerationCog(commands.Cog, name="Moderation"):
@@ -28,8 +25,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @checks.owner_or_permission(moderate_members=True)
     @checks.kill_switch_required()
     async def mute(self, ctx, member: discord.Member, minutes: int, *, reason: str = "No reason specified"):
-        if not 1 <= minutes <= MAX_MUTE_MINUTES:
-            await ctx.send(f"❌ Mute duration must be between 1 minute and {MAX_MUTE_MINUTES} minutes.")
+        if not 1 <= minutes <= config.MAX_MUTE_MINUTES:
+            await ctx.send(f"❌ Mute duration must be between 1 minute and {config.MAX_MUTE_MINUTES} minutes.")
             return
         error = self._target_error(ctx, member, "mute")
         if error:
@@ -107,15 +104,14 @@ class ModerationCog(commands.Cog, name="Moderation"):
             await ctx.send("❌ Invalid user ID.")
             return
         try:
-            user = await self.bot.fetch_user(user_id)
-            await ctx.guild.unban(user)
-            await ctx.send(f"✅ {user.mention} has been unbanned.")
+            await ctx.guild.unban(discord.Object(id=user_id))
+            await ctx.send(f"✅ User `{user_id}` has been unbanned.")
         except discord.NotFound:
             await ctx.send("❌ The user is not banned or the ID is invalid.")
         except discord.Forbidden:
             await ctx.send("❌ I do not have permission to unban this user.")
         except discord.HTTPException:
-            await ctx.send("⚠️ Discord rejected the moderation request.")
+            await ctx.send("⚠️ Discord rejected the unban request.")
 
     @commands.hybrid_command(name="give_role", description="Gives a role to a member.")
     @commands.guild_only()
@@ -174,8 +170,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @checks.owner_or_permission(manage_channels=True)
     @checks.kill_switch_required()
     async def slowmode(self, ctx, seconds: int):
-        if not 0 <= seconds <= MAX_SLOWMODE_SECONDS:
-            await ctx.send(f"❌ Slowmode must be between 0 and {MAX_SLOWMODE_SECONDS} seconds.")
+        if not 0 <= seconds <= config.MAX_SLOWMODE_SECONDS:
+            await ctx.send(f"❌ Slowmode must be between 0 and {config.MAX_SLOWMODE_SECONDS} seconds.")
             return
         try:
             await ctx.channel.edit(slowmode_delay=seconds)
@@ -190,8 +186,8 @@ class ModerationCog(commands.Cog, name="Moderation"):
     @checks.owner_or_permission(manage_messages=True)
     @checks.kill_switch_required()
     async def clear(self, ctx, amount: int):
-        if not 1 <= amount <= MAX_CLEAR_AMOUNT:
-            await ctx.send(f"❌ Amount must be between 1 and {MAX_CLEAR_AMOUNT}.")
+        if not 1 <= amount <= config.MAX_CLEAR_AMOUNT:
+            await ctx.send(f"❌ Amount must be between 1 and {config.MAX_CLEAR_AMOUNT}.")
             return
         try:
             await ctx.channel.purge(limit=amount + 1)
