@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">v-bot logo</title>
+  <desc id="desc">A glowing inverted triangular v-bot mark.</desc>
+  <defs>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="11" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.6" stop-color="#f7ffff"/>
+      <stop offset="1" stop-color="#7deaf2"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" fill="#030506"/>
+  <path d="M58 58 L198 58 L128 193 Z" fill="none" stroke="#4bbdc8" stroke-width="24" stroke-linejoin="round" opacity="0.16" filter="url(#glow)"/>
+  <path d="M58 58 L198 58 L128 193 Z" fill="none" stroke="url(#edge)" stroke-width="11" stroke-linejoin="round" filter="url(#glow)"/>
+  <path d="M69 66 L187 66 L128 178 Z" fill="#030506"/>
+</svg>
