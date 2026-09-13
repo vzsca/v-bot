@@ -4,6 +4,7 @@
 
   const AUTH_KEY = 'vbot-panel-connected';
   const DEFAULT_PAGE = 'dashboard';
+  const SIDEBAR_STATE_PREFIX = 'vbot-panel-section:';
 
   const state = {
     modal: null,
@@ -121,6 +122,55 @@
     setHash(link.dataset.page || DEFAULT_PAGE);
   }
 
+  function initSidebar() {
+    const sidebar = $('#sidebar');
+    if (!sidebar) return;
+
+    $$('.nav-section').forEach((section, index) => {
+      const nav = section.nextElementSibling;
+      if (!nav || !nav.classList.contains('nav')) return;
+
+      const label = section.textContent.trim();
+      const storageKey = `${SIDEBAR_STATE_PREFIX}${index}`;
+      const saved = localStorage.getItem(storageKey);
+      const expanded = saved !== 'collapsed';
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'nav-section-toggle';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.setAttribute('aria-controls', `nav-group-${index}`);
+      toggle.innerHTML = `<span>${label}</span><span class="nav-section-chevron" aria-hidden="true">${expanded ? '−' : '+'}</span>`;
+
+      nav.id = `nav-group-${index}`;
+      nav.hidden = !expanded;
+      section.replaceChildren(toggle);
+
+      toggle.addEventListener('click', () => {
+        const nextExpanded = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', String(nextExpanded));
+        toggle.querySelector('.nav-section-chevron').textContent = nextExpanded ? '−' : '+';
+        nav.hidden = !nextExpanded;
+        localStorage.setItem(storageKey, nextExpanded ? 'expanded' : 'collapsed');
+      });
+    });
+
+    const logo = $('.brand-sidebar');
+    if (logo) {
+      logo.classList.add('home-link');
+      logo.setAttribute('role', 'link');
+      logo.setAttribute('tabindex', '0');
+      logo.setAttribute('aria-label', 'Go to dashboard');
+      logo.addEventListener('click', () => setHash(isConnected() ? DEFAULT_PAGE : 'connexion'));
+      logo.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setHash(isConnected() ? DEFAULT_PAGE : 'connexion');
+        }
+      });
+    }
+  }
+
   function initNavigation() {
     document.addEventListener('click', navigateFromClick, true);
 
@@ -136,6 +186,8 @@
     $$('[data-action]').forEach(button => {
       button.addEventListener('click', () => handleAction(button.dataset.action));
     });
+
+    initSidebar();
   }
 
   function handleAction(action) {
