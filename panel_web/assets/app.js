@@ -47,7 +47,7 @@
     const app = $('#app');
     if (auth) auth.hidden = false;
     if (app) app.hidden = true;
-    document.title = 'v-bot • Connection';
+    document.title = 'v-bot Connection';
     document.body.classList.add('auth-required');
     $('#panelId')?.focus({ preventScroll: true });
   }
@@ -74,7 +74,7 @@
     const label = pageLabel(target);
     const title = $('#pageTitle');
     if (title) title.textContent = label;
-    document.title = `v-bot • ${label}`;
+    document.title = `v-bot ${label}`;
 
     if (currentPage() !== target) {
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${target}`);
