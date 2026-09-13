@@ -39,7 +39,12 @@
   function pageLabel(page) {
     const link = $$('[data-page]').find(item => item.dataset.page === page);
     if (!link) return 'Dashboard';
-    return link.textContent.trim();
+
+    // Navigation items contain decorative icon spans. Do not include those
+    // symbols in page headings or browser tab titles.
+    const clone = link.cloneNode(true);
+    clone.querySelector('.icon')?.remove();
+    return clone.textContent.trim();
   }
 
   function renderConnection() {
