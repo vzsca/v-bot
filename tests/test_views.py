@@ -60,5 +60,6 @@ def test_server_details_embed_shows_owner_members_and_bot_join_date():
     assert fields["Owner"] == "<@111> (ServerOwner)"
     assert fields["Members"] == "42"
     assert "Bot added" in fields
-    assert "2026" in fields["Bot added"]
+    assert fields["Bot added"].startswith("<t:")
+    assert "\n<t:" in fields["Bot added"]
     assert fields["API configuration"] == "🔴 Disabled"
