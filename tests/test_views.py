@@ -1,3 +1,5 @@
+import discord
+
 from types import SimpleNamespace
 
 from views import ConfirmLeaveView, GuildActionsView
@@ -8,7 +10,7 @@ def test_guild_actions_view_has_quit_button():
     view = GuildActionsView(guild, owner_id=456)
 
     assert any(
-        isinstance(item, __import__("discord").ui.Button) and item.label == "Quit"
+        isinstance(item, discord.ui.Button) and item.label == "Quit"
         for item in view.children
     )
 
@@ -20,7 +22,7 @@ def test_confirm_leave_view_has_cancel_and_quit_buttons():
     labels = {
         item.label
         for item in view.children
-        if isinstance(item, __import__("discord").ui.Button)
+        if isinstance(item, discord.ui.Button)
     }
 
     assert labels == {"Cancel", "Quit"}
