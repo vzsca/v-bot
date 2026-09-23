@@ -106,6 +106,41 @@ class GuildActionsView(_OwnerOnlyView):
         )
 
 
+def _server_details_embed(guild):
+    owner = guild.owner
+    bot_member = guild.me
+
+    owner_value = (
+        f"{owner.mention} ({owner})"
+        if owner is not None
+        else f"Unknown (ID: {guild.owner_id})"
+    )
+    member_value = f"{guild.member_count:,}" if guild.member_count is not None else "Unknown"
+
+    embed = discord.Embed(
+        title=f"📌 {guild.name}",
+        description=f"ID: {guild.id}",
+        color=discord.Color.blue(),
+    )
+    embed.add_field(name="Owner", value=owner_value, inline=True)
+    embed.add_field(name="Members", value=member_value, inline=True)
+    if bot_member is not None and bot_member.joined_at is not None:
+        added = bot_member.joined_at
+        embed.add_field(
+            name="Bot added",
+            value=f"{discord.utils.format_dt(added, style='F')}\n{discord.utils.format_dt(added, style='R')}",
+            inline=False,
+        )
+    else:
+        embed.add_field(name="Bot added", value="Unknown", inline=False)
+    embed.add_field(
+        name="API configuration",
+        value="🟢 Enabled" if api_access.is_allowed(guild.id) else "🔴 Disabled",
+        inline=False,
+    )
+    return embed
+
+
 class ServersMenu(_OwnerOnlyView):
     PAGE_SIZE = 25
 
@@ -153,7 +188,5 @@ class ServersMenu(_OwnerOnlyView):
         guild = interaction.client.get_guild(guild_id)
         if not guild:
             return await interaction.response.send_message("❌ Server not found.", ephemeral=True)
-        status = "🟢 Enabled" if api_access.is_allowed(guild.id) else "🔴 Disabled"
-        embed = discord.Embed(title=f"📌 {guild.name}", description=f"ID: {guild.id}", color=discord.Color.blue())
-        embed.add_field(name="API configuration", value=status, inline=False)
+        embed = _server_details_embed(guild)
         await interaction.response.send_message(embed=embed, view=GuildActionsView(guild, self.owner_id), ephemeral=True)
