@@ -33,7 +33,13 @@ def test_server_details_embed_shows_owner_members_and_bot_join_date():
 
     from views import _server_details_embed
 
-    owner = SimpleNamespace(mention="<@111>", __str__=lambda self: "ServerOwner")
+    class FakeOwner:
+        mention = "<@111>"
+
+        def __str__(self):
+            return "ServerOwner"
+
+    owner = FakeOwner()
     bot_member = SimpleNamespace(
         joined_at=datetime(2026, 9, 23, 9, 30, tzinfo=timezone.utc),
     )
