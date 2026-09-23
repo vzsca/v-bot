@@ -5,6 +5,7 @@ from discord.ui import Select, View
 
 import api_access
 import checks
+import security_log
 
 
 class _OwnerOnlyView(View):
@@ -17,6 +18,49 @@ class _OwnerOnlyView(View):
             await interaction.response.send_message("❌ Unauthorized", ephemeral=True)
             return False
         return True
+
+
+class ConfirmLeaveView(_OwnerOnlyView):
+    def __init__(self, guild, owner_id):
+        super().__init__(owner_id)
+        self.guild = guild
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction, button):
+        button.disabled = True
+        self.confirm.disabled = True
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="Quit", style=discord.ButtonStyle.danger)
+    async def confirm(self, interaction, button):
+        button.disabled = True
+        self.cancel.disabled = True
+        await interaction.response.defer()
+
+        try:
+            await self.guild.leave()
+        except discord.HTTPException:
+            security_log.log_security_event(
+                f"Failed to leave guild {self.guild.name} ({self.guild.id})",
+                actor=f"{interaction.user} ({interaction.user.id})",
+            )
+            await interaction.edit_original_response(
+                content="❌ Unable to remove v-bot from this server.",
+                embed=None,
+                view=None,
+            )
+            return
+
+        security_log.log_security_event(
+            f"Bot left guild {self.guild.name} ({self.guild.id})",
+            actor=f"{interaction.user} ({interaction.user.id})",
+        )
+        embed = discord.Embed(
+            title="Bot removed",
+            description=f"v-bot has left **{self.guild.name}**.",
+            color=discord.Color.red(),
+        )
+        await interaction.edit_original_response(content=None, embed=embed, view=None)
 
 
 class GuildActionsView(_OwnerOnlyView):
@@ -46,6 +90,20 @@ class GuildActionsView(_OwnerOnlyView):
         else:
             text = "❌ Unable to update API access."
         await interaction.response.send_message(text, ephemeral=True)
+
+    @discord.ui.button(label="Quit", style=discord.ButtonStyle.danger)
+    async def quit(self, interaction, button):
+        embed = discord.Embed(
+            title="Remove bot from server?",
+            description=f"Are you sure you want v-bot to leave **{self.guild.name}**?",
+            color=discord.Color.red(),
+        )
+        embed.set_footer(text="This action removes the bot from this server.")
+        await interaction.response.send_message(
+            embed=embed,
+            view=ConfirmLeaveView(self.guild, self.owner_id),
+            ephemeral=True,
+        )
 
 
 class ServersMenu(_OwnerOnlyView):
