@@ -66,7 +66,14 @@ class TwitchCog(commands.Cog, name="Twitch"):
         if cached and time.time() < cached[1]:
             return client_id, cached[0]
         try:
-            async with session.post("https://id.twitch.tv/oauth2/token", params={"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"}) as response:
+            async with session.post(
+                "https://id.twitch.tv/oauth2/token",
+                params={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "grant_type": "client_credentials",
+                },
+            ) as response:
                 if response.status != 200:
                     logger.warning("Twitch authentication failed (HTTP %s).", response.status)
                     return None
@@ -98,7 +105,11 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return None
         client_id, token = auth
         try:
-            async with session.get("https://api.twitch.tv/helix/streams", headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"}, params={"user_login": login}) as response:
+            async with session.get(
+                "https://api.twitch.tv/helix/streams",
+                headers={"Client-Id": client_id, "Authorization": f"Bearer {token}"},
+                params={"user_login": login},
+            ) as response:
                 if response.status == 401:
                     self._tokens.pop(credential_key, None)
                     return None
@@ -113,7 +124,12 @@ class TwitchCog(commands.Cog, name="Twitch"):
                 result = None
                 if streams:
                     stream = streams[0]
-                    result = {"streamer": login, "title": stream.get("title", ""), "game": stream.get("game_name", ""), "url": f"https://www.twitch.tv/{login}"}
+                    result = {
+                        "streamer": login,
+                        "title": stream.get("title", ""),
+                        "game": stream.get("game_name", ""),
+                        "url": f"https://www.twitch.tv/{login}",
+                    }
                 self._stream_cache[cache_key] = (result, time.time())
                 return result
         except aiohttp.ClientError:
@@ -127,67 +143,149 @@ class TwitchCog(commands.Cog, name="Twitch"):
         return message[:2000]
 
     async def _send_announcement(self, announcement, stream_data):
-        channel_id, guild_id, message = announcement.get("channel_id"), announcement.get("guild_id"), announcement.get("message")
-        if not channel_id or not guild_id or not message:
+        channel_id = announcement.get("channel_id")
+        guild_id = announcement.get("guild_id")
+        template = announcement.get("message")
+        if not channel_id or not guild_id or not template:
+            return None
+
+        try:
+            channel = self.bot.get_channel(int(channel_id))
+        except (TypeError, ValueError):
+            return None
+
+        if channel is None or getattr(channel.guild, "id", None) != guild_id:
+            logger.warning("Blocked Twitch announcement with mismatched guild/channel.")
+            return None
+
+        try:
+            return await channel.send(self._format_message(template, stream_data))
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
+            return None
+
+    async def _update_announcement_message(self, announcement, stream_data):
+        if "{title}" not in str(announcement.get("message") or ""):
             return False
+
+        message_id = announcement.get("discord_message_id")
+        channel_id = announcement.get("channel_id")
+        guild_id = announcement.get("guild_id")
+        if not message_id or not channel_id or not guild_id:
+            return False
+
         try:
             channel = self.bot.get_channel(int(channel_id))
         except (TypeError, ValueError):
             return False
+
         if channel is None or getattr(channel.guild, "id", None) != guild_id:
-            logger.warning("Blocked Twitch announcement with mismatched guild/channel.")
+            logger.warning("Blocked Twitch announcement update with mismatched guild/channel.")
             return False
+
         try:
-            await channel.send(self._format_message(message, stream_data))
+            message = await channel.fetch_message(int(message_id))
+            await message.edit(content=self._format_message(announcement["message"], stream_data))
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
-            logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
+            logger.warning(
+                "Failed to update Twitch announcement for guild %s, announcement %s.",
+                guild_id,
+                announcement.get("id"),
+            )
             return False
 
     async def test_announcement(self, announcement):
         login = self._extract_twitch_login(announcement.get("source_url", ""))
         if not login or not announcement.get("guild_id"):
             return False
-        return await self._send_announcement(announcement, {"streamer": login, "title": "Test stream", "game": "Test category", "url": f"https://www.twitch.tv/{login}"})
+        message = await self._send_announcement(
+            announcement,
+            {
+                "streamer": login,
+                "title": "Test stream",
+                "game": "Test category",
+                "url": f"https://www.twitch.tv/{login}",
+            },
+        )
+        return message is not None
 
     @tasks.loop(seconds=60)
     async def twitch_task(self):
         self._prune_caches()
         data = store.load()
-        announcements = [a for a in data["announcements"] if a.get("type") == "twitch" and a.get("guild_id")]
+        announcements = [
+            a
+            for a in data["announcements"]
+            if a.get("type") == "twitch" and a.get("guild_id")
+        ]
         if not announcements:
             return
+
         session = await self._get_session()
         updates = {}
         cache = {}
+
         for announcement in announcements:
             guild_id = int(announcement["guild_id"])
             login = self._extract_twitch_login(announcement.get("source_url", ""))
             if not login or not integration_config.get_twitch_credentials(guild_id):
                 continue
+
             key = (guild_id, login)
             if key not in cache:
                 cache[key] = await self._get_stream_data(session, guild_id, login)
+
             stream = cache[key]
             is_live = stream is not None
             announcement_key = (guild_id, announcement.get("id"))
+
             if "was_live" not in announcement or announcement.get("was_live") is None:
-                updates[announcement_key] = is_live
+                updates[announcement_key] = {
+                    "was_live": is_live,
+                }
                 continue
+
             was_live = bool(announcement.get("was_live", False))
-            if is_live and not was_live and await self._send_announcement(announcement, stream):
-                updates[announcement_key] = True
+
+            if is_live and not was_live:
+                sent_message = await self._send_announcement(announcement, stream)
+                if sent_message is not None:
+                    updates[announcement_key] = {
+                        "was_live": True,
+                        "discord_message_id": sent_message.id,
+                        "last_title": str(stream.get("title", "")),
+                    }
+            elif is_live and was_live:
+                current_title = str(stream.get("title", ""))
+                previous_title = str(announcement.get("last_title", ""))
+                if (
+                    "{title}" in str(announcement.get("message") or "")
+                    and current_title != previous_title
+                    and await self._update_announcement_message(announcement, stream)
+                ):
+                    updates[announcement_key] = {
+                        "last_title": current_title,
+                    }
             elif not is_live and was_live:
-                updates[announcement_key] = False
+                updates[announcement_key] = {
+                    "was_live": False,
+                    "discord_message_id": None,
+                    "last_title": None,
+                }
+
         if updates:
             def apply_updates(current):
                 count = 0
                 for item in current["announcements"]:
                     key = (item.get("guild_id"), item.get("id"))
-                    if key in updates:
-                        item["was_live"] = updates[key]
-                        count += 1
+                    values = updates.get(key)
+                    if values is None:
+                        continue
+                    item.update(values)
+                    count += 1
                 return count
+
             store.transaction(apply_updates)
 
     @twitch_task.before_loop
