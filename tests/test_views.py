@@ -1,6 +1,6 @@
-import discord
-
 from types import SimpleNamespace
+
+import discord
 
 from views import ConfirmLeaveView, GuildActionsView
 
