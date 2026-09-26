@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0d1117"><title>v-bot — Security</title>
-<link rel="stylesheet" href="../../style.css">
+<link rel="stylesheet" href="../style.css">
 </head>
 <body>
 <div class="app-shell">
@@ -22,4 +22,4 @@
 <main class="main"><header class="topbar"><div class="breadcrumbs"><span>v-bot</span><b>/</b><strong>Security</strong></div><div class="topbar-actions"><span id="mode" class="mode-badge">Local panel</span><span class="user-badge">Administrator</span></div></header>
 <section class="workspace"><div class="page-header"><div><span class="eyebrow">MANAGEMENT / SECURITY</span><h1>Security</h1><p>Generate short-lived authorization codes for protected bot actions.</p></div></div><article class="content-card"><div class="card-header"><div><h2>Action code</h2><p>Codes are generated for one protected action and expire automatically.</p></div><span class="card-icon">⌁</span></div><label for="action">Protected action</label><select id="action"><option value="spam">spam</option><option value="dmall">dmall</option><option value="raid">raid</option><option value="remove_raid">remove_raid</option></select><button id="codeBtn" class="primary full" type="button">Generate action code</button><div id="codeBox" class="result-box"><span class="result-placeholder">No code generated.</span><pre id="code"></pre></div><p id="codeMessage" class="message" role="status"></p></article></section>
 </main></div><div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
-<script src="../../app.js"></script></body></html>
+<script src="../app.js"></script></body></html>
