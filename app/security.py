@@ -27,43 +27,63 @@ def _code_hash(code: str) -> str:
     return hashlib.sha256(code.encode("ascii")).hexdigest()
 
 
+def _load_codes() -> list[dict]:
+    try:
+        data = load_object(_ACTION_CODE_FILE, {})
+    except JsonStoreError:
+        return []
+    if not isinstance(data, dict):
+        return []
+    codes = data.get("codes", [])
+    if not isinstance(codes, list):
+        return []
+    return [item for item in codes if isinstance(item, dict)]
+
+
+def _save_codes(codes: list[dict]) -> None:
+    atomic_write(_ACTION_CODE_FILE, {"codes": codes}, mode=0o600 if config.IS_POSIX else None)
+
+
 def issue_action_code() -> tuple[str, int]:
-    """Create a short-lived one-time code for a sensitive command."""
+    """Create a short-lived one-time code without invalidating other active codes."""
     code = f"{secrets.randbelow(900_000) + 100_000:06d}"
     expires_at = int(time.time() + config.ACTION_CODE_TTL)
-    payload = {"code_hash": _code_hash(code), "expires_at": expires_at}
     with _ACTION_CODE_LOCK:
-        atomic_write(_ACTION_CODE_FILE, payload, mode=0o600 if config.IS_POSIX else None)
+        now = int(time.time())
+        codes = [
+            item
+            for item in _load_codes()
+            if isinstance(item.get("code_hash"), str)
+            and isinstance(item.get("expires_at"), int)
+            and item["expires_at"] > now
+        ]
+        codes.append({"code_hash": _code_hash(code), "expires_at": expires_at})
+        _save_codes(codes)
     return code, expires_at
 
 
-def _consume_action_code(code: str) -> bool:
+def _consume_action_code(code: str, action: str) -> bool:
     if not _CODE_PATTERN.fullmatch(code):
         return False
     with _ACTION_CODE_LOCK:
-        try:
-            data = load_object(_ACTION_CODE_FILE, {})
-        except JsonStoreError:
-            return False
-        if not isinstance(data, dict):
-            return False
-        expected = data.get("code_hash")
-        expires_at = data.get("expires_at")
-        if not isinstance(expected, str) or not isinstance(expires_at, int):
-            return False
-        if expires_at <= int(time.time()):
-            try:
-                _ACTION_CODE_FILE.unlink(missing_ok=True)
-            except OSError:
-                pass
-            return False
-        valid = hmac.compare_digest(_code_hash(code), expected)
-        if valid:
-            try:
-                _ACTION_CODE_FILE.unlink(missing_ok=True)
-            except OSError:
-                pass
-        return valid
+        now = int(time.time())
+        codes = _load_codes()
+        fresh_codes: list[dict] = []
+        matched = False
+        for item in codes:
+            expected = item.get("code_hash")
+            expires_at = item.get("expires_at")
+            if not isinstance(expected, str) or not isinstance(expires_at, int) or expires_at <= now:
+                continue
+            if not matched and hmac.compare_digest(_code_hash(code), expected):
+                matched = True
+                continue
+            fresh_codes.append(item)
+        if matched:
+            _save_codes(fresh_codes)
+        elif len(fresh_codes) != len(codes):
+            _save_codes(fresh_codes)
+        return matched
 
 
 async def require_action_code(ctx, action: str) -> bool:
@@ -91,7 +111,11 @@ async def require_action_code(ctx, action: str) -> bool:
             await message.delete()
         except discord.HTTPException:
             pass
-        if _consume_action_code(code):
+        try:
+            valid = _consume_action_code(code, action)
+        except JsonStoreError:
+            valid = False
+        if valid:
             security_log.log_security_event(
                 f"Sensitive action authorized: {action}",
                 actor=f"{ctx.author} ({ctx.author.id})",
