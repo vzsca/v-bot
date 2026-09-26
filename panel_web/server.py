@@ -9,6 +9,7 @@ import secrets
 import sys
 from pathlib import Path
 
+import psutil
 from aiohttp import web
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,11 +101,7 @@ async def status(request: web.Request) -> web.Response:
 
     sys.path.insert(0, str(ROOT / "app"))
     import config
-    import panel_web
     from version import VERSION
-
-    del panel_web
-    import psutil
 
     pid_file = ROOT / "bot.pid"
     bot_pid = None
