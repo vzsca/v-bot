@@ -1,1 +1,34 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>v-bot Web Panel</title><link rel="stylesheet" href="/style.css"></head><body><main class="shell"><header><h1>v-bot</h1><span>Local Web Panel</span></header><section id="login" class="card"><h2>Authentication</h2><p>Enter the local panel token shown by the web-panel server.</p><input id="token" type="password" autocomplete="off" placeholder="Panel token"><button id="loginBtn">Sign in</button><p id="loginError" class="error"></p></section><section id="dashboard" hidden><div class="grid"><article class="card"><h2>Status</h2><pre id="status">Loading…</pre></article><article class="card"><h2>Security code</h2><select id="action"><option>spam</option><option>dmall</option><option>raid</option><option>remove_raid</option></select><button id="codeBtn">Generate code</button><pre id="code"></pre></article></div><article class="card"><h2>Bot log</h2><pre id="logs">Loading…</pre></article><button id="logoutBtn">Log out</button></section></main><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>v-bot Web Panel</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="shell">
+<header><h1>v-bot</h1><span id="mode">Web Panel</span></header>
+<section id="login" class="card">
+<h2>Authentication</h2>
+<p>Enter the local panel token shown by the web-panel server.</p>
+<input id="token" type="password" autocomplete="off" placeholder="Panel token">
+<button id="loginBtn">Sign in</button>
+<p id="loginError" class="error"></p>
+</section>
+<section id="dashboard" hidden>
+<div class="demo-banner" id="demoBanner" hidden>GitHub Pages demo — no real bot is connected. Actions are simulated.</div>
+<div class="grid">
+<article class="card"><h2>Status</h2><pre id="status">Loading…</pre></article>
+<article class="card"><h2>Security code</h2>
+<select id="action"><option>spam</option><option>dmall</option><option>raid</option><option>remove_raid</option></select>
+<button id="codeBtn">Generate code</button><pre id="code"></pre>
+</article>
+</div>
+<article class="card"><h2>Bot log</h2><pre id="logs">Loading…</pre></article>
+<button id="logoutBtn">Log out</button>
+</section>
+</main>
+<script src="./app.js"></script>
+</body>
+</html>
