@@ -92,7 +92,7 @@ async def login(request: web.Request) -> web.Response:
 async def logout(request: web.Request) -> web.Response:
     request.app["sessions"].discard(request.cookies.get(SESSION_COOKIE, ""))
     response = web.json_response({"ok": True})
-    response.del_cookie(SESSION_COOKIE)
+    response.del_cookie(SESSION_COOKIE, path="/")
     return response
 
 
