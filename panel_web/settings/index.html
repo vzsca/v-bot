@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0d1117"><title>v-bot — Settings</title>
+<link rel="stylesheet" href="../style.css"></head>
+<body><div class="app-shell">
+<aside class="sidebar"><div class="brand"><span class="brand-mark">v</span><div><strong>v-bot</strong><small>Management Panel</small></div></div>
+<div class="sidebar-section"><span class="sidebar-label">GENERAL</span><nav>
+<a class="nav-item" href="../dashboard/"><span class="nav-icon">▦</span>Dashboard</a><a class="nav-item" href="../instance/"><span class="nav-icon">◉</span>Instance</a><a class="nav-item" href="../activity/"><span class="nav-icon">≡</span>Activity</a><a class="nav-item" href="../logs/"><span class="nav-icon">≣</span>Logs</a></nav></div>
+<div class="sidebar-section"><span class="sidebar-label">MANAGEMENT</span><nav>
+<a class="nav-item" href="../manege/"><span class="nav-icon">◇</span>Manage</a><a class="nav-item" href="../security/"><span class="nav-icon">⌁</span>Security</a><a class="nav-item active" href="../settings/"><span class="nav-icon">⚙</span>Settings</a></nav></div>
+<div class="sidebar-footer"><div class="connection" id="connection"><i></i><span>Offline</span></div><button id="logoutBtn" class="logout" type="button">Sign out</button></div></aside>
+<main class="main"><header class="topbar"><div class="breadcrumbs"><span>v-bot</span><b>/</b><strong>Settings</strong></div><div class="topbar-actions"><span id="mode" class="mode-badge">Local panel</span><span class="user-badge">Administrator</span></div></header>
+<section class="workspace"><div class="page-header"><div><span class="eyebrow">MANAGEMENT / CONFIGURATION</span><h1>Settings</h1><p>Manage the same configuration options exposed by the legacy control panel.</p></div></div>
+<div class="settings-grid">
+<article class="content-card"><div class="card-header"><div><h2>Owners</h2><p>Permanent owner configuration.</p></div></div>
+<label for="principalOwner">Principal owner ID</label><input id="principalOwner" inputmode="numeric">
+<label for="secondaryOwners">Secondary owner IDs</label><input id="secondaryOwners" placeholder="123,456">
+<button id="saveOwners" class="primary" type="button">Save owners</button></article>
+<article class="content-card"><div class="card-header"><div><h2>Bot configuration</h2><p>Runtime values written to <code>.env</code>.</p></div></div>
+<label for="prefix">Prefix</label><input id="prefix" maxlength="10">
+<label class="toggle-row"><input id="dangerous" type="checkbox"><span>Enable sensitive commands</span></label>
+<button id="saveBotConfig" class="primary" type="button">Save bot configuration</button></article>
+<article class="content-card"><div class="card-header"><div><h2>Discord token</h2><p>Only replace it when necessary. It is never returned by the API.</p></div></div>
+<label for="discordToken">New token</label><input id="discordToken" type="password" autocomplete="new-password">
+<button id="saveDiscordToken" class="primary" type="button">Save Discord token</button></article>
+<article class="content-card"><div class="card-header"><div><h2>Streaming APIs</h2><p>Credentials used by Twitch/YouTube integrations.</p></div></div>
+<label for="twitchId">Twitch Client ID</label><input id="twitchId"><label for="twitchSecret">Twitch Client Secret</label><input id="twitchSecret" type="password" autocomplete="new-password">
+<label for="youtubeKey">YouTube API key</label><input id="youtubeKey" type="password" autocomplete="new-password">
+<button id="saveApis" class="primary" type="button">Save API credentials</button></article>
+</div><p id="settingsMessage" class="message" role="status"></p></section></main></div>
+<div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div><script src="../app.js"></script></body></html>
