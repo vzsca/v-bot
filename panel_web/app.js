@@ -2,9 +2,9 @@ const $=id=>document.getElementById(id);
 const DEMO=window.location.hostname.endsWith("github.io");
 const DEMO_TOKEN="vbot-demo-token";
 const DEMO_LOGS=["[DEMO] v-bot started successfully","[DEMO] Connected to Discord gateway","[DEMO] No real Discord action was executed"];
-const PAGE_ROUTES={signin:"/signin",dashboard:"/dashboard",instance:"/instance",activity_log:"/activity_log",security:"/security"};
+const PAGE_ROUTES={signin:"/panel_web/signin",dashboard:"/panel_web/dashboard",instance:"/panel_web/instance",activity:"/panel_web/activity",logs:"/panel_web/logs",security:"/panel_web/security"};
 function route(name){return DEMO?("../"+name+"/"):PAGE_ROUTES[name]}
-function isSignin(){return location.pathname==="/signin"||location.pathname==="/signin/"||location.pathname.endsWith("/signin")||location.pathname.endsWith("/signin/")}
+function isSignin(){return location.pathname==="/panel_web/signin"||location.pathname==="/panel_web/signin/"||location.pathname.endsWith("/panel_web/signin")||location.pathname.endsWith("/panel_web/signin/")}
 
 function toast(type,title,text){const c=$("toastContainer");if(!c)return;const el=document.createElement("div");el.className="toast "+type;el.innerHTML='<div class="icon">'+(type==="success"?"✓":"!")+'</div><div><strong></strong><span></span></div>';el.querySelector("strong").textContent=title;el.querySelector("span").textContent=text||"";c.appendChild(el);setTimeout(()=>el.remove(),4200)}
 function setMessage(id,type,text){const el=$(id);if(!el)return;el.className="message "+type;el.textContent=text}
