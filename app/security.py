@@ -79,9 +79,7 @@ def _consume_action_code(code: str, action: str) -> bool:
                 matched = True
                 continue
             fresh_codes.append(item)
-        if matched:
-            _save_codes(fresh_codes)
-        elif len(fresh_codes) != len(codes):
+        if matched or len(fresh_codes) != len(codes):
             _save_codes(fresh_codes)
         return matched
 
