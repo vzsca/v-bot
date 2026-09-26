@@ -63,15 +63,15 @@ def _authorized(request: web.Request) -> bool:
 
 @web.middleware
 async def auth(request: web.Request, handler):
-    public_paths = {"/", "/signin", "/signin/", "/app.js", "/style.css", "/api/login"}
-    page_paths = {"/dashboard", "/dashboard/", "/instance", "/instance/", "/activity_log", "/activity_log/", "/security", "/security/"}
+    public_paths = {"/", "/panel_web", "/panel_web/", "/panel_web/signin", "/panel_web/signin/", "/panel_web/app.js", "/panel_web/style.css", "/api/login"}
+    page_paths = {"/panel_web/dashboard", "/panel_web/dashboard/", "/panel_web/instance", "/panel_web/instance/", "/panel_web/activity", "/panel_web/activity/", "/panel_web/logs", "/panel_web/logs/", "/panel_web/security", "/panel_web/security/"}
     if request.path in public_paths:
         if request.path in {"/signin", "/signin/"} and _authorized(request):
-            raise web.HTTPFound("/dashboard")
+            raise web.HTTPFound("/panel_web/dashboard")
         return await handler(request)
     if request.path in page_paths:
         if not _authorized(request):
-            raise web.HTTPFound("/signin")
+            raise web.HTTPFound("/panel_web/signin")
         return await handler(request)
     if not _authorized(request):
         return web.json_response({"error": "authentication required"}, status=401)
@@ -80,7 +80,7 @@ async def auth(request: web.Request, handler):
 
 async def index(request: web.Request) -> web.Response:
     del request
-    raise web.HTTPFound("/signin")
+    raise web.HTTPFound("/panel_web/signin")
 
 
 async def asset(request: web.Request) -> web.FileResponse:
@@ -190,16 +190,19 @@ def create_app() -> web.Application:
     app = web.Application(middlewares=[auth])
     app["sessions"] = {}
     app.router.add_get("/", index)
+    app.router.add_get("/panel_web", index)
+    app.router.add_get("/panel_web/", index)
     for route, directory in (
-        ("/signin", "signin"),
-        ("/dashboard", "dashboard"),
-        ("/instance", "instance"),
-        ("/activity_log", "activity_log"),
-        ("/security", "security"),
+        ("/panel_web/signin", "signin"),
+        ("/panel_web/dashboard", "dashboard"),
+        ("/panel_web/instance", "instance"),
+        ("/panel_web/activity", "activity_log"),
+        ("/panel_web/logs", "logs"),
+        ("/panel_web/security", "security"),
     ):
         app.router.add_get(route, lambda request, directory=directory: web.FileResponse(STATIC_DIR / directory / "index.html"))
         app.router.add_get(route + "/", lambda request, directory=directory: web.FileResponse(STATIC_DIR / directory / "index.html"))
-    app.router.add_get("/{name:app.js|style.css}", asset)
+    app.router.add_get("/panel_web/{name:app.js|style.css}", asset)
     app.router.add_post("/api/login", login)
     app.router.add_post("/api/logout", logout)
     app.router.add_get("/api/status", status)
@@ -216,7 +219,7 @@ def main() -> None:
 
     port = int(os.getenv("PANEL_WEB_PORT", "8765"))
     _token()
-    print(f"Web panel: http://127.0.0.1:{port}")
+    print(f"Web panel: http://127.0.0.1:{port}/panel_web/signin")
     web.run_app(create_app(), host=host, port=port, access_log=None)
 
 
