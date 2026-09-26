@@ -13,7 +13,7 @@ The dev-panel branch now contains the first local web-panel implementation.
 
 ## Start
 
-Run `python -m panel_web.server` from the repository root. The default address is `http://127.0.0.1:8765`.
+Use `start_bot.bat` on Windows or `./start_bot.sh` on Linux/macOS. The launcher starts both the Discord bot and the web panel. The default address is `http://127.0.0.1:8765`.
 
 On first launch, a random token is stored in `panel_web/.token` and printed to the terminal. You can instead set `PANEL_WEB_TOKEN` in `.env`.
 
