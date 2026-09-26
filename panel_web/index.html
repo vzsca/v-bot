@@ -10,137 +10,40 @@
 <body>
 <div class="background-glow glow-one"></div>
 <div class="background-glow glow-two"></div>
-
 <main class="shell">
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">v</div>
-      <div>
-        <h1>v-bot</h1>
-        <p>Web Control Panel</p>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <span id="mode" class="mode-badge">Web Panel</span>
-      <span id="connection" class="connection"><i></i> Offline</span>
-    </div>
+    <div class="brand"><div class="brand-mark">v</div><div><h1>v-bot</h1><p>Web Control Panel</p></div></div>
+    <div class="topbar-right"><span id="mode" class="mode-badge">Web Panel</span><span id="connection" class="connection"><i></i> Offline</span></div>
   </header>
-
   <section id="login" class="login-layout">
     <div class="login-card card">
-      <div class="eyebrow">SECURE ACCESS</div>
-      <h2>Welcome back.</h2>
+      <div class="eyebrow">SECURE ACCESS</div><h2>Welcome back.</h2>
       <p class="muted">Enter your panel token to connect to the v-bot control panel.</p>
       <label for="token">Panel token</label>
       <div class="input-wrap">
-        <span>●</span>
-        <input id="token" type="password" autocomplete="off" placeholder="Enter your token">
+        <span>●</span><input id="token" type="password" autocomplete="off" placeholder="Enter your token">
+        <button id="viewTokenBtn" class="view-token" type="button" aria-label="Show token" title="Show token">View</button>
       </div>
       <button id="loginBtn" class="primary full">Sign in <span>→</span></button>
-      <p id="loginError" class="message error" role="alert"></p>
-      <p id="loginHint" class="login-hint"></p>
+      <p id="loginError" class="message error" role="alert"></p><p id="loginHint" class="login-hint"></p>
     </div>
-    <div class="login-info">
-      <div class="brand-mark large">v</div>
-      <h2>Manage your bot.<br><span>From one place.</span></h2>
-      <p>Monitor the bot, inspect logs and generate short-lived security codes.</p>
-      <div class="feature-list">
-        <div>✓ Local authentication</div>
-        <div>✓ Real-time status</div>
-        <div>✓ Security action codes</div>
-      </div>
-    </div>
+    <div class="login-info"><div class="brand-mark large">v</div><h2>Manage your bot.<br><span>From one place.</span></h2><p>Monitor the bot, inspect logs and generate short-lived security codes.</p><div class="feature-list"><div>✓ Local authentication</div><div>✓ Real-time status</div><div>✓ Security action codes</div></div></div>
   </section>
-
   <section id="dashboard" hidden>
-    <div class="demo-banner" id="demoBanner" hidden>
-      <div class="banner-icon">!</div>
-      <div><strong>GitHub Pages demo</strong><span>No real bot is connected. All actions are simulated in your browser.</span></div>
-    </div>
-
-    <div class="page-heading">
-      <div>
-        <div class="eyebrow">CONTROL CENTER</div>
-        <h2>Dashboard</h2>
-      </div>
-      <button id="logoutBtn" class="ghost">Log out</button>
-    </div>
-
+    <div class="demo-banner" id="demoBanner" hidden><div class="banner-icon">!</div><div><strong>GitHub Pages demo</strong><span>No real bot is connected. All actions are simulated in your browser.</span></div></div>
+    <div class="page-heading"><div><div class="eyebrow">CONTROL CENTER</div><h2>Dashboard</h2></div><button id="logoutBtn" class="ghost">Log out</button></div>
     <div class="stats-grid">
-      <article class="stat-card card">
-        <span class="stat-label">Bot status</span>
-        <strong id="botStatus">—</strong>
-        <span id="botStatusDetail" class="stat-detail">Waiting for data</span>
-      </article>
-      <article class="stat-card card">
-        <span class="stat-label">Version</span>
-        <strong id="botVersion">—</strong>
-        <span class="stat-detail">Current instance</span>
-      </article>
-      <article class="stat-card card">
-        <span class="stat-label">Action code TTL</span>
-        <strong id="codeTtl">—</strong>
-        <span class="stat-detail">Seconds</span>
-      </article>
+      <article class="stat-card card"><span class="stat-label">Bot status</span><strong id="botStatus">—</strong><span id="botStatusDetail" class="stat-detail">Waiting for data</span></article>
+      <article class="stat-card card"><span class="stat-label">Version</span><strong id="botVersion">—</strong><span class="stat-detail">Current instance</span></article>
+      <article class="stat-card card"><span class="stat-label">Action code TTL</span><strong id="codeTtl">—</strong><span class="stat-detail">Seconds</span></article>
     </div>
-
     <div class="main-grid">
-      <article class="card panel-card">
-        <div class="card-heading">
-          <div>
-            <div class="eyebrow">SECURITY</div>
-            <h3>Generate action code</h3>
-          </div>
-          <span class="shield">⌁</span>
-        </div>
-        <p class="muted">Create a short-lived code for a protected bot action.</p>
-        <label for="action">Action</label>
-        <div class="select-wrap">
-          <select id="action">
-            <option value="spam">spam</option>
-            <option value="dmall">dmall</option>
-            <option value="raid">raid</option>
-            <option value="remove_raid">remove_raid</option>
-          </select>
-        </div>
-        <button id="codeBtn" class="primary full">Generate code <span>→</span></button>
-        <div id="codeBox" class="result-box">
-          <span class="result-placeholder">Generated code will appear here.</span>
-          <pre id="code"></pre>
-        </div>
-        <p id="codeMessage" class="message" role="status"></p>
-      </article>
-
-      <article class="card panel-card">
-        <div class="card-heading">
-          <div>
-            <div class="eyebrow">INSTANCE</div>
-            <h3>Bot status</h3>
-          </div>
-          <span class="status-dot" id="statusDot"></span>
-        </div>
-        <div class="status-list">
-          <div><span>Process</span><strong id="processValue">—</strong></div>
-          <div><span>Platform</span><strong id="platformValue">—</strong></div>
-          <div><span>Protected commands</span><strong id="protectedValue">—</strong></div>
-        </div>
-        <pre id="status" class="raw-data"></pre>
-      </article>
+      <article class="card panel-card"><div class="card-heading"><div><div class="eyebrow">SECURITY</div><h3>Generate action code</h3></div><span class="shield">⌁</span></div><p class="muted">Create a short-lived code for a protected bot action.</p><label for="action">Action</label><div class="select-wrap"><select id="action"><option value="spam">spam</option><option value="dmall">dmall</option><option value="raid">raid</option><option value="remove_raid">remove_raid</option></select></div><button id="codeBtn" class="primary full">Generate code <span>→</span></button><div id="codeBox" class="result-box"><span class="result-placeholder">Generated code will appear here.</span><pre id="code"></pre></div><p id="codeMessage" class="message" role="status"></p></article>
+      <article class="card panel-card"><div class="card-heading"><div><div class="eyebrow">INSTANCE</div><h3>Bot status</h3></div><span class="status-dot" id="statusDot"></span></div><div class="status-list"><div><span>Process</span><strong id="processValue">—</strong></div><div><span>Platform</span><strong id="platformValue">—</strong></div><div><span>Protected commands</span><strong id="protectedValue">—</strong></div></div><pre id="status" class="raw-data"></pre></article>
     </div>
-
-    <article class="card logs-card">
-      <div class="card-heading">
-        <div>
-          <div class="eyebrow">ACTIVITY</div>
-          <h3>Bot log</h3>
-        </div>
-        <span class="live-label"><i></i> Live</span>
-      </div>
-      <pre id="logs">Loading…</pre>
-    </article>
+    <article class="card logs-card"><div class="card-heading"><div><div class="eyebrow">ACTIVITY</div><h3>Bot log</h3></div><span class="live-label"><i></i> Live</span></div><pre id="logs">Loading…</pre></article>
   </section>
 </main>
-
 <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 <script src="./app.js"></script>
 </body>
