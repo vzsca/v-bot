@@ -2,45 +2,40 @@
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
 
-v-bot includes a **local control panel** for process management, configuration, owners, logs, and sensitive features. The project targets Windows, Linux, and macOS.
+The project includes a cross-platform local control panel and targets Windows, Linux, and macOS.
 
 ## ✨ Features
 
-- 🛡️ Moderation commands
-- ℹ️ Information commands
-- 👑 Permanent owners and temporary authorizations
-- 🔐 Kill Switch
-- 🧹 Deleted-message snipe
-- 🌐 Multi-server management
-- ⚙️ Cross-platform local panel
-- 🌐 Frontend web panel in development
-- 📋 Standard and security logs
-- 📢 Automatic Twitch and YouTube announcements
+- 🛡️ Moderation and server-management commands
+- 👑 Permanent owners and temporary server-scoped authorizations
+- 🔐 Persistent kill switch and disabled-server state
+- 🧹 Deleted-message snipe support
+- 📢 Twitch and YouTube announcements
 - 🔑 Global primary API + per-server API credentials
-- 🔒 Sensitive commands disabled by default
-- 🚦 Rate limiting, audit logging, and anti-spam/anti-raid detection
+- 🚦 Global/per-user/per-command rate limiting
+- 🛡️ Anti-spam and anti-raid detection
+- 📋 Standard and security logs with audit events
+- 🔐 Sensitive commands disabled by default
+- 🔑 One-time 6-digit security codes for sensitive actions
 - 🧩 Modular Cogs and application modules
-- 📚 Permission-aware help system with category buttons
-- 🔐 One-time security codes for sensitive actions
-- 💬 Permission-aware automatic responses when the bot is mentioned
+- 📚 Permission-aware help system
+- 💬 Permission-aware bot mention responses
+- 🖥️ Cross-platform local control panel
 
----
+## 🚀 Installation
 
-# 🚀 Installation
-
-## Requirements
+### Requirements
 
 - Windows, Linux, or macOS
-- Python **3.13 recommended**
-- A Discord bot created through the Discord Developer Portal
-- Required Discord intents enabled
+- Python **3.13**
+- A Discord application/bot with the required intents enabled
 
 ```bash
 git clone https://github.com/vzsca/v-bot.git
 cd v-bot
 ```
 
-Create `.env` from `.env.example`, then configure at least:
+Create `.env` from `.env.example` and configure at least:
 
 ```env
 DISCORD_TOKEN=YOUR_TOKEN
@@ -53,33 +48,27 @@ TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
 YOUTUBE_API_KEY=YOUR_API_KEY
 ```
 
-`BOT_VERSION` is no longer maintained manually: the application version is derived from Git tags, with a fallback for installations without Git history.
+Never publish `.env`, the Discord token, or API credentials.
 
-> 🔒 Never publish `.env`, the Discord token, or any API key.
+### Launch
 
-## ▶️ Launch
-
-### Windows
+Windows:
 
 ```text
 start_bot.bat
 ```
 
-### Linux / macOS
+Linux/macOS:
 
 ```bash
 ./start_bot.sh
 ```
 
-The launcher prepares the Python environment and starts the local panel.
+The launcher prepares the Python environment and starts the local control panel.
 
----
+## 🖥️ Local control panel
 
-# 🖥️ Local panel
-
-The panel is interactive and works on Windows, Linux, and macOS.
-
-### Process management
+The interactive panel provides:
 
 ```text
 start
@@ -90,270 +79,104 @@ uptime
 logs
 security_logs
 servers
-```
-
-### Configuration
-
-```text
+add_secondary_owner
 set_token
 set_principal_owner
-add_secondary_owner
+toggle_dangerous
+action_code
 set_prefix
 set_twitch_api
 set_youtube_api
-toggle_dangerous
-action_code
 ```
 
-### `action_code`
+`status` reports the version, platform, owner configuration, bot state, PID, uptime, CPU/RAM usage, and current Git commit.
 
-Generates a temporary **6-digit one-time security code** locally for sensitive Discord actions.
+### Security codes
 
-The code is short-lived, stored only as a hash on disk, and invalidated after successful use. Do not share it with other users.
+`action_code` generates a temporary **6-digit, one-time code** for sensitive Discord actions.
 
-### `status`
+Codes are stored only as SHA-256 hashes, expire automatically, and are consumed atomically. Multiple codes may be active at the same time, so generating a new code no longer invalidates an earlier active code. The code is never written to the security log.
 
-`status` displays information including:
+## 👑 Owners and permissions
 
-- version and platform;
-- primary owner;
-- secondary owners and the `X/5` counter;
-- bot state, PID, and process information;
-- uptime;
-- CPU/RAM usage;
-- currently installed commit.
-
----
-
-# 🌐 Web panel — In Process
-
-A new **HTML/CSS/JavaScript web control panel** is currently **in process**.
-
-The web panel is being designed as a modern frontend for the future v-bot administration interface. It currently runs as a **frontend-only preview** and is intentionally not connected to the Discord bot, local processes, configuration files, or APIs.
-
-### Current web panel features
-
-- 📊 Dashboard with bot overview and quick actions
-- 📈 Status page with process and configuration information
-- ▶️ Bot Control interface
-- 🌐 Server management interface
-- 📋 Bot Logs and Security Logs views
-- 👑 Owner management interface
-- 💬 Discord configuration interface
-- 🔗 Twitch / YouTube integration views
-- 🔐 Security settings view
-- 🔄 Update status view
-- ℹ️ About page
-- 🧭 Sidebar navigation with hash-based routing
-- 📱 Responsive/mobile sidebar
-- 🪟 Interactive frontend modals for server and management actions
-- ♿ Accessibility improvements including keyboard navigation, focus handling, modal focus trapping and reduced-motion support
-
-### Web panel architecture
-
-```text
-panel_web/
-├── README.md
-├── index.html
-└── assets/
-    ├── app.js
-    ├── navigation.js
-    ├── modals.js
-    ├── servers.js
-    ├── actions.js
-    ├── accessibility.js
-    ├── ui.css
-    └── polish.css
-```
-
-The frontend is deliberately separated into navigation, modal handling, server actions, generic actions, and accessibility logic so it can later be connected to a real backend without mixing UI concerns with bot logic.
-
-### Current state
-
-> 🚧 **Web panel: IN PROCESS**
->
-> The interface and frontend interaction layer are under active development. Backend/API integration is planned for a later stage.
-
-Open `panel_web/index.html` directly in a browser to preview the current interface.
-
----
-
-# 📚 Help system
-
-The `v!help` command is permission-aware and separates commands into four categories:
-
-- 📜 **General** — available to everyone;
-- 🛡️ **Moderation** — available to users with moderation permissions;
-- ⚙️ **Admin & Announcements** — requires the Discord `Administrator` permission;
-- 👑 **Owner** — restricted to bot owners/authorized users.
-
-When multiple categories are available, `v!help` displays a category menu with buttons. Buttons are restricted to the user who opened the menu and include a button to return to the category menu.
-
-Specific categories can also be opened directly:
-
-```text
-v!help general
-v!help mod
-v!help admin
-v!help owner
-```
-
-Users who only have access to General receive the General help embed directly.
-
----
-
-# 💬 Bot mentions
-
-Mentioning the bot at the start of a message triggers a permission-aware information embed.
-
-The response is adapted to the current user:
-
-- 👤 **Member** — only general commands, documentation and support relevant to regular members.
-- 🛡️ **Moderator** — moderation-related commands and permission guidance.
-- ⚙️ **Administrator** — server administration, API configuration and announcement-related information.
-- 👑 **Owner** — bot status, owner controls, connected servers and security information.
-
-The response uses the same access model as the help system and includes a short cooldown to prevent repeated mention spam. Information for higher privilege levels is not shown to users who do not have those permissions.
-
-Example:
-
-```text
-@v-bot
-```
-
----
-
-# 👑 Owners
-
-There is a maximum of **1 primary owner** and **5 secondary owners**.
+There is a maximum of **1 primary owner** and **5 secondary owners**:
 
 ```env
 OWNER_PRINCIPAL_ID=123456789
 OWNERS_SECONDARY_IDS=111111111,222222222
 ```
 
-The panel prevents adding a sixth secondary owner and blocks duplicates or adding the primary owner as a secondary owner.
+Owner checks, Discord permissions, kill-switch checks, and Discord role/member hierarchy checks are centralized in `app/checks.py`.
 
-Temporary authorizations are limited to the relevant server and expire automatically.
+Temporary authorizations are scoped to a guild and automatically expire.
 
----
+## 📢 Twitch / YouTube announcements
 
-# 🔑 Per-server API configuration
+Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials.
 
-A server authorized in `api_config_access.json` automatically uses the **primary API** configured in `.env`.
-
-A non-authorized server uses only its **own credentials**, configured from Discord.
-
-### Twitch
+Typical commands include:
 
 ```text
+v!create_annonce
+v!annonces
+v!test_annonce <id>
+v!delete_annonce <id>
 v!set_api twitch
-```
-
-The bot opens a private form for the Twitch Client ID and Twitch Client Secret.
-
-### YouTube
-
-```text
 v!set_api yt
-```
-
-The form allows the user to enter the YouTube API Key.
-
-### Check configuration
-
-```text
 v!api_status
-```
-
-The command displays the active API mode and configuration status without revealing secrets.
-
-### Remove configuration
-
-```text
 v!clear_api twitch
 v!clear_api yt
 ```
 
-Per-server credentials are stored in `api_credentials.json`, isolated by `guild_id`, and written atomically. This file is ignored by Git.
+Per-server credentials are stored by `guild_id` in `api_credentials.json` and written atomically.
 
-> ⚠️ API secrets should never be sent directly in a Discord channel. `v!set_api` uses a private form.
+## ⚠️ Sensitive commands
 
----
-
-# 📢 Twitch / YouTube announcements
-
-## Creation
+The following commands are isolated and disabled by default:
 
 ```text
-v!create_annonce
+v!spam
+v!dmall
+v!raid
+v!remove_raid
 ```
 
-The bot asks for the source URL, announcement message, and target channel. The announcement automatically uses the API associated with the server: the primary API for an authorized server, or local credentials for a non-authorized server.
-
-## Management
-
-```text
-v!annonces
-v!test_annonce <id>
-v!delete_annonce <id>
-```
-
-### Twitch placeholders
-
-- `{streamer}` — Twitch channel name
-- `{title}` — live stream title
-- `{game}` — category
-- `{url}` — stream URL
-
-### YouTube placeholders
-
-- `{channel}` — channel name
-- `{title}` — video title
-- `{url}` — video URL
-
----
-
-# ⚠️ Sensitive commands
-
-The `spam`, `dmall`, `raid`, and `remove_raid` commands are isolated and disabled by default.
+Enable them only when required:
 
 ```env
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
-These actions also require a temporary **6-digit security code** generated from the local panel, in addition to their normal permission and confirmation checks.
+Sensitive commands also use explicit confirmations, command-specific limits, permission checks, and a one-time security code.
 
-Sensitive raid resources are persisted as they are created. When persistence fails, the operation is aborted and the newly created resource is rolled back when Discord permissions allow it. Cleanup only removes resource references from persistent state after the corresponding Discord resource has been successfully deleted (or is already absent).
+Raid-test channels and roles are persisted as they are created. If persistence fails, the operation aborts and attempts to roll back the newly created resource. Cleanup removes a persistent resource reference only after the corresponding Discord resource has been deleted or is already absent.
 
-Volume limits, confirmations, persistence checks, and permission checks help prevent accidental or partially tracked operations.
+## 💾 Persistence and data safety
 
----
+Security-critical JSON state is handled through `app/safe_json.py` and `app/state.py`.
 
-# 🛡️ Security
+- JSON stores reject corruption instead of silently treating it as empty data.
+- Writes use unique temporary files in the destination directory.
+- File contents are flushed and `fsync`ed before replacement.
+- POSIX directory metadata is synchronized after replacement when supported.
+- Runtime state mutations are synchronized with a re-entrant lock.
+- Failed state writes roll back the in-memory change where applicable.
+- Sensitive state files use restrictive `0600` permissions on POSIX systems.
 
-- Permissions centralized in `app/checks.py`
-- Global, per-user, and per-command rate limiting
-- Single `AuditManager` for command audit events and suspicious burst detection
-- Suspicious burst alerts use a cooldown and never automatically stop users or the bot
-- Anti-spam and anti-raid detection
-- Temporary authorizations scoped to a server and automatically expired
-- One-time 6-digit codes for sensitive actions
-- Security codes stored as hashes and expired automatically
-- Secrets never written to security logs
-- `.env` and persistent configuration files written atomically
-- Corrupted JSON rejected instead of silently overwritten
-- Bounded and rotating logs
-- Per-server API credentials isolated by `guild_id`
-- `api_credentials.json` excluded from Git
-- Sensitive commands separated and disabled by default
-- Persistent kill-switch and disabled-server state
-- Persistent tracking for sensitive resources created by raid tests
-- Failed resource-state persistence triggers rollback/abort instead of continuing blindly
+Runtime files such as `.env`, `bot_state.json`, `action_codes.json`, API credential stores, and logs must not be committed when they contain local secrets or state.
 
----
+## 🛡️ Security tooling
 
-# 🧩 Architecture
+CI runs:
+
+- `ruff` for linting
+- `pytest` for automated tests
+- Gitleaks for secret scanning
+- **GitHub CodeQL** with the `security-extended` query suite for Python security analysis
+
+CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow.
+
+## 🧩 Architecture
 
 ```text
 v-bot/
@@ -374,30 +197,10 @@ v-bot/
 │   ├── security.py
 │   ├── security_log.py
 │   ├── state.py
+│   ├── updater.py
+│   ├── validators.py
 │   └── version.py
 ├── cogs/
-│   ├── events.py
-│   ├── moderation.py
-│   ├── info.py
-│   ├── owner.py
-│   ├── api_config.py
-│   ├── annonce.py
-│   ├── twitch.py
-│   ├── youtube.py
-│   ├── help_cog.py
-│   └── dangerous_safe.py
-├── panel_web/
-│   ├── README.md
-│   ├── index.html
-│   └── assets/
-│       ├── app.js
-│       ├── navigation.js
-│       ├── modals.js
-│       ├── servers.js
-│       ├── actions.js
-│       ├── accessibility.js
-│       ├── ui.css
-│       └── polish.css
 ├── tests/
 ├── main.py
 ├── panel.py
@@ -407,70 +210,31 @@ v-bot/
 └── requirements.txt
 ```
 
-`main.py` remains limited to bootstrap, logging, global checks, and extension loading. Business logic belongs in application modules and Cogs.
+`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing. Persistent runtime security state is handled by `app/state.py`.
 
-Security-sensitive command auditing is handled by the single `AuditManager` in `app/audit.py`. `app/security.py` is dedicated to one-time sensitive-action authorization and does not duplicate audit/burst detection.
+## 🏷️ Versioning
 
-Persistent runtime security state is handled by `app/state.py`, including the kill switch, disabled servers, and tracked sensitive resources.
-
-The `panel_web` frontend is kept separate from the Python bot and local CLI panel. It is currently a static UI and does not execute bot or system operations.
-
----
-
-# 🏷️ Versioning
-
-The version is derived from Git using:
-
-```text
-git describe --tags --match v[0-9]* --always --dirty
-```
-
-Use release tags such as:
+The application version is derived from Git tags, with a fallback when Git history is unavailable. Release tags use the form:
 
 ```text
 v3.8.2
 v3.9.0
 ```
 
-The version displayed by the bot and panel therefore follows Git instead of requiring several manual changes.
-
----
-
-# 🧰 Technologies
+## 🧰 Technologies
 
 - Python 3.13
 - discord.py
-- HTML5
-- CSS3
-- JavaScript (ES modules)
 - python-dotenv
 - psutil
 - aiohttp
 - pytest
 - ruff
-- Git
+- GitHub Actions
+- GitHub CodeQL
 
----
+## 📄 License
 
-# 🔒 Private / runtime files
-
-Never publish:
-
-```text
-.env
-api_credentials.json
-annonce_config.json
-api_config_access.json
-security.log
-bot.log
-```
-
-or any other file containing a token or API key.
-
----
-
-# 📄 License
-
-This project is licensed under the **MIT License**. See [`LICENSE`](LICENSE) for the full license text.
+MIT License. See [`LICENSE`](LICENSE).
 
 Copyright (c) 2026 vzsca.
