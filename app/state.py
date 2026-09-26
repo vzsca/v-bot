@@ -38,39 +38,42 @@ class BotState:
         self._load_persistent_state()
 
     def _load_persistent_state(self) -> None:
-        if not STATE_FILE.exists():
-            return
-        try:
-            data = load_object(STATE_FILE, {})
-        except JsonStoreError:
-            self.kill_switch = True
-            return
-        if not isinstance(data, dict):
-            self.kill_switch = True
-            return
+        with _STATE_LOCK:
+            if not STATE_FILE.exists():
+                return
+            try:
+                data = load_object(STATE_FILE, {})
+            except JsonStoreError:
+                self.kill_switch = True
+                return
+            if not isinstance(data, dict):
+                self.kill_switch = True
+                return
 
-        self.kill_switch = bool(data.get("kill_switch", False))
-        raw_disabled = data.get("disabled_guilds", [])
-        if isinstance(raw_disabled, list):
-            self.disabled_guilds = {int(value) for value in raw_disabled if isinstance(value, int) and value > 0}
-
-        for field, target in (
-            ("created_raid_channels", self.created_raid_channels),
-            ("created_raid_roles", self.created_raid_roles),
-        ):
-            raw = data.get(field, {})
-            if not isinstance(raw, dict):
-                continue
-            for guild_id, values in raw.items():
-                try:
-                    parsed_guild_id = int(guild_id)
-                except (TypeError, ValueError):
-                    continue
-                if parsed_guild_id <= 0 or not isinstance(values, list):
-                    continue
-                target[parsed_guild_id] = {
-                    int(value) for value in values if isinstance(value, int) and value > 0
+            self.kill_switch = bool(data.get("kill_switch", False))
+            raw_disabled = data.get("disabled_guilds", [])
+            if isinstance(raw_disabled, list):
+                self.disabled_guilds = {
+                    int(value) for value in raw_disabled if isinstance(value, int) and value > 0
                 }
+
+            for field, target in (
+                ("created_raid_channels", self.created_raid_channels),
+                ("created_raid_roles", self.created_raid_roles),
+            ):
+                raw = data.get(field, {})
+                if not isinstance(raw, dict):
+                    continue
+                for guild_id, values in raw.items():
+                    try:
+                        parsed_guild_id = int(guild_id)
+                    except (TypeError, ValueError):
+                        continue
+                    if parsed_guild_id <= 0 or not isinstance(values, list):
+                        continue
+                    target[parsed_guild_id] = {
+                        int(value) for value in values if isinstance(value, int) and value > 0
+                    }
 
     def _persistent_payload(self) -> dict:
         return {
@@ -105,8 +108,7 @@ class BotState:
             self.kill_switch = bool(enabled)
             if self._save_persistent_state():
                 return True
-            if not enabled:
-                self.kill_switch = previous
+            self.kill_switch = previous
             return False
 
     def set_guild_disabled(self, guild_id: int, disabled: bool) -> bool:
@@ -129,30 +131,33 @@ class BotState:
     def is_temp_authorized(self, guild_id: int | None, user_id: int) -> bool:
         if guild_id is None:
             return False
-        key = (guild_id, user_id)
-        expiry = self.temp_authorized_users.get(key)
-        if expiry is None:
-            return False
-        if expiry <= time.time():
-            self.temp_authorized_users.pop(key, None)
-            return False
-        return True
+        with _STATE_LOCK:
+            key = (guild_id, user_id)
+            expiry = self.temp_authorized_users.get(key)
+            if expiry is None:
+                return False
+            if expiry <= time.time():
+                self.temp_authorized_users.pop(key, None)
+                return False
+            return True
 
     def add_temp_owner(self, guild_id: int, user_id: int, duration: int) -> float:
         if guild_id <= 0 or user_id <= 0:
             raise ValueError("Guild and user IDs must be positive.")
         if duration < 1:
             raise ValueError("Temporary owner duration must be at least 1 second.")
-        expiry = time.time() + duration
-        self.temp_authorized_users[(guild_id, user_id)] = expiry
-        return expiry
+        with _STATE_LOCK:
+            expiry = time.time() + duration
+            self.temp_authorized_users[(guild_id, user_id)] = expiry
+            return expiry
 
     def clean_expired(self) -> list[tuple[int, int]]:
-        now = time.time()
-        expired = [key for key, expiry in self.temp_authorized_users.items() if expiry <= now]
-        for key in expired:
-            self.temp_authorized_users.pop(key, None)
-        return expired
+        with _STATE_LOCK:
+            now = time.time()
+            expired = [key for key, expiry in self.temp_authorized_users.items() if expiry <= now]
+            for key in expired:
+                self.temp_authorized_users.pop(key, None)
+            return expired
 
     def add_raid_channel(self, guild_id: int, channel_id: int) -> bool:
         with _STATE_LOCK:
@@ -205,10 +210,11 @@ class BotState:
     def add_sniped(self, channel_id: int, data: dict, limit: int) -> None:
         if limit < 1:
             raise ValueError("Snipe limit must be positive.")
-        bucket = self.sniped_messages.setdefault(channel_id, [])
-        bucket.insert(0, data)
-        if len(bucket) > limit:
-            del bucket[limit:]
+        with _STATE_LOCK:
+            bucket = self.sniped_messages.setdefault(channel_id, [])
+            bucket.insert(0, data)
+            if len(bucket) > limit:
+                del bucket[limit:]
 
     @staticmethod
     def _snipe_timestamp(item: dict) -> float | None:
@@ -227,21 +233,22 @@ class BotState:
     def clean_snipes(self, retention_seconds: int) -> int:
         if retention_seconds < 0:
             raise ValueError("Snipe retention cannot be negative.")
-        now = time.time()
-        removed = 0
-        for channel_id, bucket in list(self.sniped_messages.items()):
-            fresh = []
-            for item in bucket:
-                timestamp = self._snipe_timestamp(item)
-                if timestamp is not None and 0 <= now - timestamp <= retention_seconds:
-                    fresh.append(item)
+        with _STATE_LOCK:
+            now = time.time()
+            removed = 0
+            for channel_id, bucket in list(self.sniped_messages.items()):
+                fresh = []
+                for item in bucket:
+                    timestamp = self._snipe_timestamp(item)
+                    if timestamp is not None and 0 <= now - timestamp <= retention_seconds:
+                        fresh.append(item)
+                    else:
+                        removed += 1
+                if fresh:
+                    self.sniped_messages[channel_id] = fresh
                 else:
-                    removed += 1
-            if fresh:
-                self.sniped_messages[channel_id] = fresh
-            else:
-                self.sniped_messages.pop(channel_id, None)
-        return removed
+                    self.sniped_messages.pop(channel_id, None)
+            return removed
 
 
 state = BotState()
