@@ -69,7 +69,7 @@ def atomic_write(path: Path, data: object, *, mode: int | None = None) -> None:
                 logger.warning("Could not set permissions on JSON file %s", path)
         _fsync_directory(path.parent)
     except (OSError, TypeError, ValueError) as exc:
-        logger.error("Unable to safely save JSON file %s: %s", path, exc)
+        logger.exception("Unable to safely save JSON file %s", path)
         raise JsonStoreError(f"Unable to save JSON file: {path}") from exc
     finally:
         if temp_path is not None:
