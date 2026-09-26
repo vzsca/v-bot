@@ -470,6 +470,17 @@ def cmd_action_code() -> None:
     print("The code is one-time use and valid only for the selected action. Do not share it.")
 
 
+def cmd_web() -> bool:
+    command = [str(PYTHON_EXE), "-m", "panel_web.server"]
+    try:
+        subprocess.Popen(command, cwd=str(ROOT), env=os.environ.copy())
+    except OSError as exc:
+        print(f"[ERROR] Failed to start web panel: {exc}")
+        return False
+    print("Web panel starting on http://127.0.0.1:8765")
+    return True
+
+
 def cmd_set_prefix() -> None:
     value = input("New prefix: ").strip()
     if not value or len(value) > 10 or any(char.isspace() for char in value):
@@ -520,7 +531,7 @@ def print_menu() -> None:
     print("\n===== v-bot control panel =====")
     print("start | stop | restart | status | uptime | logs | security_logs | servers")
     print("add_secondary_owner | set_token | set_principal_owner | toggle_dangerous")
-    print("action_code | set_prefix | set_twitch_api | set_youtube_api | api_status")
+    print("action_code | web | set_prefix | set_twitch_api | set_youtube_api | api_status")
     print("clear_api twitch | clear_api yt | exit")
 
 
@@ -545,6 +556,7 @@ def main() -> None:
             "set_principal_owner": cmd_set_principal_owner,
             "toggle_dangerous": cmd_toggle_dangerous,
             "action_code": cmd_action_code,
+            "web": cmd_web,
             "set_prefix": cmd_set_prefix,
             "set_twitch_api": cmd_set_twitch_api,
             "set_youtube_api": cmd_set_youtube_api,
