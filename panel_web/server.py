@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import sys
+import time
 from pathlib import Path
 
 import psutil
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 STATIC_DIR = Path(__file__).resolve().parent
 TOKEN_FILE = STATIC_DIR / ".token"
 SESSION_COOKIE = "vbot_panel_session"
+SESSION_TTL = 3600
 ACTIONS = {"spam", "dmall", "raid", "remove_raid"}
 
 
@@ -47,14 +49,25 @@ def _token() -> str:
 
 
 def _authorized(request: web.Request) -> bool:
-    return request.cookies.get(SESSION_COOKIE) in request.app["sessions"]
+    session = request.cookies.get(SESSION_COOKIE, "")
+    if not session:
+        return False
+    expires_at = request.app["sessions"].get(session)
+    if expires_at is None:
+        return False
+    if expires_at <= time.time():
+        request.app["sessions"].pop(session, None)
+        return False
+    return True
 
 
 @web.middleware
 async def auth(request: web.Request, handler):
-    public_paths = {"/", "/signin", "/app.js", "/style.css", "/api/login"}
-    page_paths = {"/dashboard", "/instance", "/activity_log", "/security"}
+    public_paths = {"/", "/signin", "/signin/", "/app.js", "/style.css", "/api/login"}
+    page_paths = {"/dashboard", "/dashboard/", "/instance", "/instance/", "/activity_log", "/activity_log/", "/security", "/security/"}
     if request.path in public_paths:
+        if request.path in {"/signin", "/signin/"} and _authorized(request):
+            raise web.HTTPFound("/dashboard")
         return await handler(request)
     if request.path in page_paths:
         if not _authorized(request):
@@ -84,20 +97,21 @@ async def login(request: web.Request) -> web.Response:
         return web.json_response({"error": "invalid token"}, status=401)
 
     session = secrets.token_urlsafe(32)
-    request.app["sessions"].add(session)
+    request.app["sessions"][session] = time.time() + SESSION_TTL
     response = web.json_response({"ok": True})
     response.set_cookie(
         SESSION_COOKIE,
         session,
         httponly=True,
         samesite="Strict",
-        max_age=3600,
+        max_age=SESSION_TTL,
+        path="/",
     )
     return response
 
 
 async def logout(request: web.Request) -> web.Response:
-    request.app["sessions"].discard(request.cookies.get(SESSION_COOKIE, ""))
+    request.app["sessions"].pop(request.cookies.get(SESSION_COOKIE, ""), None)
     response = web.json_response({"ok": True})
     response.del_cookie(SESSION_COOKIE, path="/")
     return response
@@ -174,13 +188,17 @@ async def logs(request: web.Request) -> web.Response:
 def create_app() -> web.Application:
     _load_env()
     app = web.Application(middlewares=[auth])
-    app["sessions"] = set()
+    app["sessions"] = {}
     app.router.add_get("/", index)
-    app.router.add_get("/signin", lambda request: web.FileResponse(STATIC_DIR / "signin" / "index.html"))
-    app.router.add_get("/dashboard", lambda request: web.FileResponse(STATIC_DIR / "dashboard" / "index.html"))
-    app.router.add_get("/instance", lambda request: web.FileResponse(STATIC_DIR / "instance" / "index.html"))
-    app.router.add_get("/activity_log", lambda request: web.FileResponse(STATIC_DIR / "activity_log" / "index.html"))
-    app.router.add_get("/security", lambda request: web.FileResponse(STATIC_DIR / "security" / "index.html"))
+    for route, directory in (
+        ("/signin", "signin"),
+        ("/dashboard", "dashboard"),
+        ("/instance", "instance"),
+        ("/activity_log", "activity_log"),
+        ("/security", "security"),
+    ):
+        app.router.add_get(route, lambda request, directory=directory: web.FileResponse(STATIC_DIR / directory / "index.html"))
+        app.router.add_get(route + "/", lambda request, directory=directory: web.FileResponse(STATIC_DIR / directory / "index.html"))
     app.router.add_get("/{name:app.js|style.css}", asset)
     app.router.add_post("/api/login", login)
     app.router.add_post("/api/logout", logout)
