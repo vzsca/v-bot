@@ -174,7 +174,7 @@ CI runs:
 - Gitleaks for secret scanning
 - **GitHub CodeQL** with the `security-extended` query suite for Python security analysis
 
-CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow. GitHub documents CodeQL as a code-scanning engine for identifying vulnerabilities and errors. citeturn0search1turn0search5
+CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow.
 
 ## 🧩 Architecture
 
