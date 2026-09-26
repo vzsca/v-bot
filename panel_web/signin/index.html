@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0d1117"><title>v-bot — Sign in</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app-shell">
+<aside class="sidebar">
+<div class="brand"><span class="brand-mark">v</span><div><strong>v-bot</strong><small>Management Panel</small></div></div>
+<div class="sidebar-section"><span class="sidebar-label">GENERAL</span><nav>
+<a class="nav-item " href="/dashboard"><span class="nav-icon">▦</span>Dashboard</a>
+<a class="nav-item " href="/instance"><span class="nav-icon">◉</span>Instance</a>
+<a class="nav-item " href="/activity_log"><span class="nav-icon">≡</span>Activity logs</a>
+</nav></div>
+<div class="sidebar-section"><span class="sidebar-label">MANAGEMENT</span><nav>
+<a class="nav-item " href="/security"><span class="nav-icon">⌁</span>Security</a>
+</nav></div>
+<div class="sidebar-footer"><div class="connection" id="connection"><i></i><span>Offline</span></div><button id="logoutBtn" class="logout" type="button">Sign out</button></div>
+</aside>
+<main class="main"><header class="topbar"><div class="breadcrumbs"><span>v-bot</span><b>/</b><strong>Sign in</strong></div><div class="topbar-actions"><span id="mode" class="mode-badge">Local panel</span><span class="user-badge">Administrator</span></div></header>
+<section id="login" class="auth-view"><div class="auth-card"><div class="brand auth-brand"><span class="brand-mark">v</span><div><strong>v-bot</strong><small>Management Panel</small></div></div><span class="eyebrow">AUTHENTICATION</span><h1>Sign in to your panel</h1><p class="auth-description">Use your panel access token to manage the v-bot instance.</p><form id="loginForm" autocomplete="on"><label for="token">Access token</label><div class="input-wrap"><input id="token" name="password" type="password" autocomplete="current-password" placeholder="Enter access token"><button id="viewTokenBtn" class="view-token" type="button">View</button></div><button id="loginBtn" class="primary full" type="submit">Sign in</button><p id="loginError" class="message" role="alert"></p><p id="loginHint" class="hint"></p></form></div></section>
+</main></div><div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+<script src="/app.js"></script></body></html>
