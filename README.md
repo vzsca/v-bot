@@ -2,7 +2,7 @@
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
 
-The project includes a cross-platform local control panel and targets Windows, Linux, and macOS.
+The project targets Windows, Linux, and macOS.
 
 ## ✨ Features
 
@@ -20,7 +20,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 - 🧩 Modular Cogs and application modules
 - 📚 Permission-aware help system
 - 💬 Permission-aware bot mention responses
-- 🖥️ Cross-platform local control panel
+- 🌐 Local web control panel
 
 ## 🚀 Installation
 
@@ -30,7 +30,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 - Python **3.13**
 - A Discord application/bot with the required intents enabled
 
-```bash
+```text
 git clone https://github.com/vzsca/v-bot.git
 cd v-bot
 ```
@@ -50,53 +50,48 @@ YOUTUBE_API_KEY=YOUR_API_KEY
 
 Never publish `.env`, the Discord token, or API credentials.
 
-### Launch
+## ▶️ Launch
 
-Windows:
+The project no longer uses the legacy terminal control panel.
 
+Use the launcher directly:
+
+**Windows**
 ```text
 start_bot.bat
 ```
 
-Linux/macOS:
-
+**Linux/macOS**
 ```bash
 ./start_bot.sh
 ```
 
-The launcher prepares the Python environment and starts the local control panel.
+The launcher:
+1. Creates the virtual environment if needed.
+2. Installs dependencies on first setup.
+3. Starts the local web panel.
+4. Starts the Discord bot.
 
-## 🖥️ Local control panel
+The web panel is available by default at `http://127.0.0.1:8765`.
 
-The interactive panel provides:
+## 🌐 Web panel
 
-```text
-start
-stop
-restart
-status
-uptime
-logs
-security_logs
-servers
-add_secondary_owner
-set_token
-set_principal_owner
-toggle_dangerous
-action_code
-set_prefix
-set_twitch_api
-set_youtube_api
-api_status
-clear_api twitch
-clear_api yt
-```
+The `dev-panel` branch contains the web control panel.
 
-`status` reports the version, platform, owner configuration, bot state, PID, uptime, CPU/RAM usage, and current Git commit.
+Current scope:
+- localhost-only aiohttp server
+- token authentication with an HttpOnly session cookie
+- bot status
+- recent bot logs
+- action-specific one-time security-code generation
 
-### Security codes
+On first launch, a random token is stored in `panel_web/.token` and printed by the web-panel process. You can instead set `PANEL_WEB_TOKEN` in `.env`.
 
-`action_code` generates a temporary **6-digit, one-time code** for one selected sensitive Discord action:
+The panel remains loopback-only. Do not expose it through port forwarding or a reverse proxy while this implementation is being expanded.
+
+## 🔐 Security codes
+
+The web panel can generate a temporary **6-digit, one-time code** for one selected sensitive Discord action:
 
 ```text
 spam
@@ -105,11 +100,11 @@ raid
 remove_raid
 ```
 
-The panel asks which action the code is intended for. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
+A code generated for one action cannot authorize another action. Multiple codes may be active at the same time.
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
 
-## 🌐 Web panel (dev-panel)\n\nThe `dev-panel` branch includes the first local web-panel implementation. Start it from the root with `python -m panel_web.server`, or use the local control-panel `web` command. It listens on `127.0.0.1:8765`, requires a local token, and currently provides bot status, recent logs, and action-specific security-code generation.\n\nThe web panel is intentionally localhost-only while the implementation is being expanded.\n\n## 👑 Owners and permissions
+## 👑 Owners and permissions
 
 There is a maximum of **1 primary owner** and **5 secondary owners**:
 
@@ -161,8 +156,6 @@ DANGEROUS_COMMANDS_ENABLED=false
 
 Sensitive commands also use explicit confirmations where appropriate, command-specific limits, permission checks, and an action-specific one-time security code.
 
-Raid-test channels and roles are persisted as they are created. If persistence fails, the operation aborts and attempts to roll back the newly created resource. Cleanup removes a persistent resource reference only after the corresponding Discord resource has been deleted or is already absent.
-
 ## 💾 Persistence and data safety
 
 Security-critical JSON state is handled through `app/safe_json.py` and `app/state.py`.
@@ -193,36 +186,17 @@ CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting
 ```text
 v-bot/
 ├── app/
-│   ├── announcement_store.py
-│   ├── api_access.py
-│   ├── api_credentials.py
-│   ├── audit.py
-│   ├── checks.py
-│   ├── config.py
-│   ├── deps.py
-│   ├── exceptions.py
-│   ├── extensions.py
-│   ├── integration_config.py
-│   ├── metrics.py
-│   ├── rate_limit.py
-│   ├── safe_json.py
-│   ├── security.py
-│   ├── security_log.py
-│   ├── state.py
-│   ├── updater.py
-│   ├── validators.py
-│   └── version.py
 ├── cogs/
 ├── tests/
 ├── main.py
-├── panel.py
 ├── bootstrap.py
+├── panel_web/
 ├── start_bot.bat
 ├── start_bot.sh
 └── requirements.txt
 ```
 
-`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles action-specific one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing. Persistent runtime security state is handled by `app/state.py`.
+`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles action-specific one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing.
 
 ## 🏷️ Versioning
 
