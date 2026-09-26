@@ -1,50 +1,45 @@
-# v-bot Web Panel
+# v-bot web panel
 
-The dev-panel branch now contains the first local web-panel implementation.
-
-## Current scope
-
-- localhost-only aiohttp server
-- token authentication with an HttpOnly session cookie
-- bot status endpoint
-- recent bot-log viewer
-- action-specific one-time security-code generation
-- small responsive dashboard
+The local web panel is a localhost-only administrative surface for v-bot.
 
 ## Start
 
-Use `start_bot.bat` on Windows or `./start_bot.sh` on Linux/macOS. The launcher starts both the Discord bot and the web panel. The default address is `http://127.0.0.1:8765/panel_web/signin`.
+Use the normal launcher:
 
-On first launch, a random token is stored in `panel_web/.token` and printed to the terminal. You can instead set `PANEL_WEB_TOKEN` in `.env`.
+- Windows: `start_bot.bat`
+- Linux/macOS: `./start_bot.sh`
 
-The server refuses non-loopback bind addresses for this initial implementation. Do not expose it through port forwarding or a reverse proxy yet.
+The launcher starts the web panel and the Discord bot in the same Python process so the web panel can directly manage the live bot instance.
 
-## Next implementation areas
+Default URL:
 
-The panel will progressively cover bot lifecycle, server overview, logs, configuration, API access, announcements, owner controls, and other administrative operations while keeping the existing security and confirmation model.
+`http://127.0.0.1:8765/panel_web/signin`
 
-
-## GitHub Pages demo
-
-A public simulated version of the panel is available here:
-
-**Demo panel:** https://vzsca.github.io/v-bot/panel_web/
-
-**Demo token:**
-```text
-vbot-demo-token
-```
-
-When opened from `vzsca.github.io`, the frontend automatically enters demo mode. Status, logs, and security-code generation are simulated entirely in the browser; no request is sent to the real bot and no Discord action is executed. The demo token is fake and has no access to the real bot. The real local panel keeps using its actual token and API.
-
-
-## Page routes
-
-The panel uses a dedicated `/panel_web` namespace:
+## Routes
 
 - `/panel_web/signin`
 - `/panel_web/dashboard`
 - `/panel_web/instance`
 - `/panel_web/activity`
 - `/panel_web/logs`
+- `/panel_web/manege` — server management equivalent to `v!servers`
 - `/panel_web/security`
+- `/panel_web/settings`
+
+## Included administration features
+
+- Bot start / stop / restart
+- Runtime status, uptime, PID, CPU and RAM
+- Bot and security logs
+- Sensitive-action code generation
+- Principal and secondary owner configuration
+- Discord token replacement
+- Prefix configuration
+- Sensitive-command enable/disable
+- Twitch and YouTube API credentials
+- Server list and server details
+- Per-server API access toggle
+- Per-server invite generation
+- Remove the bot from a server
+
+The panel does not expose secret values through GET APIs. It is intentionally restricted to localhost and requires a session after token authentication.
