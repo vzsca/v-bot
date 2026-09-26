@@ -1,13 +1,14 @@
 @echo off
-mode con: cols=80  lines=25
+mode con: cols=100 lines=30
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "PYTHONUTF8=1"
 
-echo ============================
-echo   Starting v-bot
-echo ============================
+echo ============================================
+echo              v-bot Launcher
+echo ============================================
+echo.
 
 where uv >nul 2>&1
 if errorlevel 1 (
@@ -17,13 +18,6 @@ if errorlevel 1 (
     echo uv detected: using it for faster startup.
 )
 
-REM --- Virtual environment creation, with automatic fallback if a Python
-REM     installation detected by the launcher turns out to be broken
-REM     (an outdated registry entry from the "py" launcher pointing to an
-REM     .exe that no longer exists on disk - a simple "py -3.13 -c exit(0)"
-REM     may succeed while actual usage fails afterward). We therefore check
-REM     the result on disk after each attempt instead of relying on a single
-REM     preliminary test. ---
 set "VENV_OK=0"
 
 if exist venv\Scripts\python.exe set "VENV_OK=1"
@@ -51,13 +45,8 @@ if "!VENV_OK!"=="0" (
 
 if "!VENV_OK!"=="0" (
     echo.
-    echo [ERROR] Unable to create the virtual environment: no usable Python installation was found.
+    echo [ERROR] Unable to create the virtual environment.
     echo v-bot requires Python 3.10 or newer ^(3.13 recommended^).
-    echo.
-    echo Possible checks:
-    echo   1. Run "py -0p" in a command prompt to see the known Python versions and their paths.
-    echo   2. If Python 3.13 appears with a path that no longer exists, reinstall it ^(or Repair^) :
-    echo      https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
@@ -67,7 +56,7 @@ call venv\Scripts\activate.bat
 
 if not exist venv\.installed (
     if not exist bootstrap.py (
-        echo [ERROR] bootstrap.py not found. The file may have been moved or deleted.
+        echo [ERROR] bootstrap.py not found.
         pause
         exit /b 1
     )
@@ -83,14 +72,29 @@ if not exist venv\.installed (
     echo ok > venv\.installed
 )
 
-if not exist panel.py (
-    echo [ERROR] panel.py not found. The file may have been moved or deleted.
+if not exist main.py (
+    echo [ERROR] main.py not found.
     pause
     exit /b 1
 )
 
-REM All panel logic (start/stop/restart/uptime/.env/...) is handled by
-REM panel.py: this .bat only prepares the environment and launches it.
-venv\Scripts\python.exe panel.py
+if not exist panel_web\server.py (
+    echo [ERROR] Web panel server not found.
+    pause
+    exit /b 1
+)
 
+echo.
+echo [INFO] Starting web panel...
+start "v-bot Web Panel" cmd /k "cd /d ""%~dp0"" && venv\Scripts\python.exe -m panel_web.server"
+
+timeout /t 1 /nobreak >nul
+
+echo [INFO] Starting v-bot...
+echo.
+
+venv\Scripts\python.exe main.py
+
+echo.
+echo v-bot has stopped.
 pause
