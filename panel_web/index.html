@@ -17,16 +17,16 @@
   </header>
 
   <section id="login" class="login-layout">
-    <div class="login-card card">
+    <div class="login-card card"><form id="loginForm" autocomplete="on">
       <div class="eyebrow">SECURE ACCESS</div><h2>Welcome back.</h2>
       <p class="muted">Enter your panel token to connect to the v-bot control panel.</p>
       <label for="token">Panel token</label>
       <div class="input-wrap">
-        <span>●</span><input id="token" type="password" autocomplete="off" placeholder="Enter your token">
+        <span>●</span><input id="token" name="password" type="password" autocomplete="current-password" placeholder="Enter your token">
         <button id="viewTokenBtn" class="view-token" type="button" aria-label="Show token" title="Show token">View</button>
       </div>
       <button id="loginBtn" class="primary full">Sign in <span>→</span></button>
-      <p id="loginError" class="message error" role="alert"></p><p id="loginHint" class="login-hint"></p>
+      <p id="loginError" class="message error" role="alert"></p><p id="loginHint" class="login-hint"></p></form>
     </div>
     <div class="login-info"><div class="brand-mark large">v</div><h2>Manage your bot.<br><span>From one place.</span></h2><p>Monitor the bot, inspect logs and generate short-lived security codes.</p><div class="feature-list"><div>✓ Local authentication</div><div>✓ Real-time status</div><div>✓ Security action codes</div></div></div>
   </section>
