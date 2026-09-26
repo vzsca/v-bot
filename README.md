@@ -109,7 +109,7 @@ The panel asks which action the code is intended for. A code generated for one a
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
 
-## 👑 Owners and permissions
+## 🌐 Web panel (dev-panel)\n\nThe `dev-panel` branch includes the first local web-panel implementation. Start it from the root with `python -m panel_web.server`, or use the local control-panel `web` command. It listens on `127.0.0.1:8765`, requires a local token, and currently provides bot status, recent logs, and action-specific security-code generation.\n\nThe web panel is intentionally localhost-only while the implementation is being expanded.\n\n## 👑 Owners and permissions
 
 There is a maximum of **1 primary owner** and **5 secondary owners**:
 
