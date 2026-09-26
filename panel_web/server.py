@@ -52,15 +52,22 @@ def _authorized(request: web.Request) -> bool:
 
 @web.middleware
 async def auth(request: web.Request, handler):
-    if request.path in {"/", "/app.js", "/style.css", "/api/login"}:
+    public_paths = {"/", "/signin", "/app.js", "/style.css", "/api/login"}
+    page_paths = {"/dashboard", "/instance", "/activity_log", "/security"}
+    if request.path in public_paths:
+        return await handler(request)
+    if request.path in page_paths:
+        if not _authorized(request):
+            raise web.HTTPFound("/signin")
         return await handler(request)
     if not _authorized(request):
         return web.json_response({"error": "authentication required"}, status=401)
     return await handler(request)
 
 
-async def index(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(STATIC_DIR / "index.html")
+async def index(request: web.Request) -> web.Response:
+    del request
+    raise web.HTTPFound("/signin")
 
 
 async def asset(request: web.Request) -> web.FileResponse:
@@ -169,6 +176,11 @@ def create_app() -> web.Application:
     app = web.Application(middlewares=[auth])
     app["sessions"] = set()
     app.router.add_get("/", index)
+    app.router.add_get("/signin", lambda request: web.FileResponse(STATIC_DIR / "signin" / "index.html"))
+    app.router.add_get("/dashboard", lambda request: web.FileResponse(STATIC_DIR / "dashboard" / "index.html"))
+    app.router.add_get("/instance", lambda request: web.FileResponse(STATIC_DIR / "instance" / "index.html"))
+    app.router.add_get("/activity_log", lambda request: web.FileResponse(STATIC_DIR / "activity_log" / "index.html"))
+    app.router.add_get("/security", lambda request: web.FileResponse(STATIC_DIR / "security" / "index.html"))
     app.router.add_get("/{name:app.js|style.css}", asset)
     app.router.add_post("/api/login", login)
     app.router.add_post("/api/logout", logout)
