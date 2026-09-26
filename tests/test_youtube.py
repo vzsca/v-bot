@@ -92,7 +92,7 @@ def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch)
         lambda mutator: (True, mutator({"announcements": announcements})),
     )
 
-    asyncio.run(cog.youtube_task.callback(cog))
+    asyncio.run(cog._poll_youtube_announcements())
 
     cog._get_latest_video.assert_awaited_once_with(
         session,
