@@ -40,7 +40,6 @@ def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch)
     cog._channel_cache = {}
     cog._latest_cache = {}
     cog._backoff_until = {}
-    cog._session = None
 
     announcements = [
         {
@@ -65,6 +64,7 @@ def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch)
         },
     ]
 
+    session = SimpleNamespace()
     monkeypatch.setattr(
         "cogs.youtube.store.load",
         lambda: {"announcements": announcements},
@@ -73,7 +73,7 @@ def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch)
         "cogs.youtube.integration_config.get_youtube_api_key",
         lambda guild_id: "API_KEY",
     )
-    monkeypatch.setattr(cog, "_get_session", AsyncMock(return_value=SimpleNamespace()))
+    monkeypatch.setattr(cog, "_get_session", AsyncMock(return_value=session))
     monkeypatch.setattr(
         cog,
         "_get_latest_video",
@@ -95,7 +95,7 @@ def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch)
     asyncio.run(cog.youtube_task.callback(cog))
 
     cog._get_latest_video.assert_awaited_once_with(
-        cog._session.return_value,
+        session,
         "API_KEY",
         "UC123",
     )
