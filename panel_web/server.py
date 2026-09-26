@@ -266,7 +266,7 @@ async def config_get(request: web.Request) -> web.Response:
             "prefix": _env_value("BOT_PREFIX"),
             "twitch_configured": bool(_env_value("TWITCH_CLIENT_ID") and _env_value("TWITCH_CLIENT_SECRET")),
             "youtube_configured": bool(_env_value("YOUTUBE_API_KEY")),
-            "api_status": api_access.status(),
+            "api_allowed_guilds": len(api_access.get_allowed_guilds()),
             "token_configured": bool(_env_value("DISCORD_TOKEN")),
         }
     )
