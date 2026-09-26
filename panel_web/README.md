@@ -13,7 +13,7 @@ The dev-panel branch now contains the first local web-panel implementation.
 
 ## Start
 
-Use `start_bot.bat` on Windows or `./start_bot.sh` on Linux/macOS. The launcher starts both the Discord bot and the web panel. The default address is `http://127.0.0.1:8765`.
+Use `start_bot.bat` on Windows or `./start_bot.sh` on Linux/macOS. The launcher starts both the Discord bot and the web panel. The default address is `http://127.0.0.1:8765/panel_web/signin`.
 
 On first launch, a random token is stored in `panel_web/.token` and printed to the terminal. You can instead set `PANEL_WEB_TOKEN` in `.env`.
 
@@ -36,3 +36,15 @@ vbot-demo-token
 ```
 
 When opened from `vzsca.github.io`, the frontend automatically enters demo mode. Status, logs, and security-code generation are simulated entirely in the browser; no request is sent to the real bot and no Discord action is executed. The demo token is fake and has no access to the real bot. The real local panel keeps using its actual token and API.
+
+
+## Page routes
+
+The panel uses a dedicated `/panel_web` namespace:
+
+- `/panel_web/signin`
+- `/panel_web/dashboard`
+- `/panel_web/instance`
+- `/panel_web/activity`
+- `/panel_web/logs`
+- `/panel_web/security`
