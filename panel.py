@@ -19,6 +19,9 @@ import security_log
 from security import issue_action_code
 from version import VERSION
 
+import announcement_store as announcement_store
+import api_access
+
 ENV_PATH = ROOT / ".env"
 BOT_PID_FILE = ROOT / "bot.pid"
 BOT_START_FILE = ROOT / "bot.start"
@@ -271,6 +274,26 @@ def cmd_restart() -> bool:
     return cmd_start()
 
 
+def _principal_youtube_channel_count() -> int:
+    """Return unique YouTube channels using the principal API across all guilds."""
+    allowed_guilds = api_access.get_allowed_guilds()
+    data = announcement_store.load()
+    identifiers = set()
+    for announcement in data["announcements"]:
+        if announcement.get("type") != "youtube":
+            continue
+        if announcement.get("guild_id") not in allowed_guilds:
+            continue
+        channel_id = announcement.get("youtube_channel_id")
+        if channel_id:
+            identifiers.add(("id", str(channel_id)))
+            continue
+        source_url = str(announcement.get("source_url", "")).strip().rstrip("/").casefold()
+        if source_url:
+            identifiers.add(("url", source_url))
+    return len(identifiers)
+
+
 def cmd_status() -> None:
     principal, secondary = _owner_status()
     print("\n===== v-bot status =====")
@@ -280,6 +303,7 @@ def cmd_status() -> None:
     print("Principal owner:", principal)
     print("Secondary owners:", ", ".join(secondary) if secondary else "none")
     print("Secondary owner count:", f"{len(secondary)}/5")
+    print("YouTube channels on principal API:", _principal_youtube_channel_count())
     print("Dangerous commands:", "enabled" if get_env_value("DANGEROUS_COMMANDS_ENABLED").lower() in {"1", "true", "yes", "on"} else "disabled")
     print(".env:", "present" if ENV_PATH.exists() else "missing")
     commit = None
