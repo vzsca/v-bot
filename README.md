@@ -16,7 +16,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 - 🛡️ Anti-spam and anti-raid detection
 - 📋 Standard and security logs with audit events
 - 🔐 Sensitive commands disabled by default
-- 🔑 One-time 6-digit security codes for sensitive actions
+- 🔑 One-time 6-digit security codes bound to a specific sensitive action
 - 🧩 Modular Cogs and application modules
 - 📚 Permission-aware help system
 - 💬 Permission-aware bot mention responses
@@ -87,15 +87,27 @@ action_code
 set_prefix
 set_twitch_api
 set_youtube_api
+api_status
+clear_api twitch
+clear_api yt
 ```
 
 `status` reports the version, platform, owner configuration, bot state, PID, uptime, CPU/RAM usage, and current Git commit.
 
 ### Security codes
 
-`action_code` generates a temporary **6-digit, one-time code** for sensitive Discord actions.
+`action_code` generates a temporary **6-digit, one-time code** for one selected sensitive Discord action:
 
-Codes are stored only as SHA-256 hashes, expire automatically, and are consumed atomically. Multiple codes may be active at the same time, so generating a new code no longer invalidates an earlier active code. The code is never written to the security log.
+```text
+spam
+dmall
+raid
+remove_raid
+```
+
+The panel asks which action the code is intended for. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
+
+Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
 
 ## 👑 Owners and permissions
 
@@ -147,7 +159,7 @@ Enable them only when required:
 DANGEROUS_COMMANDS_ENABLED=false
 ```
 
-Sensitive commands also use explicit confirmations, command-specific limits, permission checks, and a one-time security code.
+Sensitive commands also use explicit confirmations where appropriate, command-specific limits, permission checks, and an action-specific one-time security code.
 
 Raid-test channels and roles are persisted as they are created. If persistence fails, the operation aborts and attempts to roll back the newly created resource. Cleanup removes a persistent resource reference only after the corresponding Discord resource has been deleted or is already absent.
 
@@ -210,7 +222,7 @@ v-bot/
 └── requirements.txt
 ```
 
-`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing. Persistent runtime security state is handled by `app/state.py`.
+`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles action-specific one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing. Persistent runtime security state is handled by `app/state.py`.
 
 ## 🏷️ Versioning
 
