@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 
 logger = logging.getLogger("v-bot")
@@ -25,30 +27,53 @@ def load_object(path: Path, default: object) -> object:
         raise JsonStoreError(f"Unable to load JSON file: {path}") from exc
 
 
-def atomic_write(path: Path, data: object, *, mode: int | None = None) -> None:
-    """Write JSON atomically and preserve existing data on failure."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_name(f".{path.name}.tmp")
+def _fsync_directory(directory: Path) -> None:
+    """Persist a completed rename on POSIX filesystems."""
+    if os.name != "posix":
+        return
     try:
-        with temp.open("w", encoding="utf-8", newline="\n") as file:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        logger.warning("Could not fsync JSON store directory %s", directory)
+    finally:
+        os.close(fd)
+
+
+def atomic_write(path: Path, data: object, *, mode: int | None = None) -> None:
+    """Write JSON atomically, durably, and without sharing a fixed temp filename."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    try:
+        fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+        temp_path = Path(temp_name)
+        if mode is not None:
+            try:
+                os.fchmod(fd, mode)
+            except OSError:
+                logger.warning("Could not set permissions on temporary JSON file %s", temp_path)
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as file:
             json.dump(data, file, ensure_ascii=False, indent=2)
             file.write("\n")
             file.flush()
-        if mode is not None:
-            try:
-                temp.chmod(mode)
-            except OSError:
-                logger.warning("Could not set permissions on temporary JSON file %s", temp)
-        temp.replace(path)
+            os.fsync(file.fileno())
+        os.replace(temp_path, path)
+        temp_path = None
         if mode is not None:
             try:
                 path.chmod(mode)
             except OSError:
                 logger.warning("Could not set permissions on JSON file %s", path)
-    except OSError as exc:
-        logger.error("Unable to safely save JSON file %s: %s", path, exc)
-        try:
-            temp.unlink(missing_ok=True)
-        except OSError:
-            pass
+        _fsync_directory(path.parent)
+    except (OSError, TypeError, ValueError) as exc:
+        logger.error("Unable to safely save JSON file %s", path, exc_info=True)
         raise JsonStoreError(f"Unable to save JSON file: {path}") from exc
+    finally:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
