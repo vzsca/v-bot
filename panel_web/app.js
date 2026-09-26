@@ -7,15 +7,34 @@ const DEMO_LOGS = [
   "[DEMO] No real Discord action was executed"
 ];
 
+function toast(type, title, text) {
+  const el = document.createElement("div");
+  el.className = "toast " + type;
+  el.innerHTML = '<div class="icon">' + (type === "success" ? "✓" : "!") + '</div><div><strong></strong><span></span></div>';
+  el.querySelector("strong").textContent = title;
+  el.querySelector("span").textContent = text || "";
+  $("toastContainer").appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+function setMessage(id, type, text) {
+  const el = $(id);
+  el.className = "message " + type;
+  el.textContent = text;
+}
+
 async function api(path, options = {}) {
   if (DEMO) return demoApi(path, options);
   const r = await fetch(path, { credentials: "same-origin", ...options });
   if (r.status === 401) {
     $("dashboard").hidden = true;
     $("login").hidden = false;
+    $("connection").classList.remove("online");
+    $("connection").innerHTML = "<i></i> Offline";
     throw new Error("Authentication required");
   }
-  const d = await r.json();
+  let d = {};
+  try { d = await r.json(); } catch {}
   if (!r.ok) throw new Error(d.error || "Request failed");
   return d;
 }
@@ -28,80 +47,109 @@ function demoApi(path, options = {}) {
     return { ok: true };
   }
   if (path === "/api/logout") return { ok: true };
-  if (path === "/api/status") {
-    return {
-      version: "demo",
-      platform: "github-pages",
-      bot_running: true,
-      pid: 12345,
-      dangerous_commands_enabled: false,
-      action_code_ttl: 60,
-      demo: true
-    };
-  }
+  if (path === "/api/status") return {
+    version: "demo", platform: "github-pages", bot_running: true, pid: 12345,
+    dangerous_commands_enabled: false, action_code_ttl: 60, demo: true
+  };
   if (path === "/api/logs") return { lines: DEMO_LOGS };
   if (path === "/api/action-code") {
     let body = {};
     try { body = JSON.parse(options.body || "{}"); } catch {}
-    const action = body.action || "unknown";
-    return {
-      action,
-      code: "123456",
-      expires_at: Math.floor(Date.now() / 1000) + 60,
-      demo: true
-    };
+    return { action: body.action || "unknown", code: "123456", expires_at: Math.floor(Date.now()/1000)+60, demo: true };
   }
   throw new Error("Unknown demo endpoint");
 }
 
 async function refresh() {
-  const s = await api("/api/status");
-  $("status").textContent = JSON.stringify(s, null, 2);
-  const l = await api("/api/logs");
-  $("logs").textContent = l.lines.join("\n") || "No log entries.";
+  try {
+    const s = await api("/api/status");
+    $("status").textContent = JSON.stringify(s, null, 2);
+    $("botStatus").textContent = s.bot_running ? "Online" : "Offline";
+    $("botStatusDetail").textContent = s.bot_running ? "Process is running" : "Process stopped";
+    $("botVersion").textContent = s.version || "—";
+    $("codeTtl").textContent = s.action_code_ttl ?? "—";
+    $("processValue").textContent = s.pid ? "PID " + s.pid : "—";
+    $("platformValue").textContent = s.platform || "—";
+    $("protectedValue").textContent = s.dangerous_commands_enabled ? "Enabled" : "Disabled";
+    $("statusDot").classList.toggle("online", !!s.bot_running);
+    const l = await api("/api/logs");
+    $("logs").textContent = l.lines?.join("\n") || "No log entries.";
+    $("connection").classList.add("online");
+    $("connection").innerHTML = "<i></i> Connected";
+  } catch (e) {
+    $("connection").classList.remove("online");
+    $("connection").innerHTML = "<i></i> Offline";
+    throw e;
+  }
 }
 
 if (DEMO) {
   $("mode").textContent = "Web Panel • DEMO";
   $("demoBanner").hidden = false;
+  $("loginHint").textContent = "Demo token: vbot-demo-token";
+  $("token").value = DEMO_TOKEN;
 }
 
 $("loginBtn").onclick = async () => {
+  const btn = $("loginBtn");
+  btn.disabled = true;
+  btn.innerHTML = "Connecting…";
+  setMessage("loginError", "", "");
   try {
     await api("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: $("token").value })
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token:$("token").value})
     });
-    $("token").value = "";
     $("login").hidden = true;
     $("dashboard").hidden = false;
     await refresh();
-  } catch (e) {
-    $("loginError").textContent = e.message;
+    toast("success", "Connected", DEMO ? "Demo mode is ready. No real action will be executed." : "Successfully connected to the bot panel.");
+  } catch(e) {
+    setMessage("loginError", "error", e.message);
+    toast("error", "Connection failed", e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Sign in <span>→</span>';
   }
 };
 
 $("codeBtn").onclick = async () => {
+  const btn = $("codeBtn");
+  btn.disabled = true;
+  btn.innerHTML = "Generating…";
+  setMessage("codeMessage", "", "");
   try {
-    $("code").textContent = JSON.stringify(
-      await api("/api/action-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: $("action").value })
-      }),
-      null,
-      2
-    );
-  } catch (e) {
-    $("code").textContent = e.message;
+    const data = await api("/api/action-code", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:$("action").value})
+    });
+    $("code").textContent = data.code + "  •  " + data.action;
+    $("codeBox").querySelector(".result-placeholder").hidden = true;
+    setMessage("codeMessage", "success", "Code generated successfully. It expires in 60 seconds.");
+    toast("success", "Security code generated", DEMO ? "This is a simulated code." : "The code is ready to use.");
+  } catch(e) {
+    setMessage("codeMessage", "error", e.message);
+    toast("error", "Action failed", e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Generate code <span>→</span>';
   }
 };
 
 $("logoutBtn").onclick = async () => {
-  await api("/api/logout", { method: "POST" });
-  $("dashboard").hidden = true;
-  $("login").hidden = false;
+  try {
+    await api("/api/logout", {method:"POST"});
+    $("dashboard").hidden = true;
+    $("login").hidden = false;
+    $("connection").classList.remove("online");
+    $("connection").innerHTML = "<i></i> Offline";
+    if (DEMO) $("token").value = DEMO_TOKEN;
+    toast("success", "Signed out", "The panel session has been closed.");
+  } catch(e) {
+    toast("error", "Logout failed", e.message);
+  }
 };
 
-setInterval(() => refresh().catch(() => {}), 5000);
+setInterval(() => {
+  if (!$("dashboard").hidden) refresh().catch(() => {});
+}, 5000);
