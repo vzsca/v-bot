@@ -2,22 +2,18 @@
 
 # ============================================================
 # v-bot Launcher
-# Compatible with Linux and macOS
+# Linux / macOS
+# Starts the Discord bot and the local web panel.
 # ============================================================
 
 set -e
 
-# Move to the directory containing this script
 cd "$(dirname "$0")"
 
 echo "==================================="
 echo "          v-bot Launcher"
 echo "==================================="
 echo
-
-# ------------------------------------------------------------
-# Check Python
-# ------------------------------------------------------------
 
 if command -v python3 >/dev/null 2>&1; then
     PYTHON="python3"
@@ -31,17 +27,10 @@ fi
 
 echo "[OK] Python found: $($PYTHON --version)"
 
-# ------------------------------------------------------------
-# Check / create virtual environment
-# ------------------------------------------------------------
-
 if [ ! -d "venv" ]; then
     echo
-    echo "[INFO] Virtual environment not found."
     echo "[INFO] Creating virtual environment..."
-
     "$PYTHON" -m venv venv
-
     echo "[OK] Virtual environment created."
 fi
 
@@ -52,37 +41,43 @@ if [ ! -f "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-# ------------------------------------------------------------
-# Upgrade pip
-# ------------------------------------------------------------
-
 echo
-echo "[INFO] Checking pip..."
-
-"$VENV_PYTHON" -m pip install --upgrade pip
-
-# ------------------------------------------------------------
-# Install dependencies
-# ------------------------------------------------------------
-
-if [ -f "requirements.txt" ]; then
-    echo
-    echo "[INFO] Installing dependencies..."
-
-    "$VENV_PYTHON" -m pip install -r requirements.txt
-
-    echo "[OK] Dependencies installed."
+echo "[INFO] Checking dependencies..."
+if [ ! -f "venv/.installed" ]; then
+    if [ ! -f "bootstrap.py" ]; then
+        echo "[ERROR] bootstrap.py was not found."
+        exit 1
+    fi
+    "$VENV_PYTHON" bootstrap.py
+    touch venv/.installed
 else
-    echo
-    echo "[WARNING] requirements.txt was not found."
+    echo "[OK] Dependencies already installed."
 fi
 
-# ------------------------------------------------------------
-# Launch panel
-# ------------------------------------------------------------
+if [ ! -f "main.py" ]; then
+    echo "[ERROR] main.py was not found."
+    exit 1
+fi
+
+if [ ! -f "panel_web/server.py" ]; then
+    echo "[ERROR] Web panel server was not found."
+    exit 1
+fi
 
 echo
-echo "[INFO] Starting v-bot control panel..."
-echo
+echo "[INFO] Starting web panel..."
+"$VENV_PYTHON" -m panel_web.server &
+WEB_PANEL_PID=$!
 
-exec "$VENV_PYTHON" panel.py
+cleanup() {
+    echo
+    echo "[INFO] Stopping web panel..."
+    kill "$WEB_PANEL_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+sleep 1
+
+echo "[INFO] Starting v-bot..."
+echo
+exec "$VENV_PYTHON" main.py
