@@ -26,4 +26,13 @@ The panel will progressively cover bot lifecycle, server overview, logs, configu
 
 ## GitHub Pages demo
 
-When opened from `vzsca.github.io`, the frontend automatically enters demo mode. Use the fake token `vbot-demo-token`. Status, logs, and security-code generation are simulated entirely in the browser; no request is sent to the real bot and no Discord action is executed. The real local panel keeps using its actual token and API.
+A public simulated version of the panel is available here:
+
+**Demo panel:** https://vzsca.github.io/v-bot/panel_web/
+
+**Demo token:**
+```text
+vbot-demo-token
+```
+
+When opened from `vzsca.github.io`, the frontend automatically enters demo mode. Status, logs, and security-code generation are simulated entirely in the browser; no request is sent to the real bot and no Discord action is executed. The demo token is fake and has no access to the real bot. The real local panel keeps using its actual token and API.
