@@ -66,7 +66,7 @@ async def auth(request: web.Request, handler):
     public_paths = {"/", "/panel_web", "/panel_web/", "/panel_web/signin", "/panel_web/signin/", "/panel_web/app.js", "/panel_web/style.css", "/api/login"}
     page_paths = {"/panel_web/dashboard", "/panel_web/dashboard/", "/panel_web/instance", "/panel_web/instance/", "/panel_web/activity", "/panel_web/activity/", "/panel_web/logs", "/panel_web/logs/", "/panel_web/security", "/panel_web/security/"}
     if request.path in public_paths:
-        if request.path in {"/signin", "/signin/"} and _authorized(request):
+        if request.path in {"/panel_web/signin", "/panel_web/signin/"} and _authorized(request):
             raise web.HTTPFound("/panel_web/dashboard")
         return await handler(request)
     if request.path in page_paths:
