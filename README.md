@@ -89,6 +89,19 @@ On first launch, a random token is stored in `panel_web/.token` and printed by t
 
 The panel remains loopback-only. Do not expose it through port forwarding or a reverse proxy while this implementation is being expanded.
 
+### GitHub Pages demo
+
+A public simulated version of the panel is available here:
+
+**Demo panel:** https://vzsca.github.io/v-bot/panel_web/
+
+**Demo token:**
+```text
+vbot-demo-token
+```
+
+The GitHub Pages version runs entirely in demo mode. Status, logs, and security-code generation are simulated in the browser. No request is sent to the real bot and no Discord action is executed.
+
 ## 🔐 Security codes
 
 The web panel can generate a temporary **6-digit, one-time code** for one selected sensitive Discord action:
