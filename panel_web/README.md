@@ -22,3 +22,8 @@ The server refuses non-loopback bind addresses for this initial implementation. 
 ## Next implementation areas
 
 The panel will progressively cover bot lifecycle, server overview, logs, configuration, API access, announcements, owner controls, and other administrative operations while keeping the existing security and confirmation model.
+
+
+## GitHub Pages demo
+
+When opened from `vzsca.github.io`, the frontend automatically enters demo mode. Use the fake token `vbot-demo-token`. Status, logs, and security-code generation are simulated entirely in the browser; no request is sent to the real bot and no Discord action is executed. The real local panel keeps using its actual token and API.
