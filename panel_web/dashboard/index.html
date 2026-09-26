@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0d1117"><title>v-bot — Dashboard</title>
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="../../style.css">
 </head>
 <body>
 <div class="app-shell">
 <aside class="sidebar">
 <div class="brand"><span class="brand-mark">v</span><div><strong>v-bot</strong><small>Management Panel</small></div></div>
 <div class="sidebar-section"><span class="sidebar-label">GENERAL</span><nav>
-<a class="nav-item active" href="/dashboard"><span class="nav-icon">▦</span>Dashboard</a>
-<a class="nav-item " href="/instance"><span class="nav-icon">◉</span>Instance</a>
-<a class="nav-item " href="/activity_log"><span class="nav-icon">≡</span>Activity logs</a>
+<a class="nav-item active" href="../dashboard/"><span class="nav-icon">▦</span>Dashboard</a>
+<a class="nav-item " href="../instance/"><span class="nav-icon">◉</span>Instance</a>
+<a class="nav-item " href="../activity_log/"><span class="nav-icon">≡</span>Activity logs</a>
 </nav></div>
 <div class="sidebar-section"><span class="sidebar-label">MANAGEMENT</span><nav>
-<a class="nav-item " href="/security"><span class="nav-icon">⌁</span>Security</a>
+<a class="nav-item " href="../security/"><span class="nav-icon">⌁</span>Security</a>
 </nav></div>
 <div class="sidebar-footer"><div class="connection" id="connection"><i></i><span>Offline</span></div><button id="logoutBtn" class="logout" type="button">Sign out</button></div>
 </aside>
@@ -23,7 +23,7 @@
 <section id="dashboard" class="workspace"><div id="demoBanner" class="demo-banner" hidden><span class="banner-dot"></span><div><strong>Demo environment</strong><small>No real bot is connected. Actions are simulated locally.</small></div></div>
 <div class="page-header"><div><span class="eyebrow">OVERVIEW</span><h1>Dashboard</h1><p>Monitor and manage your v-bot instance.</p></div></div>
 <div class="stat-grid"><article class="stat"><div class="stat-top"><span>Bot status</span><span class="status-pill" id="botStatus">—</span></div><strong id="botStatusDetail">Waiting for data</strong><small>Current process state</small></article><article class="stat"><div class="stat-top"><span>Version</span></div><strong id="botVersion">—</strong><small>Installed bot version</small></article><article class="stat"><div class="stat-top"><span>Action code</span></div><strong><span id="codeTtl">—</span> sec</strong><small>Default expiration</small></article></div>
-<div class="section-heading"><h2>Instances</h2><span>1 configured</span></div><article class="instance-card"><div class="instance-main"><div class="instance-icon">v</div><div><div class="instance-name">v-bot</div><div class="instance-meta"><span class="online-dot" id="statusDot"></span><span>Discord bot</span><span>•</span><span id="platformValue">—</span></div></div></div><div class="instance-stats"><div><small>Process</small><strong id="processValue">—</strong></div><div><small>Protected commands</small><strong id="protectedValue">—</strong></div><a class="manage-button" href="/instance">Manage</a></div></article>
-<div class="section-heading activity-heading"><h2>Recent activity</h2><a class="text-button" href="/activity_log">View all</a></div><article class="activity-card"><pre id="logs">Loading…</pre></article></section>
+<div class="section-heading"><h2>Instances</h2><span>1 configured</span></div><article class="instance-card"><div class="instance-main"><div class="instance-icon">v</div><div><div class="instance-name">v-bot</div><div class="instance-meta"><span class="online-dot" id="statusDot"></span><span>Discord bot</span><span>•</span><span id="platformValue">—</span></div></div></div><div class="instance-stats"><div><small>Process</small><strong id="processValue">—</strong></div><div><small>Protected commands</small><strong id="protectedValue">—</strong></div><a class="manage-button" href="../instance/">Manage</a></div></article>
+<div class="section-heading activity-heading"><h2>Recent activity</h2><a class="text-button" href="../activity_log/">View all</a></div><article class="activity-card"><pre id="logs">Loading…</pre></article></section>
 </main></div><div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
-<script src="/app.js"></script></body></html>
+<script src="../../app.js"></script></body></html>
