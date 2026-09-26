@@ -106,7 +106,7 @@ async def require_action_code(ctx, action: str) -> bool:
     """Require a one-time six-digit code generated for the requested action."""
     await ctx.send(
         f"🔐 This action (`{action}`) requires a one-time 6-digit security code. "
-        "Run `action_code` in the local panel, then send the code here within 60 seconds."
+        "Generate it from the local web panel, then send the code here within 60 seconds."
     )
     attempts = 0
     deadline = time.monotonic() + config.ACTION_CODE_INPUT_TIMEOUT
