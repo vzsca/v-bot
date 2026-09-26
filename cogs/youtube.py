@@ -261,8 +261,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             },
         )
 
-    @tasks.loop(seconds=POLL_INTERVAL_SECONDS)
-    async def youtube_task(self):
+    async def _poll_youtube_announcements(self):
         self._prune_caches()
         data = store.load()
         announcements = [
@@ -337,6 +336,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
                 return count
 
             store.transaction(apply_updates)
+
+    @tasks.loop(seconds=POLL_INTERVAL_SECONDS)
+    async def youtube_task(self):
+        await self._poll_youtube_announcements()
 
     @youtube_task.before_loop
     async def before_youtube_task(self):
