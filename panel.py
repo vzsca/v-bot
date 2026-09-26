@@ -19,7 +19,7 @@ import security_log
 from security import issue_action_code
 from version import VERSION
 
-import announcement_store as announcement_store
+import announcement_store
 import api_access
 
 ENV_PATH = ROOT / ".env"
