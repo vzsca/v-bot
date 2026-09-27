@@ -516,54 +516,92 @@ def cmd_clear_api(service: str) -> None:
     print(f"{service.title()} API credentials cleared.")
 
 
-def print_menu() -> None:
-    print("\n===== v-bot control panel =====")
-    print("start | stop | restart | status | uptime | logs | security_logs | servers")
-    print("add_secondary_owner | set_token | set_principal_owner | toggle_dangerous")
-    print("action_code | set_prefix | set_twitch_api | set_youtube_api | api_status")
-    print("clear_api twitch | clear_api yt | exit")
+COMMANDS = [
+    ("start", "start the bot", cmd_start),
+    ("stop", "stop the bot", cmd_stop),
+    ("restart", "restart the bot", cmd_restart),
+    ("status", "full bot/process status", cmd_status),
+    ("uptime", "show bot uptime", cmd_uptime),
+    ("logs", "display bot.log", cmd_logs),
+    ("security_logs", "display security.log", cmd_security_logs),
+    ("servers", "list connected servers", cmd_servers),
+    ("add_secondary_owner", "add a secondary owner (max 5)", cmd_add_secondary_owner),
+    ("set_token", "set Discord token", cmd_set_token),
+    ("set_principal_owner", "set principal owner", cmd_set_principal_owner),
+    ("toggle_dangerous", "enable/disable sensitive commands", cmd_toggle_dangerous),
+    ("action_code", "generate a one-time code for a sensitive command", cmd_action_code),
+    ("set_prefix", "set bot prefix", cmd_set_prefix),
+    ("set_twitch_api", "set main Twitch API", cmd_set_twitch_api),
+    ("set_youtube_api", "set main YouTube API", cmd_set_youtube_api),
+    ("api_status", "show Twitch/YouTube API status", cmd_api_status),
+    ("clear_api", "clear Twitch/YouTube API credentials", None),
+]
+COMMAND_MAP = {name: func for name, _, func in COMMANDS if func is not None}
+
+
+def cmd_help() -> None:
+    print("\n===== v-bot =====")
+    width = max(len(name) for name, _, _ in COMMANDS) + 2
+    for name, desc, _ in COMMANDS:
+        print(f"{name.ljust(width)}- {desc}")
+    print(f"{'help'.ljust(width)}- display this list again")
+    print(f"{'exit'.ljust(width)}- close this panel")
+
+
+def check_principal_owner() -> None:
+    if not get_env_value("OWNER_PRINCIPAL_ID"):
+        print("No principal owner is defined in .env.")
+        cmd_set_principal_owner()
+
+
+def check_token() -> None:
+    if not get_env_value("DISCORD_TOKEN"):
+        print("No Discord token is defined in .env.")
+        cmd_set_token()
 
 
 def main() -> None:
+    print("===================================")
+    print("          v-bot Control Panel")
+    print("===================================")
+    print(f"Version: {VERSION}")
+    print(f"Platform: {'Windows' if IS_WINDOWS else 'macOS' if IS_MACOS else 'Linux' if IS_LINUX else sys.platform}")
+    print(f"Python: {PYTHON_EXE}")
+    if not ENV_PATH.exists():
+        print("[WARNING] .env file not found. The bot will fail to start.")
+    else:
+        check_principal_owner()
+        check_token()
+    print('Type "help" for the list of panel commands.')
     while True:
-        print_menu()
-        command = input("panel> ").strip().lower()
-        if command == "exit":
-            print("Goodbye.")
-            return
-        actions = {
-            "start": cmd_start,
-            "stop": cmd_stop,
-            "restart": cmd_restart,
-            "status": cmd_status,
-            "uptime": cmd_uptime,
-            "logs": cmd_logs,
-            "security_logs": cmd_security_logs,
-            "servers": cmd_servers,
-            "add_secondary_owner": cmd_add_secondary_owner,
-            "set_token": cmd_set_token,
-            "set_principal_owner": cmd_set_principal_owner,
-            "toggle_dangerous": cmd_toggle_dangerous,
-            "action_code": cmd_action_code,
-            "set_prefix": cmd_set_prefix,
-            "set_twitch_api": cmd_set_twitch_api,
-            "set_youtube_api": cmd_set_youtube_api,
-            "api_status": cmd_api_status,
-        }
-        if command.startswith("clear_api "):
-            service = command.split(maxsplit=1)[1]
+        try:
+            cmd = input("v-bot> ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if cmd == "exit":
+            break
+        if cmd == "help":
+            cmd_help()
+        elif cmd.startswith("clear_api"):
+            parts = cmd.split()
+            service = parts[1] if len(parts) > 1 else input("API service (twitch/yt): ").strip().lower()
             if service == "yt":
                 service = "youtube"
             if service not in {"twitch", "youtube"}:
-                print("[ERROR] Unknown API service.")
-                continue
-            cmd_clear_api("twitch" if service == "twitch" else "youtube")
-            continue
-        handler = actions.get(command)
-        if handler is None:
-            print("Unknown command. Type one of the commands shown above.")
-            continue
-        handler()
+                print("[ERROR] Unknown API service. Use twitch or yt.")
+            else:
+                try:
+                    cmd_clear_api(service)
+                except Exception as exc:
+                    print(f"[ERROR] Command failed: {exc}")
+        elif cmd in COMMAND_MAP:
+            try:
+                COMMAND_MAP[cmd]()
+            except Exception as exc:
+                print(f"[ERROR] Command failed: {exc}")
+        elif cmd:
+            print(f'Unknown command "{cmd}". Type "help" for the list.')
 
 
 if __name__ == "__main__":
