@@ -83,38 +83,61 @@ class WarmCog(commands.Cog, name="Reports"):
     @commands.guild_only()
     @checks.owner_or_permission(moderate_members=True)
     @checks.kill_switch_required()
-    async def delete_warm(self, ctx: commands.Context, member: discord.Member, report_number: str):
-        """Delete one report by its number in lst_warm."""
-        raw_number = report_number.removeprefix("#")
-        if not raw_number.isdecimal() or int(raw_number) < 1:
-            await ctx.send("❌ Indique un numéro valide, par exemple : `v!delete_warm @user #2`.")
-            return
+    async def delete_warm(self, ctx: commands.Context, member: discord.Member, *, report_numbers: str):
+        """Delete one, several, or all reports for a member."""
+        tokens = report_numbers.split()
+        if len(tokens) == 1 and tokens[0].lower() == "all":
+            numbers = None
+        else:
+            if not tokens or any(token.lower() == "all" for token in tokens):
+                await ctx.send(
+                    "❌ Utilise `v!delete_warm @user #1 #2` ou `v!delete_warm @user all`."
+                )
+                return
+            numbers = []
+            for token in tokens:
+                raw_number = token.removeprefix("#")
+                if not raw_number.isdecimal() or int(raw_number) < 1:
+                    await ctx.send(
+                        "❌ Numéros invalides. Exemples : "
+                        "`v!delete_warm @user #1 #2` ou `v!delete_warm @user all`."
+                    )
+                    return
+                numbers.append(int(raw_number))
+            numbers = sorted(set(numbers))
 
-        deleted, report = warm_store.delete_for_target(
+        deleted, reports = warm_store.delete_reports_for_target(
             guild_id=ctx.guild.id,
             target_id=member.id,
-            report_number=int(raw_number),
+            report_numbers=numbers,
         )
-        if not deleted or report is None:
+        if not deleted:
+            target = "tous les warms" if numbers is None else ", ".join(f"#{n}" for n in numbers)
             await ctx.send(
-                f"❌ Le warm **#{int(raw_number)}** n'existe pas pour {member.mention}, "
-                "ou sa suppression a échoué.",
+                f"❌ Aucun warm supprimé pour {member.mention}. Vérifie les numéros demandés : {target}.",
                 allowed_mentions=discord.AllowedMentions.none(),
             )
             return
 
+        deleted_numbers = "tous" if numbers is None else ", ".join(f"#{n}" for n in numbers)
         embed = discord.Embed(
-            title="🗑️ Warm supprimé",
-            description=f"Le warm **#{int(raw_number)}** de {member.mention} a été supprimé.",
+            title="🗑️ Warm(s) supprimé(s)",
+            description=(
+                f"{len(reports)} warm(s) supprimé(s) pour {member.mention} "
+                f"(sélection : {deleted_numbers})."
+            ),
             color=discord.Color.red(),
-            timestamp=datetime.fromisoformat(report["created_at"]),
         )
-        embed.add_field(
-            name="Raison du warm supprimé",
-            value=report["reason"] or "Aucune raison précisée.",
-            inline=False,
-        )
+        for index, report in enumerate(reports[:8], start=1):
+            embed.add_field(
+                name=f"Warm supprimé #{index} • {report['created_at']}",
+                value=(report["reason"] or "Aucune raison précisée.")[:1000],
+                inline=False,
+            )
+        if len(reports) > 8:
+            embed.set_footer(text=f"{len(reports) - 8} autre(s) warm(s) supprimé(s).")
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
 
 
 async def setup(bot: commands.Bot):
