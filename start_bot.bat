@@ -1,5 +1,4 @@
 @echo off
-mode con: cols=80  lines=25
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
@@ -89,8 +88,9 @@ if not exist panel.py (
     exit /b 1
 )
 
-REM All panel logic (start/stop/restart/uptime/.env/...) is handled by
-REM panel.py: this .bat only prepares the environment and launches it.
+REM Do not force the console dimensions: resizing with MODE CON can desynchronize
+REM the cursor/input rendering in Windows Terminal and other terminal hosts.
+REM All panel logic (start/stop/restart/uptime/.env/...) is handled by panel.py.
 venv\Scripts\python.exe panel.py
 
 pause
