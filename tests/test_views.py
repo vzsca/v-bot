@@ -29,7 +29,7 @@ def test_confirm_leave_view_has_cancel_and_quit_buttons():
 
 
 def test_server_details_embed_shows_owner_members_and_bot_join_date():
-    from datetime import datetime, timezone
+    from datetime import UTC, datetime
 
     from views import _server_details_embed
 
@@ -41,7 +41,7 @@ def test_server_details_embed_shows_owner_members_and_bot_join_date():
 
     owner = FakeOwner()
     bot_member = SimpleNamespace(
-        joined_at=datetime(2026, 9, 23, 9, 30, tzinfo=timezone.utc),
+        joined_at=datetime(2026, 9, 23, 9, 30, tzinfo=UTC),
     )
     guild = SimpleNamespace(
         id=123,
