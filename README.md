@@ -116,10 +116,10 @@ Moderators with **Moderate Members** (and authorized owners) can use these prefi
 ```text
 v!warm @user [reason]
 v!lst_warm @user
-v!delete_warm @user #number
+v!delete_warm @user #number [#number ...]\nv!delete_warm @user all
 ```
 
-The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. Use the numbered entries shown by `v!lst_warm @user` with `v!delete_warm @user #number` to remove one report (the `#` is optional). These commands are restricted to moderation staff. A report is a moderation note, not proof by itself.
+The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. Use the numbered entries shown by `v!lst_warm @user` with `v!delete_warm @user #1 #2` to remove several reports at once, or `v!delete_warm @user all` to remove every report for that member on this server. The `#` before each number is optional. If any requested number does not exist, nothing is deleted. These commands are restricted to moderation staff. A report is a moderation note, not proof by itself.
 
 ## 👑 Owners and permissions
 
