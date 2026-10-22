@@ -1,16 +1,12 @@
-# ⚠️ IN PROCESS
-
-> This branch is under active development; features and behavior may change.
-
 # 🤖 v-bot
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
 
-The project targets Windows, Linux, and macOS.
+The project targets Windows, Linux, and macOS. The `dev-panel` branch provides a local web control panel in `panel_web/`.
 
 ## ✨ Features
 
-- 🛡️ Moderation and server-management commands
+- 🛡️ Moderation and server-management commands, including persistent warm reports
 - 👑 Permanent owners and temporary server-scoped authorizations
 - 🔐 Persistent kill switch and disabled-server state
 - 🧹 Deleted-message snipe support
@@ -22,9 +18,9 @@ The project targets Windows, Linux, and macOS.
 - 🔐 Sensitive commands disabled by default
 - 🔑 One-time 6-digit security codes bound to a specific sensitive action
 - 🧩 Modular Cogs and application modules
-- 📚 Permission-aware help system
+- 📚 Interactive, permission-aware help system with category buttons and direct category commands
 - 💬 Permission-aware bot mention responses
-- 🌐 Local web control panel
+- 🖥️ Cross-platform local control panel
 
 ## 🚀 Installation
 
@@ -34,7 +30,7 @@ The project targets Windows, Linux, and macOS.
 - Python **3.13**
 - A Discord application/bot with the required intents enabled
 
-```text
+```bash
 git clone https://github.com/vzsca/v-bot.git
 cd v-bot
 ```
@@ -54,61 +50,29 @@ YOUTUBE_API_KEY=YOUR_API_KEY
 
 Never publish `.env`, the Discord token, or API credentials.
 
-## ▶️ Launch
+### Launch
 
-The project no longer uses the legacy terminal control panel.
+Windows:
 
-Use the launcher directly:
-
-**Windows**
 ```text
 start_bot.bat
 ```
 
-**Linux/macOS**
+Linux/macOS:
+
 ```bash
 ./start_bot.sh
 ```
 
-The launcher:
-1. Creates the virtual environment if needed.
-2. Installs dependencies on first setup.
-3. Starts the local web panel.
-4. Starts the Discord bot.
+The launcher prepares the Python environment and starts the Discord bot and local web panel.
 
-The web panel is available by default at `http://127.0.0.1:8765`.
+## 🌐 Web control panel
 
-## 🌐 Web panel
+The `dev-panel` branch contains the web panel under `panel_web/`. It is designed for local access and includes bot status, recent logs, and action-specific one-time security-code generation. The current panel is an active-development feature; consult [`panel_web/README.md`](panel_web/README.md) for branch-specific details. Do not expose it publicly or through port forwarding.
 
-The `dev-panel` branch contains the web control panel.
+### Security codes
 
-Current scope:
-- localhost-only aiohttp server
-- token authentication with an HttpOnly session cookie
-- bot status
-- recent bot logs
-- action-specific one-time security-code generation
-
-On first launch, a random token is stored in `panel_web/.token` and printed by the web-panel process. You can instead set `PANEL_WEB_TOKEN` in `.env`.
-
-The panel remains loopback-only. Do not expose it through port forwarding or a reverse proxy while this implementation is being expanded.
-
-### GitHub Pages demo
-
-A public simulated version of the panel is available here:
-
-**Demo panel:** https://vzsca.github.io/v-bot/panel_web/
-
-**Demo token:**
-```text
-vbot-demo-token
-```
-
-The GitHub Pages version runs entirely in demo mode. Status, logs, and security-code generation are simulated in the browser. No request is sent to the real bot and no Discord action is executed.
-
-## 🔐 Security codes
-
-The web panel can generate a temporary **6-digit, one-time code** for one selected sensitive Discord action:
+`action_code` generates a temporary **6-digit, one-time code** for one selected sensitive Discord action:
 
 ```text
 spam
@@ -117,9 +81,21 @@ raid
 remove_raid
 ```
 
-A code generated for one action cannot authorize another action. Multiple codes may be active at the same time.
+The panel asks which action the code is intended for. Codes expire after **60 seconds**. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
+
+## 📝 Warm reports
+
+Moderators with **Moderate Members** (and authorized owners) can use these prefix commands:
+
+```text
+v!warm @user [reason]
+v!lst_warm @user
+v!delete_warm @user #number
+```
+
+The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. Use the numbered entries shown by `v!lst_warm @user` with `v!delete_warm @user #number` to remove one report (the `#` is optional). These commands are restricted to moderation staff. A report is a moderation note, not proof by itself.
 
 ## 👑 Owners and permissions
 
@@ -136,7 +112,9 @@ Temporary authorizations are scoped to a guild and automatically expire.
 
 ## 📢 Twitch / YouTube announcements
 
-Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials.
+Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
+
+YouTube API usage is optimized with shared caching across servers: channel resolution is cached for 24 hours, latest-video results for 90 seconds, and repeated lookups for the same API key and channel are reused. The polling loop backs off after HTTP 403/429 responses to help avoid repeatedly hitting API limits.
 
 Typical commands include:
 
@@ -153,6 +131,17 @@ v!clear_api yt
 ```
 
 Per-server credentials are stored by `guild_id` in `api_credentials.json` and written atomically.
+
+## 💬 Permission-aware help system
+
+Use `v!help` to open the help menu. When multiple categories are available, buttons let you browse the categories you are allowed to access:
+
+- **General** — commands available to everyone.
+- **Moderation** — shown to members with relevant moderation permissions.
+- **Admin & Announcements** — requires the Discord **Administrator** permission.
+- **Owner** — restricted to permanent owners and users with a valid temporary authorization.
+
+You can also open a category directly with `v!help general`, `v!help mod`, `v!help admin`, or `v!help owner`. Aliases include `user` for general, `moderation` / `modo` for mod, and `announcement(s)` for admin. Access is checked when the category is requested; a visible help category does not bypass the command's own permission checks.
 
 ## ⚠️ Sensitive commands
 
@@ -172,6 +161,8 @@ DANGEROUS_COMMANDS_ENABLED=false
 ```
 
 Sensitive commands also use explicit confirmations where appropriate, command-specific limits, permission checks, and an action-specific one-time security code.
+
+Raid-test channels and roles are persisted as they are created. If persistence fails, the operation aborts and attempts to roll back the newly created resource. Cleanup removes a persistent resource reference only after the corresponding Discord resource has been deleted or is already absent.
 
 ## 💾 Persistence and data safety
 
@@ -196,6 +187,8 @@ CI runs:
 - Gitleaks for secret scanning
 - **GitHub CodeQL** with the `security-extended` query suite for Python security analysis
 
+Warm-report storage tests cover persistence, server/user isolation, deletion, per-server limits, and corrupt JSON handling.
+
 CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow.
 
 ## 🧩 Architecture
@@ -203,26 +196,42 @@ CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting
 ```text
 v-bot/
 ├── app/
+│   ├── announcement_store.py
+│   ├── api_access.py
+│   ├── api_credentials.py
+│   ├── audit.py
+│   ├── checks.py
+│   ├── config.py
+│   ├── deps.py
+│   ├── exceptions.py
+│   ├── extensions.py
+│   ├── integration_config.py
+│   ├── metrics.py
+│   ├── rate_limit.py
+│   ├── safe_json.py
+│   ├── security.py
+│   ├── security_log.py
+│   ├── state.py
+│   ├── updater.py
+│   ├── validators.py
+│   └── version.py
 ├── cogs/
 ├── tests/
 ├── main.py
-├── bootstrap.py
 ├── panel_web/
+├── bootstrap.py
 ├── start_bot.bat
 ├── start_bot.sh
 └── requirements.txt
 ```
 
-`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles action-specific one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing.
+`main.py` handles startup, logging, global checks, and extension loading. Business logic lives in Cogs and application modules. `app/security.py` handles action-specific one-time sensitive-action authorization, while `app/audit.py` handles command/security auditing. Persistent runtime security state is handled by `app/state.py`.
 
 ## 🏷️ Versioning
 
-The application version is derived from Git tags, with a fallback when Git history is unavailable. Release tags use the form:
+The application version comes from `git describe --tags --match "v[0-9]*" --always --dirty`. Create release tags in the form `vMAJOR.MINOR.PATCH` (for example, `v3.8.2`). When a matching tag is available, Git reports that tag and, if applicable, the number of commits since it and the current commit hash. A modified working tree adds the `-dirty` suffix.
 
-```text
-v3.8.2
-v3.9.0
-```
+If no matching tag is available, Git reports the current commit hash instead. The fallback version (`3.8.2`) is used only if Git cannot provide a version.
 
 ## 🧰 Technologies
 
