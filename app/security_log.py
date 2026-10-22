@@ -2,7 +2,7 @@
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 LOG_FILE = Path(__file__).resolve().parent.parent / "security.log"
@@ -32,7 +32,7 @@ def _rotate_if_needed() -> None:
 
 
 def log_security_event(message: str, actor: str | None = None) -> None:
-    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
     actor_part = f" [{_clean(actor)}]" if actor else ""
     line = f"{timestamp}{actor_part} {_clean(message)}\n"
     try:
