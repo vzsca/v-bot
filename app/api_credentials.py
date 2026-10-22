@@ -25,7 +25,7 @@ def _load_unlocked() -> dict[str, dict[str, dict[str, str]]]:
             continue
         platforms: dict[str, dict[str, str]] = {}
         for platform, credentials in values.items():
-            if platform not in {"twitch", "youtube"} or not isinstance(credentials, dict):
+            if platform not in {"twitch", "youtube", "instagram"} or not isinstance(credentials, dict):
                 continue
             if all(isinstance(key, str) and isinstance(value, str) for key, value in credentials.items()):
                 platforms[platform] = dict(credentials)
@@ -48,7 +48,7 @@ def get(guild_id: int, platform: str) -> dict[str, str] | None:
 def set_credentials(guild_id: int, platform: str, credentials: dict[str, str]) -> None:
     if guild_id <= 0:
         raise ValueError("guild_id must be positive")
-    if platform not in {"twitch", "youtube"}:
+    if platform not in {"twitch", "youtube", "instagram"}:
         raise ValueError("unsupported platform")
     if not credentials or not all(isinstance(k, str) and isinstance(v, str) and v for k, v in credentials.items()):
         raise ValueError("credentials must contain non-empty string values")
@@ -59,7 +59,7 @@ def set_credentials(guild_id: int, platform: str, credentials: dict[str, str]) -
 
 
 def remove(guild_id: int, platform: str) -> bool:
-    if guild_id <= 0 or platform not in {"twitch", "youtube"}:
+    if guild_id <= 0 or platform not in {"twitch", "youtube", "instagram"}:
         return False
     with _LOCK:
         data = _load_unlocked()
