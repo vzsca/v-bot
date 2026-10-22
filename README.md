@@ -116,9 +116,10 @@ Moderators with **Moderate Members** (and authorized owners) can use these prefi
 ```text
 v!warm @user [reason]
 v!lst_warm @user
+v!delete_warm @user #number
 ```
 
-The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. The lookup is restricted to moderation staff. A report is a moderation note, not proof by itself.
+The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. Use the numbered entries shown by `v!lst_warm @user` with `v!delete_warm @user #number` to remove one report (the `#` is optional). These commands are restricted to moderation staff. A report is a moderation note, not proof by itself.
 
 ## 👑 Owners and permissions
 
