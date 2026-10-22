@@ -241,7 +241,10 @@ class YouTubeCog(commands.Cog, name="YouTube"):
             return False
 
         try:
-            await channel.send(self._format_message(message, video_data))
+            await channel.send(
+                self._format_message(message, video_data),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             logger.warning("Failed to send YouTube announcement for guild %s.", guild_id)
