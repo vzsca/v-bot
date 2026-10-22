@@ -10,6 +10,7 @@ import discord
 from discord.ext import commands, tasks
 
 import announcement_store as store
+import checks
 import integration_config
 
 logger = logging.getLogger("v-bot")
@@ -38,10 +39,10 @@ class InstagramCog(commands.Cog, name="Instagram"):
 
     @commands.command(name="create_instagram_annonce")
     @commands.guild_only()
+    @checks.owner_or_permission(administrator=True)
+    @checks.kill_switch_required()
     async def create_instagram_annonce(self, ctx):
         """Create an Instagram-only video announcement."""
-        if not ctx.author.guild_permissions.administrator:
-            return await ctx.send("❌ This command requires Administrator permission.")
         if not integration_config.get_instagram_credentials():
             return await ctx.send(
                 "❌ Instagram Graph API is not configured. Set INSTAGRAM_ACCESS_TOKEN and "
