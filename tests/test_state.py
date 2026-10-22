@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 import time
 
 import pytest
@@ -38,3 +39,10 @@ def test_clean_snipes_discards_malformed_entries():
     state.sniped_messages[1] = [{"id": 1, "time": "not-a-date"}]
     assert state.clean_snipes(900) == 1
     assert 1 not in state.sniped_messages
+
+
+def test_snipe_timestamp_accepts_utc_z_suffix():
+    state = BotState()
+    timestamp = state._snipe_timestamp({"time": "2026-10-22T10:00:00Z"})
+
+    assert timestamp == datetime(2026, 10, 22, 10, tzinfo=UTC).timestamp()

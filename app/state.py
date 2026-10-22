@@ -225,7 +225,10 @@ class BotState:
             return float(value)
         if isinstance(value, str):
             try:
-                return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+                normalized = (
+                    value[:-1] + "+00:00" if value.endswith("Z") else value
+                )
+                return datetime.fromisoformat(normalized).timestamp()
             except ValueError:
                 return None
         return None
