@@ -79,5 +79,43 @@ class WarmCog(commands.Cog, name="Reports"):
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
 
+    @commands.command(name="delete_warm")
+    @commands.guild_only()
+    @checks.owner_or_permission(moderate_members=True)
+    @checks.kill_switch_required()
+    async def delete_warm(self, ctx: commands.Context, member: discord.Member, report_number: str):
+        """Delete one report by its number in lst_warm."""
+        raw_number = report_number.removeprefix("#")
+        if not raw_number.isdecimal() or int(raw_number) < 1:
+            await ctx.send("❌ Indique un numéro valide, par exemple : `v!delete_warm @user #2`.")
+            return
+
+        deleted, report = warm_store.delete_for_target(
+            guild_id=ctx.guild.id,
+            target_id=member.id,
+            report_number=int(raw_number),
+        )
+        if not deleted or report is None:
+            await ctx.send(
+                f"❌ Le warm **#{int(raw_number)}** n'existe pas pour {member.mention}, "
+                "ou sa suppression a échoué.",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+
+        embed = discord.Embed(
+            title="🗑️ Warm supprimé",
+            description=f"Le warm **#{int(raw_number)}** de {member.mention} a été supprimé.",
+            color=discord.Color.red(),
+            timestamp=datetime.fromisoformat(report["created_at"]),
+        )
+        embed.add_field(
+            name="Raison du warm supprimé",
+            value=report["reason"] or "Aucune raison précisée.",
+            inline=False,
+        )
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(WarmCog(bot))
