@@ -102,3 +102,47 @@ def for_target(guild_id: int, target_id: int) -> list[dict]:
             dict(report) for report in data["reports"]
             if report["guild_id"] == guild_id and report["target_id"] == target_id
         ]
+
+
+def delete_reports_for_target(
+    guild_id: int,
+    target_id: int,
+    report_numbers: list[int] | None,
+) -> tuple[bool, list[dict]]:
+    """Delete selected 1-based report numbers, or all reports when numbers is None."""
+    if report_numbers is not None and (
+        not report_numbers or any(number < 1 for number in report_numbers)
+    ):
+        return False, []
+
+    with _LOCK:
+        data = _load_unlocked()
+        matching_indices = [
+            index for index, report in enumerate(data["reports"])
+            if report["guild_id"] == guild_id and report["target_id"] == target_id
+        ]
+        if report_numbers is None:
+            selected_numbers = list(range(1, len(matching_indices) + 1))
+        else:
+            selected_numbers = sorted(set(report_numbers))
+            if any(number > len(matching_indices) for number in selected_numbers):
+                return False, []
+
+        if not selected_numbers:
+            return False, []
+
+        selected_store_indices = {
+            matching_indices[number - 1] for number in selected_numbers
+        }
+        removed = [
+            dict(data["reports"][index])
+            for index in sorted(selected_store_indices)
+        ]
+        working = copy.deepcopy(data)
+        working["reports"] = [
+            report for index, report in enumerate(working["reports"])
+            if index not in selected_store_indices
+        ]
+        if not _save_unlocked(working):
+            return False, []
+        return True, removed
