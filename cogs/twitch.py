@@ -161,7 +161,11 @@ class TwitchCog(commands.Cog, name="Twitch"):
         try:
             return await channel.send(
                 self._format_message(template, stream_data),
-                allowed_mentions=discord.AllowedMentions.none(),
+                # Permit explicit user/role pings configured in the announcement,
+                # but never allow @everyone/@here to ping the whole server.
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=False, users=True, roles=True, replied_user=False
+                ),
             )
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
@@ -190,7 +194,11 @@ class TwitchCog(commands.Cog, name="Twitch"):
             message = await channel.fetch_message(int(message_id))
             await message.edit(
                 content=self._format_message(announcement["message"], stream_data),
-                allowed_mentions=discord.AllowedMentions.none(),
+                # Permit explicit user/role pings configured in the announcement,
+                # but never allow @everyone/@here to ping the whole server.
+                allowed_mentions=discord.AllowedMentions(
+                    everyone=False, users=True, roles=True, replied_user=False
+                ),
             )
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
@@ -261,23 +269,27 @@ class TwitchCog(commands.Cog, name="Twitch"):
                         "was_live": True,
                         "discord_message_id": sent_message.id,
                         "last_title": str(stream.get("title", "")),
+                        "last_game": str(stream.get("game", "")),
                     }
             elif is_live and was_live:
                 current_title = str(stream.get("title", ""))
                 previous_title = str(announcement.get("last_title", ""))
-                if (
-                    "{title}" in str(announcement.get("message") or "")
-                    and current_title != previous_title
-                    and await self._update_announcement_message(announcement, stream)
-                ):
-                    updates[announcement_key] = {
-                        "last_title": current_title,
-                    }
+                current_game = str(stream.get("game", ""))
+                previous_game = str(announcement.get("last_game", ""))
+                # Twitch can change category without changing the stream title.
+                # Refresh the existing Discord message whenever either value changes.
+                if current_title != previous_title or current_game != previous_game:
+                    if await self._update_announcement_message(announcement, stream):
+                        updates[announcement_key] = {
+                            "last_title": current_title,
+                            "last_game": current_game,
+                        }
             elif not is_live and was_live:
                 updates[announcement_key] = {
                     "was_live": False,
                     "discord_message_id": None,
                     "last_title": None,
+                    "last_game": None,
                 }
 
         if updates:
