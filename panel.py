@@ -15,12 +15,12 @@ APP_DIR = ROOT / "app"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-import security_log
-from security import issue_action_code
-from version import VERSION
+import security_log  # noqa: E402
+from security import issue_action_code  # noqa: E402
+from version import VERSION  # noqa: E402
 
-import announcement_store
-import api_access
+import announcement_store  # noqa: E402
+import api_access  # noqa: E402
 
 ENV_PATH = ROOT / ".env"
 BOT_PID_FILE = ROOT / "bot.pid"
