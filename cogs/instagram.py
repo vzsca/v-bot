@@ -43,7 +43,7 @@ class InstagramCog(commands.Cog, name="Instagram"):
     @checks.kill_switch_required()
     async def create_instagram_annonce(self, ctx):
         """Create an Instagram-only video announcement."""
-        if not integration_config.get_instagram_credentials():
+        if not integration_config.get_instagram_credentials(ctx.guild.id):
             return await ctx.send(
                 "❌ Instagram Graph API is not configured. Set INSTAGRAM_ACCESS_TOKEN and "
                 "INSTAGRAM_USER_ID in .env, then restart the bot."
@@ -61,7 +61,7 @@ class InstagramCog(commands.Cog, name="Instagram"):
         username = self._username_from_url(source_url)
         if not username:
             return await ctx.send("❌ Invalid Instagram account URL.")
-        token, user_id = integration_config.get_instagram_credentials()
+        token, user_id = integration_config.get_instagram_credentials(ctx.guild.id)
         configured_username = await self._configured_username(token, user_id)
         if not configured_username:
             return await ctx.send("❌ Unable to validate the configured Instagram account. Check the token and account ID.")
@@ -219,24 +219,32 @@ class InstagramCog(commands.Cog, name="Instagram"):
         if not announcements:
             return
 
-        # The Graph API token and professional-account ID are configured in .env.
-        token, user_id = integration_config.get_instagram_credentials()
-        if not token or not user_id:
-            return
-
-        video = await self._latest_video(token, user_id)
-        if not video:
-            return
+        # Credentials are resolved per guild; only identical credentials are grouped.
+        groups = {}
+        for announcement in announcements:
+            try:
+                guild_id = int(announcement["guild_id"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            credentials = integration_config.get_instagram_credentials(guild_id)
+            if not credentials:
+                continue
+            groups.setdefault(credentials, []).append(announcement)
 
         updates = {}
-        for announcement in announcements:
-            key = (announcement.get("guild_id"), announcement.get("id"))
-            previous_id = announcement.get("last_video_id")
-            if previous_id is None:
-                # First poll establishes a baseline; do not spam old posts.
-                updates[key] = video["id"]
-            elif previous_id != video["id"] and await self._send_announcement(announcement, video):
-                updates[key] = video["id"]
+        for (token, user_id), grouped_announcements in groups.items():
+            video = await self._latest_video(token, user_id)
+            if not video:
+                continue
+
+            for announcement in grouped_announcements:
+                key = (announcement.get("guild_id"), announcement.get("id"))
+                previous_id = announcement.get("last_video_id")
+                if previous_id is None:
+                    # First poll establishes a baseline; do not spam old posts.
+                    updates[key] = video["id"]
+                elif previous_id != video["id"] and await self._send_announcement(announcement, video):
+                    updates[key] = video["id"]
 
         if updates:
             def apply_updates(current):
