@@ -65,9 +65,21 @@ def get_youtube_api_key(guild_id: int) -> str | None:
     return key if _valid_secret(key) else None
 
 
+def get_instagram_credentials() -> tuple[str, str] | None:
+    """Return the official Graph API access token and Instagram professional-account ID."""
+    env = _env()
+    token = env.get("INSTAGRAM_ACCESS_TOKEN", "").strip()
+    user_id = env.get("INSTAGRAM_USER_ID", "").strip()
+    if not _valid_secret(token) or not user_id.isdigit():
+        return None
+    return token, user_id
+
+
 def is_configured(guild_id: int, platform: str) -> bool:
     if platform == "twitch":
         return get_twitch_credentials(guild_id) is not None
     if platform == "youtube":
         return get_youtube_api_key(guild_id) is not None
+    if platform == "instagram":
+        return get_instagram_credentials() is not None
     return False
