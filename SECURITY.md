@@ -18,6 +18,10 @@ Existing legacy announcement records without `guild_id` are intentionally ignore
 
 Deleted-message snapshots are only available to users with `Manage Messages` (or owner authorization) and are retained in memory for a limited period.
 
+## Warm reports
+
+The `warm` and `lst warm` commands require `Moderate Members` (or owner authorization), respect the global kill switch, and store reports scoped to the current guild. Reports contain the target ID, reporter ID, UTC timestamp, and optional reason. The JSON store is written atomically with owner-only file permissions where supported. Keep the bot host and backups access-controlled; reports are moderation records, not proof of wrongdoing.
+
 ## Sensitive commands
 
 `raid`, `remove_raid`, `dmall`, and `spam` are in a separate Cog and are disabled by default. Invalid amounts are rejected rather than silently clamped.
