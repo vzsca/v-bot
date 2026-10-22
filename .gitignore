@@ -14,4 +14,3 @@ twitch_config.json
 annonce_config.json
 api_config_access.json
 *.tmp
-panel_web/.token
