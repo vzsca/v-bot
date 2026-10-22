@@ -172,7 +172,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return None
 
     async def _update_announcement_message(self, announcement, stream_data):
-        if "{title}" not in str(announcement.get("message") or ""):
+        template = str(announcement.get("message") or "")
+        if not any(placeholder in template for placeholder in ("{title}", "{game}")):
             return False
 
         message_id = announcement.get("discord_message_id")
