@@ -74,6 +74,27 @@ def add(guild_id: int, target_id: int, reporter_id: int, reason: str = "") -> tu
         return True, report
 
 
+def delete_for_target(guild_id: int, target_id: int, report_number: int) -> tuple[bool, dict | None]:
+    """Delete a 1-based report number from one target's guild-scoped report list."""
+    if report_number < 1:
+        return False, None
+    with _LOCK:
+        data = _load_unlocked()
+        matching_indices = [
+            index for index, report in enumerate(data["reports"])
+            if report["guild_id"] == guild_id and report["target_id"] == target_id
+        ]
+        if report_number > len(matching_indices):
+            return False, None
+        store_index = matching_indices[report_number - 1]
+        removed = dict(data["reports"][store_index])
+        working = copy.deepcopy(data)
+        del working["reports"][store_index]
+        if not _save_unlocked(working):
+            return False, None
+        return True, removed
+
+
 def for_target(guild_id: int, target_id: int) -> list[dict]:
     with _LOCK:
         data = _load_unlocked()
