@@ -2,6 +2,8 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import discord
+
 from cogs.twitch import TwitchCog
 
 
@@ -48,7 +50,35 @@ def test_twitch_announcement_message_is_edited_when_title_changes():
     updated = asyncio.run(cog._update_announcement_message(announcement, stream_data))
 
     assert updated is True
-    message.edit.assert_awaited_once_with(content="Live: New title")
+    message.edit.assert_awaited_once()
+    assert message.edit.await_args.kwargs["content"] == "Live: New title"
+    assert message.edit.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
+
+
+def test_twitch_announcement_disables_mentions():
+    sent_message = object()
+    channel = SimpleNamespace(
+        guild=SimpleNamespace(id=123),
+        send=AsyncMock(return_value=sent_message),
+    )
+    cog = TwitchCog.__new__(TwitchCog)
+    cog.bot = SimpleNamespace(get_channel=lambda channel_id: channel)
+
+    result = asyncio.run(
+        cog._send_announcement(
+            {
+                "guild_id": 123,
+                "channel_id": 456,
+                "message": "Live: {title}",
+            },
+            {"title": "@everyone"},
+        )
+    )
+
+    assert result is sent_message
+    channel.send.assert_awaited_once()
+    assert channel.send.await_args.args == ("Live: @everyone",)
+    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
 
 
 def test_twitch_announcement_message_is_not_edited_without_title_placeholder():

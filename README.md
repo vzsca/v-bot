@@ -226,12 +226,9 @@ v-bot/
 
 ## 🏷️ Versioning
 
-The application version is derived from Git tags, with a fallback when Git history is unavailable. Release tags use the form:
+The application version comes from `git describe --tags --match "v[0-9]*" --always --dirty`. Create release tags in the form `vMAJOR.MINOR.PATCH` (for example, `v3.8.2`). When a matching tag is available, Git reports that tag and, if applicable, the number of commits since it and the current commit hash. A modified working tree adds the `-dirty` suffix.
 
-```text
-v3.8.2
-v3.9.0
-```
+If no matching tag is available, Git reports the current commit hash instead. The fallback version (`3.8.2`) is used only if Git cannot provide a version.
 
 ## 🧰 Technologies
 
