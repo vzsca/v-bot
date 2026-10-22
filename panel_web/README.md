@@ -1,5 +1,7 @@
 # v-bot web panel
 
+> Development feature for the `dev-panel` branch. Shared bot code is kept in sync with `main`; this document covers only the web-panel-specific setup and behavior.
+
 The local web panel is a localhost-only administrative surface for v-bot.
 
 ## Start
@@ -37,9 +39,10 @@ Default URL:
 - Prefix configuration
 - Sensitive-command enable/disable
 - Twitch and YouTube API credentials
+- Shared moderation, security, and persistent warm-report functionality from the current bot code
 - Server list and server details
 - Per-server API access toggle
 - Per-server invite generation
 - Remove the bot from a server
 
-The panel does not expose secret values through GET APIs. It is intentionally restricted to localhost and requires a session after token authentication.
+The panel does not expose secret values through GET APIs. It is intentionally restricted to localhost and requires a session after token authentication. Keep it bound to loopback: do not expose port 8765 through port forwarding, a public reverse proxy, or an internet-facing tunnel. The GitHub Pages demo, if enabled, is simulated and does not control the live bot.
