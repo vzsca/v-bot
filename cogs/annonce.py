@@ -121,7 +121,8 @@ class AnnonceCog(commands.Cog, name="Announcements"):
         announcement = store.find(data, ctx.guild.id, announcement_id)
         if not announcement:
             return await ctx.send(f"❌ Announcement `{announcement_id}` not found on this server.")
-        cog = self.bot.get_cog("Twitch" if announcement.get("type") == "twitch" else "YouTube")
+        cog_names = {"twitch": "Twitch", "youtube": "YouTube", "instagram": "Instagram"}
+        cog = self.bot.get_cog(cog_names.get(announcement.get("type"), ""))
         test = getattr(cog, "test_announcement", None) if cog else None
         if not test:
             return await ctx.send("❌ The required integration is not loaded.")

@@ -14,6 +14,7 @@ BASE_EXTENSIONS: tuple[str, ...] = (
     "cogs.annonce",
     "cogs.twitch",
     "cogs.youtube",
+    "cogs.instagram",
 )
 
 DANGEROUS_EXTENSION = "cogs.dangerous_safe"

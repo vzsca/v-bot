@@ -42,3 +42,36 @@ def test_existing_credentials_file_permissions_are_restricted(tmp_path, monkeypa
     monkeypatch.setattr(api_credentials, "CONFIG_FILE", config_file)
     assert api_credentials.get(1, "youtube")["api_key"] == "test-key"
     assert stat.S_IMODE(config_file.stat().st_mode) == 0o600
+
+
+def test_instagram_credentials_are_isolated_and_removable(tmp_path, monkeypatch):
+    config_file = tmp_path / "api_credentials.json"
+    monkeypatch.setattr(api_credentials, "CONFIG_FILE", config_file)
+    api_credentials.set_credentials(
+        100, "instagram", {"access_token": "instagram-token-100", "user_id": "123456"}
+    )
+    api_credentials.set_credentials(
+        200, "instagram", {"access_token": "instagram-token-200", "user_id": "654321"}
+    )
+
+    assert api_credentials.get(100, "instagram") == {
+        "access_token": "instagram-token-100", "user_id": "123456"
+    }
+    assert api_credentials.get(200, "instagram") == {
+        "access_token": "instagram-token-200", "user_id": "654321"
+    }
+    assert api_credentials.get(300, "instagram") is None
+    assert api_credentials.remove(100, "instagram")
+    assert api_credentials.get(100, "instagram") is None
+    assert api_credentials.get(200, "instagram")["user_id"] == "654321"
+
+
+def test_instagram_credentials_reject_unsupported_shapes(tmp_path, monkeypatch):
+    import pytest
+
+    config_file = tmp_path / "api_credentials.json"
+    monkeypatch.setattr(api_credentials, "CONFIG_FILE", config_file)
+    with pytest.raises(ValueError):
+        api_credentials.set_credentials(1, "instagram", {"access_token": "", "user_id": "123"})
+    with pytest.raises(ValueError):
+        api_credentials.set_credentials(1, "unsupported", {"token": "secret"})
