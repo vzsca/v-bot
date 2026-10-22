@@ -10,7 +10,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 - 👑 Permanent owners and temporary server-scoped authorizations
 - 🔐 Persistent kill switch and disabled-server state
 - 🧹 Deleted-message snipe support
-- 📢 Twitch and YouTube announcements
+- 📢 Twitch, YouTube, and Instagram video announcements
 - 🔑 Global primary API + per-server API credentials
 - 🚦 Global/per-user/per-command rate limiting
 - 🛡️ Anti-spam and anti-raid detection
@@ -46,6 +46,8 @@ DANGEROUS_COMMANDS_ENABLED=false
 TWITCH_CLIENT_ID=YOUR_CLIENT_ID
 TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET
 YOUTUBE_API_KEY=YOUR_API_KEY
+INSTAGRAM_ACCESS_TOKEN=YOUR_INSTAGRAM_GRAPH_API_TOKEN
+INSTAGRAM_USER_ID=YOUR_INSTAGRAM_PROFESSIONAL_ACCOUNT_ID
 ```
 
 Never publish `.env`, the Discord token, or API credentials.
@@ -122,9 +124,9 @@ Owner checks, Discord permissions, kill-switch checks, and Discord role/member h
 
 Temporary authorizations are scoped to a guild and automatically expire.
 
-## 📢 Twitch / YouTube announcements
+## 📢 Twitch / YouTube / Instagram announcements
 
-Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
+Twitch and YouTube announcements can be configured and managed from Discord. Instagram supports automatic announcements for video/Reel media only; photo posts are ignored. Instagram requires an eligible professional account and the official Graph API. Set `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` in `.env`. The first poll establishes a baseline, so existing videos are not reposted. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
 
 YouTube API usage is optimized with shared caching across servers: channel resolution is cached for 24 hours, latest-video results for 90 seconds, and repeated lookups for the same API key and channel are reused. The polling loop backs off after HTTP 403/429 responses to help avoid repeatedly hitting API limits.
 
@@ -132,6 +134,7 @@ Typical commands include:
 
 ```text
 v!create_annonce
+v!create_instagram_annonce
 v!annonces
 v!test_annonce <id>
 v!delete_annonce <id>
