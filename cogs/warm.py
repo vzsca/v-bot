@@ -1,0 +1,121 @@
+"""Moderation-only report logging commands."""
+
+import logging
+from datetime import datetime
+
+import discord
+from discord.ext import commands
+
+import checks
+import warm_store
+
+logger = logging.getLogger("v-bot")
+
+
+class WarmCog(commands.Cog, name="Reports"):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.command(name="warm")
+    @commands.guild_only()
+    @checks.owner_or_permission(moderate_members=True)
+    @checks.kill_switch_required()
+    async def warm(self, ctx: commands.Context, member: discord.Member, *, reason: str = ""):
+        """Record a moderation report for a member."""
+        if member.id == ctx.author.id:
+            await ctx.send("❌ You cannot report yourself.")
+            return
+        if member.bot:
+            await ctx.send("❌ Bot accounts cannot be reported with this command.")
+            return
+
+        saved, report = warm_store.add(
+            guild_id=ctx.guild.id,
+            target_id=member.id,
+            reporter_id=ctx.author.id,
+            reason=reason,
+        )
+        if not saved or report is None:
+            await ctx.send("❌ The report could not be saved. The storage limit may be reached or storage unavailable.")
+            return
+
+        embed = discord.Embed(
+            title="📝 Warm enregistré",
+            description=f"Un signalement concernant {member.mention} a été enregistré.",
+            color=discord.Color.orange(),
+            timestamp=datetime.fromisoformat(report["created_at"]),
+        )
+        embed.add_field(name="Raison", value=reason[:1000] if reason.strip() else "Aucune raison précisée.", inline=False)
+        embed.set_footer(text=f"Signalé par {ctx.author} • ID: {member.id}")
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+    @commands.command(name="lst_warm")
+    @commands.guild_only()
+    @checks.owner_or_permission(moderate_members=True)
+    @checks.kill_switch_required()
+    async def list_warm(self, ctx: commands.Context, member: discord.Member):
+        """Show all stored reports for a member."""
+        reports = warm_store.for_target(ctx.guild.id, member.id)
+        if not reports:
+            await ctx.send(f"ℹ️ Aucun warm enregistré pour {member.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return
+
+        for start in range(0, len(reports), 8):
+            embed = discord.Embed(
+                title=f"📋 WARM • {member}",
+                description=f"{len(reports)} signalement(s) enregistré(s) sur ce serveur.",
+                color=discord.Color.orange(),
+            )
+            for index, report in enumerate(reports[start:start + 8], start=start + 1):
+                reporter = ctx.guild.get_member(report["reporter_id"])
+                reporter_text = reporter.mention if reporter else f"ID {report['reporter_id']} (membre absent)"
+                reason = report["reason"] or "Aucune raison précisée."
+                embed.add_field(
+                    name=f"#{index} • {report['created_at']}",
+                    value=f"**Auteur :** {reporter_text}\n**Raison :** {reason[:1000]}",
+                    inline=False,
+                )
+            embed.set_footer(text=f"Utilisateur ID : {member.id} • Page {start // 8 + 1}")
+            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+
+    @commands.command(name="delete_warm")
+    @commands.guild_only()
+    @checks.owner_or_permission(moderate_members=True)
+    @checks.kill_switch_required()
+    async def delete_warm(self, ctx: commands.Context, member: discord.Member, report_number: str):
+        """Delete one report by its number in lst_warm."""
+        raw_number = report_number.removeprefix("#")
+        if not raw_number.isdecimal() or int(raw_number) < 1:
+            await ctx.send("❌ Indique un numéro valide, par exemple : `v!delete_warm @user #2`.")
+            return
+
+        deleted, report = warm_store.delete_for_target(
+            guild_id=ctx.guild.id,
+            target_id=member.id,
+            report_number=int(raw_number),
+        )
+        if not deleted or report is None:
+            await ctx.send(
+                f"❌ Le warm **#{int(raw_number)}** n'existe pas pour {member.mention}, "
+                "ou sa suppression a échoué.",
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return
+
+        embed = discord.Embed(
+            title="🗑️ Warm supprimé",
+            description=f"Le warm **#{int(raw_number)}** de {member.mention} a été supprimé.",
+            color=discord.Color.red(),
+            timestamp=datetime.fromisoformat(report["created_at"]),
+        )
+        embed.add_field(
+            name="Raison du warm supprimé",
+            value=report["reason"] or "Aucune raison précisée.",
+            inline=False,
+        )
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(WarmCog(bot))
