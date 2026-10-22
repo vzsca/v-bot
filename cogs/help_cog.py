@@ -149,9 +149,9 @@ class HelpCog(commands.Cog, name="Help"):
             color=discord.Color.blurple(),
         )
         for name, description in (
-            ("🔑 `set_api twitch|yt`", "Configure this server's own Twitch/YouTube API credentials."),
-            ("📊 `api_status`", "Show the server API mode/status without exposing secrets."),
-            ("🧹 `clear_api twitch|yt`", "Remove this server's API credentials."),
+            ("🔑 `set_api twitch|yt|instagram`", "Configure this server's own Twitch, YouTube, or Instagram API credentials."),
+            ("📊 `api_status`", "Show Twitch/YouTube/Instagram API mode and status without exposing secrets."),
+            ("🧹 `clear_api twitch|yt|instagram`", "Remove this server's API credentials."),
             ("📺 `create_annonce`", "Create an automatic Twitch/YouTube announcement."),
             ("📸 `create_instagram_annonce`", "Create an automatic Instagram video/Reel announcement; photos are ignored."),
             ("📋 `annonces`", "List configured announcements on this server."),
