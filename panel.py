@@ -437,9 +437,29 @@ def cmd_toggle_dangerous() -> None:
     if value == "true" and input("Type ENABLE to confirm: ").strip() != "ENABLE":
         print("Cancelled.")
         return
+
+    previous_value = get_env_value("DANGEROUS_COMMANDS_ENABLED").strip().lower()
+    if previous_value in {"1", "true", "on", "yes"}:
+        previous_value = "true"
+    elif previous_value in {"0", "false", "off", "no", ""}:
+        previous_value = "false"
+
+    if previous_value == value:
+        print(f"Sensitive commands already {'ENABLED' if value == 'true' else 'DISABLED'}; no restart needed.")
+        return
+
     set_env_value("DANGEROUS_COMMANDS_ENABLED", value)
     security_log.log_security_event(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}", actor="panel")
-    print(f"Sensitive commands {'ENABLED' if value == 'true' else 'DISABLED'}. Restart required.")
+    print(f"Sensitive commands setting changed to {'ENABLED' if value == 'true' else 'DISABLED'}.")
+
+    if is_running():
+        print("Restarting bot to apply the updated .env...")
+        if cmd_restart():
+            print("Sensitive commands setting applied.")
+        else:
+            print("[ERROR] The setting was saved, but the bot restart failed.")
+    else:
+        print("Bot is stopped; the updated setting will be applied on next start.")
 
 
 def cmd_action_code() -> None:
