@@ -8,7 +8,7 @@ APP_DIR = ROOT / "app"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from deps import install_requirements
+from deps import install_requirements  # noqa: E402
 
 
 def main():
