@@ -117,3 +117,44 @@ def test_normalization_discards_invalid_records_and_bounds_fields(tmp_path, monk
     assert len(reports) == 1
     assert len(reports[0]["created_at"]) == 40
     assert len(reports[0]["reason"]) == 1000
+
+
+def test_delete_multiple_reports_by_original_numbers_atomically(tmp_path, monkeypatch):
+    _use_store(tmp_path, monkeypatch)
+    warm_store.add(1, 100, 11, "first")
+    warm_store.add(1, 100, 12, "second")
+    warm_store.add(1, 100, 13, "third")
+    warm_store.add(1, 200, 14, "other target")
+
+    deleted, reports = warm_store.delete_reports_for_target(1, 100, [1, 3, 3])
+
+    assert deleted is True
+    assert [report["reason"] for report in reports] == ["first", "third"]
+    assert [report["reason"] for report in warm_store.for_target(1, 100)] == ["second"]
+    assert [report["reason"] for report in warm_store.for_target(1, 200)] == ["other target"]
+
+
+def test_delete_all_reports_for_target_keeps_other_targets_and_guilds(tmp_path, monkeypatch):
+    _use_store(tmp_path, monkeypatch)
+    warm_store.add(1, 100, 11, "first")
+    warm_store.add(1, 100, 12, "second")
+    warm_store.add(1, 200, 13, "other target")
+    warm_store.add(2, 100, 14, "other guild")
+
+    deleted, reports = warm_store.delete_reports_for_target(1, 100, None)
+
+    assert deleted is True
+    assert [report["reason"] for report in reports] == ["first", "second"]
+    assert warm_store.for_target(1, 100) == []
+    assert [r["reason"] for r in warm_store.for_target(1, 200)] == ["other target"]
+    assert [r["reason"] for r in warm_store.for_target(2, 100)] == ["other guild"]
+
+
+def test_delete_multiple_rejects_missing_number_without_partial_deletion(tmp_path, monkeypatch):
+    path = _use_store(tmp_path, monkeypatch)
+    warm_store.add(1, 100, 11, "first")
+    warm_store.add(1, 100, 12, "second")
+    before = path.read_text(encoding="utf-8")
+
+    assert warm_store.delete_reports_for_target(1, 100, [1, 3]) == (False, [])
+    assert path.read_text(encoding="utf-8") == before
