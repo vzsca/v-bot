@@ -6,6 +6,7 @@ BASE_EXTENSIONS: tuple[str, ...] = (
     "cogs.events",
     "cogs.security",
     "cogs.moderation",
+    "cogs.warm",
     "cogs.info",
     "cogs.owner",
     "cogs.help_cog",
