@@ -6,7 +6,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 
 ## ✨ Features
 
-- 🛡️ Moderation and server-management commands
+- 🛡️ Moderation and server-management commands, including persistent warm reports
 - 👑 Permanent owners and temporary server-scoped authorizations
 - 🔐 Persistent kill switch and disabled-server state
 - 🧹 Deleted-message snipe support
@@ -108,6 +108,17 @@ remove_raid
 The panel asks which action the code is intended for. Codes expire after **60 seconds**. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
+
+## 📝 Warm reports
+
+Moderators with **Moderate Members** (and authorized owners) can use these prefix commands:
+
+```text
+v!warm @user [reason]
+v!lst warm @user
+```
+
+The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. The lookup is restricted to moderation staff. A report is a moderation note, not proof by itself.
 
 ## 👑 Owners and permissions
 
