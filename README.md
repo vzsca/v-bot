@@ -115,7 +115,7 @@ Moderators with **Moderate Members** (and authorized owners) can use these prefi
 
 ```text
 v!warm @user [reason]
-v!lst warm @user
+v!lst_warm @user
 ```
 
 The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. The lookup is restricted to moderation staff. A report is a moderation note, not proof by itself.
