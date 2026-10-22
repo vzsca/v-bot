@@ -164,10 +164,23 @@ class InstagramCog(commands.Cog, name="Instagram"):
             logger.exception("Instagram Graph API request failed.")
             return None
 
-        media = payload.get("data", [])
-        # Instagram photo posts have media_type=IMAGE. Only VIDEO is eligible;
-        # this includes Reels, which are exposed as video media by the Graph API.
-        return next((item for item in media if item.get("media_type") == "VIDEO" and item.get("id") and item.get("permalink")), None)
+        return self._select_latest_video(payload.get("data", []))
+
+    @staticmethod
+    def _select_latest_video(media):
+        """Select the first valid video/Reel and ignore image-only posts."""
+        if not isinstance(media, list):
+            return None
+        return next(
+            (
+                item for item in media
+                if isinstance(item, dict)
+                and item.get("media_type") == "VIDEO"
+                and item.get("id")
+                and item.get("permalink")
+            ),
+            None,
+        )
 
     @staticmethod
     def _format_message(message: str, video: dict) -> str:
