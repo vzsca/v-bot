@@ -49,15 +49,7 @@ class WarmCog(commands.Cog, name="Reports"):
         embed.set_footer(text=f"Signalé par {ctx.author} • ID: {member.id}")
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.group(name="lst", invoke_without_command=True)
-    @commands.guild_only()
-    @checks.owner_or_permission(moderate_members=True)
-    @checks.kill_switch_required()
-    async def lst(self, ctx: commands.Context):
-        """List stored moderation information."""
-        await ctx.send("Usage : v!lst warm @user")
-
-    @lst.command(name="warm")
+    @commands.command(name="lst_warm")
     @commands.guild_only()
     @checks.owner_or_permission(moderate_members=True)
     @checks.kill_switch_required()
