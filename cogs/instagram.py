@@ -1,0 +1,170 @@
+"""Instagram video/Reel announcements via the official Instagram Graph API."""
+
+import asyncio
+import logging
+import time
+from urllib.parse import urlparse
+
+import aiohttp
+import discord
+from discord.ext import commands, tasks
+
+import announcement_store as store
+import integration_config
+
+logger = logging.getLogger("v-bot")
+GRAPH_API_URL = "https://graph.facebook.com/v23.0"
+POLL_INTERVAL_SECONDS = 120
+BACKOFF_SECONDS = 120
+
+
+class InstagramCog(commands.Cog, name="Instagram"):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self._session = None
+        self._backoff_until = 0.0
+        self.instagram_task.start()
+
+    def cog_unload(self):
+        self.instagram_task.cancel()
+        if self._session and not self._session.closed:
+            asyncio.create_task(self._session.close())
+        self._session = None
+
+    async def _get_session(self):
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
+        return self._session
+
+    @staticmethod
+    def _username_from_url(url: str) -> str | None:
+        try:
+            parsed = urlparse(url.strip())
+            if parsed.scheme not in {"http", "https"} or parsed.netloc.lower().split(":")[0] not in {
+                "instagram.com", "www.instagram.com",
+            }:
+                return None
+            parts = [part for part in parsed.path.strip("/").split("/") if part]
+            if len(parts) != 1 or parts[0].lower() in {"reel", "reels", "p", "stories", "explore"}:
+                return None
+            username = parts[0].lstrip("@")
+            return username if username and all(c.isalnum() or c in "._" for c in username) else None
+        except ValueError:
+            return None
+
+    async def _latest_video(self, token: str, user_id: str):
+        if time.time() < self._backoff_until:
+            return None
+        session = await self._get_session()
+        params = {
+            "fields": "id,caption,media_type,media_product_type,permalink,timestamp,username",
+            "limit": "10",
+            "access_token": token,
+        }
+        try:
+            async with session.get(f"{GRAPH_API_URL}/{user_id}/media", params=params) as response:
+                if response.status in {400, 401, 403, 429}:
+                    self._backoff_until = time.time() + BACKOFF_SECONDS
+                    logger.warning("Instagram Graph API returned HTTP %s; backing off.", response.status)
+                    return None
+                if response.status != 200:
+                    logger.warning("Instagram Graph API returned HTTP %s.", response.status)
+                    return None
+                payload = await response.json()
+        except (aiohttp.ClientError, ValueError):
+            logger.exception("Instagram Graph API request failed.")
+            return None
+
+        media = payload.get("data", [])
+        # Instagram photo posts have media_type=IMAGE. Only VIDEO is eligible;
+        # this includes Reels, which are exposed as video media by the Graph API.
+        return next((item for item in media if item.get("media_type") == "VIDEO" and item.get("id") and item.get("permalink")), None)
+
+    @staticmethod
+    def _format_message(message: str, video: dict) -> str:
+        values = {
+            "channel": video.get("username", ""),
+            "title": video.get("caption", "") or "Nouvelle vidéo Instagram",
+            "url": video.get("permalink", ""),
+        }
+        for key, value in values.items():
+            message = message.replace("{" + key + "}", str(value))
+        return message[:2000]
+
+    async def _send_announcement(self, announcement: dict, video: dict) -> bool:
+        try:
+            guild_id = int(announcement["guild_id"])
+            channel_id = int(announcement["channel_id"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        channel = self.bot.get_channel(channel_id)
+        if channel is None or getattr(getattr(channel, "guild", None), "id", None) != guild_id:
+            logger.warning("Blocked Instagram announcement with mismatched guild/channel.")
+            return False
+        try:
+            await channel.send(
+                self._format_message(announcement.get("message", ""), video),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            return True
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            logger.warning("Failed to send Instagram announcement for guild %s.", guild_id)
+            return False
+
+    async def test_announcement(self, announcement: dict) -> bool:
+        username = self._username_from_url(announcement.get("source_url", ""))
+        if not username:
+            return False
+        return await self._send_announcement(announcement, {
+            "username": username,
+            "caption": "Test video Instagram (aucune publication réelle)",
+            "permalink": announcement.get("source_url", ""),
+        })
+
+    async def _poll_instagram_announcements(self):
+        data = store.load()
+        announcements = [
+            item for item in data["announcements"]
+            if item.get("type") == "instagram" and item.get("guild_id")
+        ]
+        if not announcements:
+            return
+
+        # The Graph API token and professional-account ID are configured in .env.
+        token, user_id = integration_config.get_instagram_credentials()
+        if not token or not user_id:
+            return
+
+        video = await self._latest_video(token, user_id)
+        if not video:
+            return
+
+        updates = {}
+        for announcement in announcements:
+            key = (announcement.get("guild_id"), announcement.get("id"))
+            previous_id = announcement.get("last_video_id")
+            if previous_id is None:
+                # First poll establishes a baseline; do not spam old posts.
+                updates[key] = video["id"]
+            elif previous_id != video["id"] and await self._send_announcement(announcement, video):
+                updates[key] = video["id"]
+
+        if updates:
+            def apply_updates(current):
+                for item in current["announcements"]:
+                    key = (item.get("guild_id"), item.get("id"))
+                    if key in updates:
+                        item["last_video_id"] = updates[key]
+            store.transaction(apply_updates)
+
+    @tasks.loop(seconds=POLL_INTERVAL_SECONDS)
+    async def instagram_task(self):
+        await self._poll_instagram_announcements()
+
+    @instagram_task.before_loop
+    async def before_instagram_task(self):
+        await self.bot.wait_until_ready()
+
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(InstagramCog(bot))
