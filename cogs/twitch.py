@@ -159,7 +159,10 @@ class TwitchCog(commands.Cog, name="Twitch"):
             return None
 
         try:
-            return await channel.send(self._format_message(template, stream_data))
+            return await channel.send(
+                self._format_message(template, stream_data),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
             return None
@@ -185,7 +188,10 @@ class TwitchCog(commands.Cog, name="Twitch"):
 
         try:
             message = await channel.fetch_message(int(message_id))
-            await message.edit(content=self._format_message(announcement["message"], stream_data))
+            await message.edit(
+                content=self._format_message(announcement["message"], stream_data),
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             logger.warning(
