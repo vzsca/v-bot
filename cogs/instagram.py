@@ -60,6 +60,15 @@ class InstagramCog(commands.Cog, name="Instagram"):
         username = self._username_from_url(source_url)
         if not username:
             return await ctx.send("❌ Invalid Instagram account URL.")
+        token, user_id = integration_config.get_instagram_credentials()
+        configured_username = await self._configured_username(token, user_id)
+        if not configured_username:
+            return await ctx.send("❌ Unable to validate the configured Instagram account. Check the token and account ID.")
+        if username.casefold() != configured_username:
+            return await ctx.send(
+                f"❌ The configured Instagram account is @{configured_username}. "
+                "Update INSTAGRAM_USER_ID/token to monitor a different account."
+            )
         await ctx.send("💬 Send the announcement text. Placeholders: {channel}, {title}, {url}.")
         try:
             response = await self.bot.wait_for("message", timeout=60, check=check)
@@ -112,6 +121,23 @@ class InstagramCog(commands.Cog, name="Instagram"):
             username = parts[0].lstrip("@")
             return username if username and all(c.isalnum() or c in "._" for c in username) else None
         except ValueError:
+            return None
+
+    async def _configured_username(self, token: str, user_id: str) -> str | None:
+        session = await self._get_session()
+        try:
+            async with session.get(
+                f"{GRAPH_API_URL}/{user_id}",
+                params={"fields": "username", "access_token": token},
+            ) as response:
+                if response.status != 200:
+                    logger.warning("Unable to resolve configured Instagram account (HTTP %s).", response.status)
+                    return None
+                payload = await response.json()
+                username = payload.get("username")
+                return username.casefold() if isinstance(username, str) else None
+        except (aiohttp.ClientError, ValueError):
+            logger.exception("Unable to resolve configured Instagram account.")
             return None
 
     async def _latest_video(self, token: str, user_id: str):
