@@ -1,6 +1,7 @@
-discord.py>=2.3.2,<3.0.0
-python-dotenv>=1.0.0,<2.0.0
-psutil>=5.9.0,<8.0.0
-aiohttp>=3.9.0,<4.0.0
-pytest>=8.0.0,<10.0.0
-ruff>=0.8.0,<1.0.0
+# Direct dependencies pinned to exact versions; update deliberately with CI validation.
+discord.py==2.7.1
+python-dotenv==1.2.4
+psutil==7.2.2
+aiohttp==3.14.5
+pytest==8.4.2
+ruff==0.14.1
