@@ -12,6 +12,8 @@ _LOCK = threading.RLock()
 
 
 def _load_unlocked() -> dict[str, dict[str, dict[str, str]]]:
+    if os.name != "nt" and CONFIG_FILE.exists():
+        CONFIG_FILE.chmod(0o600)
     data = load_object(CONFIG_FILE, {})
     if not isinstance(data, dict):
         raise JsonStoreError(f"Invalid JSON structure in {CONFIG_FILE}")
