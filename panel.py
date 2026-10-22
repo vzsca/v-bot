@@ -538,10 +538,17 @@ def cmd_set_instagram_api() -> None:
 
 
 def cmd_api_status() -> None:
-    status = api_access.status()
+    twitch = bool(get_env_value("TWITCH_CLIENT_ID") and get_env_value("TWITCH_CLIENT_SECRET"))
+    youtube = bool(get_env_value("YOUTUBE_API_KEY"))
+    instagram = bool(
+        get_env_value("INSTAGRAM_ACCESS_TOKEN")
+        and get_env_value("INSTAGRAM_USER_ID").isdigit()
+    )
     print("\n===== API status =====")
-    for key, value in status.items():
-        print(f"{key}: {value}")
+    print("Primary API authorized guilds:", len(api_access.get_allowed_guilds()))
+    print("Twitch:", "configured" if twitch else "missing")
+    print("YouTube:", "configured" if youtube else "missing")
+    print("Instagram:", "configured" if instagram else "missing")
 
 
 def cmd_clear_api(service: str) -> None:
