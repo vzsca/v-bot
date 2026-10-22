@@ -1,3 +1,7 @@
+# ⚠️ IN PROCESS
+
+> This branch is under active development; features and behavior may change.
+
 # 🤖 v-bot
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
