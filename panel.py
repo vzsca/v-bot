@@ -520,6 +520,22 @@ def cmd_set_youtube_api() -> None:
     security_log.log_security_event("YouTube API key changed", actor="panel")
     print("YouTube API key saved to .env.")
 
+def cmd_set_instagram_api() -> None:
+    access_token = input("Instagram Graph API access token: ").strip()
+    user_id = input("Instagram professional account ID: ").strip()
+    if not access_token or "\n" in access_token or "\r" in access_token or "\x00" in access_token:
+        print("[ERROR] Instagram access token is invalid.")
+        return
+    if not user_id.isdigit():
+        print("[ERROR] Instagram account ID must contain digits only.")
+        return
+    set_env_value("INSTAGRAM_ACCESS_TOKEN", access_token)
+    set_env_value("INSTAGRAM_USER_ID", user_id)
+    security_log.log_security_event("Instagram API credentials changed", actor="panel")
+    print("Instagram API credentials saved to .env.")
+
+
+
 
 def cmd_api_status() -> None:
     status = api_access.status()
@@ -529,9 +545,15 @@ def cmd_api_status() -> None:
 
 
 def cmd_clear_api(service: str) -> None:
-    set_env_value("TWITCH_CLIENT_ID" if service == "twitch" else "YOUTUBE_API_KEY", "")
-    if service == "twitch":
-        set_env_value("TWITCH_CLIENT_SECRET", "")
+    keys = {
+        "twitch": ("TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"),
+        "youtube": ("YOUTUBE_API_KEY",),
+        "instagram": ("INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_USER_ID"),
+    }
+    if service not in keys:
+        raise ValueError("unsupported API service")
+    for key in keys[service]:
+        set_env_value(key, "")
     security_log.log_security_event(f"Cleared {service} API credentials", actor="panel")
     print(f"{service.title()} API credentials cleared.")
 
@@ -553,8 +575,9 @@ COMMANDS = [
     ("set_prefix", "set bot prefix", cmd_set_prefix),
     ("set_twitch_api", "set main Twitch API", cmd_set_twitch_api),
     ("set_youtube_api", "set main YouTube API", cmd_set_youtube_api),
-    ("api_status", "show Twitch/YouTube API status", cmd_api_status),
-    ("clear_api", "clear Twitch/YouTube API credentials", None),
+    ("set_instagram_api", "set main Instagram API", cmd_set_instagram_api),
+    ("api_status", "show API access configuration", cmd_api_status),
+    ("clear_api", "clear Twitch/YouTube/Instagram API credentials", None),
 ]
 COMMAND_MAP = {name: func for name, _, func in COMMANDS if func is not None}
 
@@ -605,11 +628,13 @@ def main() -> None:
             cmd_help()
         elif cmd.startswith("clear_api"):
             parts = cmd.split()
-            service = parts[1] if len(parts) > 1 else input("API service (twitch/yt): ").strip().lower()
+            service = parts[1] if len(parts) > 1 else input("API service (twitch/yt/instagram): ").strip().lower()
             if service == "yt":
                 service = "youtube"
-            if service not in {"twitch", "youtube"}:
-                print("[ERROR] Unknown API service. Use twitch or yt.")
+            if service == "insta":
+                service = "instagram"
+            if service not in {"twitch", "youtube", "instagram"}:
+                print("[ERROR] Unknown API service. Use twitch, yt, or instagram.")
             else:
                 try:
                     cmd_clear_api(service)
