@@ -125,6 +125,9 @@ class HelpCog(commands.Cog, name="Help"):
             color=discord.Color.orange(),
         )
         for name, description in (
+            ("📝 `warm @user [reason]`", "Record a moderation report; requires **Moderate Members**."),
+            ("📋 `lst_warm @user`", "Show all reports for a member; requires **Moderate Members**."),
+            ("🗑️ `delete_warm @user #number`", "Delete a specific report by its number in `lst_warm`; requires **Moderate Members**."),
             ("🔇 `mute @user <minutes> [reason]`", "Requires **Moderate Members**."),
             ("🔊 `unmute @user`", "Requires **Moderate Members**."),
             ("🦵 `kick @user [reason]`", "Requires **Kick Members**."),

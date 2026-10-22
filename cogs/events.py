@@ -333,27 +333,5 @@ class EventsCog(commands.Cog):
         }
         state.add_sniped(message.channel.id, data, config.SNIPE_LIMIT)
 
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandNotFound):
-            await ctx.send("Sorry, this command does not exist. Use `v!help` to see the list of available commands.")
-        elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send("❌ This command cannot be used in private messages.")
-        elif isinstance(error, (exceptions.NotPermanentOwner, exceptions.NotOwnerOrTemp, exceptions.NotOwnerOrGuildOwner)):
-            logger.warning("Permission denied for '%s' to %s (%s).", ctx.command, ctx.author, ctx.author.id)
-            audit.manager.record(
-                ctx.guild.id if ctx.guild else 0,
-                ctx.author.id,
-                getattr(ctx.command, "qualified_name", "unknown"),
-                success=False,
-            )
-            await ctx.send(str(error))
-        elif isinstance(error, commands.CheckFailure):
-            await ctx.send(str(error))
-        else:
-            logger.exception("Command error", exc_info=error)
-            await ctx.send("An internal error occurred while processing this command.")
-
-
 async def setup(bot: commands.Bot):
     await bot.add_cog(EventsCog(bot))
