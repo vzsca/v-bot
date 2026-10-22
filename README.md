@@ -92,6 +92,7 @@ set_youtube_api
 api_status
 clear_api twitch
 clear_api yt
+clear_api instagram
 ```
 
 `status` reports the version, platform, owner configuration, bot state, PID, uptime, CPU/RAM usage, and current Git commit.
@@ -126,7 +127,7 @@ Temporary authorizations are scoped to a guild and automatically expire.
 
 ## 📢 Twitch / YouTube / Instagram announcements
 
-Twitch and YouTube announcements can be configured and managed from Discord. Instagram supports automatic announcements for video/Reel media only; photo posts are ignored. Instagram requires an eligible professional account and the official Graph API. Set `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` in `.env`. The first poll establishes a baseline, so existing videos are not reposted. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
+Twitch and YouTube announcements can be configured and managed from Discord. Instagram supports automatic announcements for video/Reel media only; photo posts are ignored. Instagram requires an eligible professional account and the official Graph API. Configure Instagram through `v!set_api instagram` to store an isolated token and professional-account ID for that server. Servers authorized to use the primary API use `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` from `.env`; other servers use their own credentials in `api_credentials.json`. The first poll establishes a baseline, so existing videos are not reposted. `v!api_status` shows whether Instagram credentials are configured, and `v!clear_api instagram` removes the server-specific credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
 
 YouTube API usage is optimized with shared caching across servers: channel resolution is cached for 24 hours, latest-video results for 90 seconds, and repeated lookups for the same API key and channel are reused. The polling loop backs off after HTTP 403/429 responses to help avoid repeatedly hitting API limits.
 
@@ -140,9 +141,11 @@ v!test_annonce <id>
 v!delete_annonce <id>
 v!set_api twitch
 v!set_api yt
+v!set_api instagram
 v!api_status
 v!clear_api twitch
 v!clear_api yt
+v!clear_api instagram
 ```
 
 Per-server credentials are stored by `guild_id` in `api_credentials.json` and written atomically.
