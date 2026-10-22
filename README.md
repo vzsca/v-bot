@@ -18,7 +18,7 @@ The project includes a cross-platform local control panel and targets Windows, L
 - 🔐 Sensitive commands disabled by default
 - 🔑 One-time 6-digit security codes bound to a specific sensitive action
 - 🧩 Modular Cogs and application modules
-- 📚 Permission-aware help system
+- 📚 Interactive, permission-aware help system with category buttons and direct category commands
 - 💬 Permission-aware bot mention responses
 - 🖥️ Cross-platform local control panel
 
@@ -105,7 +105,7 @@ raid
 remove_raid
 ```
 
-The panel asks which action the code is intended for. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
+The panel asks which action the code is intended for. Codes expire after **60 seconds**. A code generated for one action cannot authorize another action. Multiple codes may be active at the same time, so generating a new code does not invalidate earlier active codes.
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
 
@@ -124,7 +124,9 @@ Temporary authorizations are scoped to a guild and automatically expire.
 
 ## 📢 Twitch / YouTube announcements
 
-Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials.
+Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
+
+YouTube API usage is optimized with shared caching across servers: channel resolution is cached for 24 hours, latest-video results for 90 seconds, and repeated lookups for the same API key and channel are reused. The polling loop backs off after HTTP 403/429 responses to help avoid repeatedly hitting API limits.
 
 Typical commands include:
 
@@ -141,6 +143,17 @@ v!clear_api yt
 ```
 
 Per-server credentials are stored by `guild_id` in `api_credentials.json` and written atomically.
+
+## 💬 Permission-aware help system
+
+Use `v!help` to open the help menu. When multiple categories are available, buttons let you browse the categories you are allowed to access:
+
+- **General** — commands available to everyone.
+- **Moderation** — shown to members with relevant moderation permissions.
+- **Admin & Announcements** — requires the Discord **Administrator** permission.
+- **Owner** — restricted to permanent owners and users with a valid temporary authorization.
+
+You can also open a category directly with `v!help general`, `v!help mod`, `v!help admin`, or `v!help owner`. Aliases include `user` for general, `moderation` / `modo` for mod, and `announcement(s)` for admin. Access is checked when the category is requested; a visible help category does not bypass the command's own permission checks.
 
 ## ⚠️ Sensitive commands
 
