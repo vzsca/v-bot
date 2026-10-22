@@ -12,7 +12,6 @@ from discord.ext import commands, tasks
 import audit
 import checks
 import config
-import exceptions
 import security_log
 from rate_limit import rate_limiter
 from state import state
