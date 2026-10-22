@@ -211,6 +211,8 @@ CI runs:
 - Gitleaks for secret scanning
 - **GitHub CodeQL** with the `security-extended` query suite for Python security analysis
 
+Warm-report storage tests cover persistence, server/user isolation, deletion, per-server limits, and corrupt JSON handling.
+
 CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow.
 
 ## 🧩 Architecture
