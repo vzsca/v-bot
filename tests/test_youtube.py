@@ -2,6 +2,8 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import discord
+
 from cogs.youtube import YouTubeCog
 
 
@@ -33,6 +35,31 @@ def test_latest_video_lookup_cache_is_shared_by_api_key_and_channel():
     assert first == second
     cog._get_uploads_playlist.assert_awaited_once_with(session, "API_KEY", "UC123")
     cog._api_get.assert_awaited_once()
+
+
+def test_youtube_announcement_disables_mentions():
+    channel = SimpleNamespace(
+        guild=SimpleNamespace(id=123),
+        send=AsyncMock(),
+    )
+    cog = YouTubeCog.__new__(YouTubeCog)
+    cog.bot = SimpleNamespace(get_channel=lambda channel_id: channel)
+
+    result = asyncio.run(
+        cog._send_announcement(
+            {
+                "guild_id": 123,
+                "channel_id": 456,
+                "message": "New video: {title}",
+            },
+            {"title": "@everyone"},
+        )
+    )
+
+    assert result is True
+    channel.send.assert_awaited_once()
+    assert channel.send.await_args.args == ("New video: @everyone",)
+    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
 
 
 def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch):
