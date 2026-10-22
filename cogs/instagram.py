@@ -23,7 +23,7 @@ class InstagramCog(commands.Cog, name="Instagram"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._session = None
-        self._backoff_until = 0.0
+        self._backoff_until = {}
         self.instagram_task.start()
 
     def cog_unload(self):
@@ -142,7 +142,8 @@ class InstagramCog(commands.Cog, name="Instagram"):
             return None
 
     async def _latest_video(self, token: str, user_id: str):
-        if time.time() < self._backoff_until:
+        credential_key = (token, user_id)
+        if time.time() < self._backoff_until.get(credential_key, 0):
             return None
         session = await self._get_session()
         params = {
@@ -153,7 +154,7 @@ class InstagramCog(commands.Cog, name="Instagram"):
         try:
             async with session.get(f"{GRAPH_API_URL}/{user_id}/media", params=params) as response:
                 if response.status in {400, 401, 403, 429}:
-                    self._backoff_until = time.time() + BACKOFF_SECONDS
+                    self._backoff_until[credential_key] = time.time() + BACKOFF_SECONDS
                     logger.warning("Instagram Graph API returned HTTP %s; backing off.", response.status)
                     return None
                 if response.status != 200:
