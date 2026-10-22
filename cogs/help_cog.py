@@ -125,6 +125,9 @@ class HelpCog(commands.Cog, name="Help"):
             color=discord.Color.orange(),
         )
         for name, description in (
+            ("📝 `warm @user [reason]`", "Record a moderation report; requires **Moderate Members**."),
+            ("📋 `lst_warm @user`", "Show all reports for a member; requires **Moderate Members**."),
+            ("🗑️ `delete_warm @user #number`", "Delete a specific report by its number in `lst_warm`; requires **Moderate Members**."),
             ("🔇 `mute @user <minutes> [reason]`", "Requires **Moderate Members**."),
             ("🔊 `unmute @user`", "Requires **Moderate Members**."),
             ("🦵 `kick @user [reason]`", "Requires **Kick Members**."),
@@ -186,7 +189,7 @@ class HelpCog(commands.Cog, name="Help"):
             value=(
                 "`spam`, `dmall`, `raid`, `remove_raid`\n"
                 f"Status: {sensitive}\n"
-                "⚙️ Managed from the local web panel.\n"
+                "⚙️ Managed from the `start_bot.bat` panel → `toggle_dangerous`.\n"
                 "🔄 Bot restart required after changing the setting."
             ),
             inline=False,
