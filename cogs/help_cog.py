@@ -153,6 +153,7 @@ class HelpCog(commands.Cog, name="Help"):
             ("📊 `api_status`", "Show the server API mode/status without exposing secrets."),
             ("🧹 `clear_api twitch|yt`", "Remove this server's API credentials."),
             ("📺 `create_annonce`", "Create an automatic Twitch/YouTube announcement."),
+            ("📸 `create_instagram_annonce`", "Create an automatic Instagram video/Reel announcement; photos are ignored."),
             ("📋 `annonces`", "List configured announcements on this server."),
             ("🧪 `test_annonce <id>`", "Test a configured announcement."),
             ("🗑️ `delete_annonce <id>`", "Delete a configured announcement."),
