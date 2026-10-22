@@ -36,6 +36,68 @@ class InstagramCog(commands.Cog, name="Instagram"):
             self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15))
         return self._session
 
+    @commands.command(name="create_instagram_annonce")
+    @commands.guild_only()
+    async def create_instagram_annonce(self, ctx):
+        """Create an Instagram-only video announcement."""
+        if not ctx.author.guild_permissions.administrator:
+            return await ctx.send("❌ This command requires Administrator permission.")
+        if not integration_config.get_instagram_credentials():
+            return await ctx.send(
+                "❌ Instagram Graph API is not configured. Set INSTAGRAM_ACCESS_TOKEN and "
+                "INSTAGRAM_USER_ID in .env, then restart the bot."
+            )
+
+        def check(message):
+            return message.author.id == ctx.author.id and message.channel.id == ctx.channel.id
+
+        await ctx.send("📸 Send the Instagram account URL (example: https://www.instagram.com/username/).")
+        try:
+            response = await self.bot.wait_for("message", timeout=60, check=check)
+        except TimeoutError:
+            return await ctx.send("⏰ Time expired.")
+        source_url = response.content.strip()
+        username = self._username_from_url(source_url)
+        if not username:
+            return await ctx.send("❌ Invalid Instagram account URL.")
+        await ctx.send("💬 Send the announcement text. Placeholders: {channel}, {title}, {url}.")
+        try:
+            response = await self.bot.wait_for("message", timeout=60, check=check)
+        except TimeoutError:
+            return await ctx.send("⏰ Time expired.")
+        message = response.content.strip()
+        if not message:
+            return await ctx.send("❌ The announcement message cannot be empty.")
+        await ctx.send("📢 Mention the target Discord channel (for example #announcements).")
+        def channel_check(m):
+            return check(m) and bool(m.channel_mentions) and m.channel_mentions[0].guild.id == ctx.guild.id
+        try:
+            response = await self.bot.wait_for("message", timeout=60, check=channel_check)
+        except TimeoutError:
+            return await ctx.send("⏰ Time expired.")
+        target = response.channel_mentions[0]
+        me = ctx.guild.me
+        if me is None or not target.permissions_for(me).send_messages:
+            return await ctx.send("❌ I cannot send messages in that channel.")
+
+        def add_announcement(data):
+            return store.add(data, {
+                "guild_id": ctx.guild.id,
+                "type": "instagram",
+                "source_url": source_url,
+                "message": message,
+                "channel_id": target.id,
+                "was_live": None,
+                "last_video_id": None,
+            })
+        saved, announcement = store.transaction(add_announcement)
+        if not saved or not announcement:
+            return await ctx.send("❌ Failed to save the announcement.")
+        await ctx.send(
+            f"✅ Instagram video announcement #{announcement['id']} created in {target.mention}. "
+            "Only video/Reel media will be announced; photos are ignored."
+        )
+
     @staticmethod
     def _username_from_url(url: str) -> str | None:
         try:
