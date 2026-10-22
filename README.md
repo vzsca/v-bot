@@ -1,7 +1,3 @@
-# ⚠️ IN PROCESS
-
-> This branch is under active development; features and behavior may change.
-
 # 🤖 v-bot
 
 A Discord bot built with **Python and discord.py**, focused on moderation, server management, Twitch/YouTube announcements, and secure administration.
@@ -10,11 +6,11 @@ The project includes a cross-platform local control panel and targets Windows, L
 
 ## ✨ Features
 
-- 🛡️ Moderation and server-management commands
+- 🛡️ Moderation and server-management commands, including persistent warm reports
 - 👑 Permanent owners and temporary server-scoped authorizations
 - 🔐 Persistent kill switch and disabled-server state
 - 🧹 Deleted-message snipe support
-- 📢 Twitch, YouTube, and Instagram video announcements
+- 📢 Twitch and YouTube announcements
 - 🔑 Global primary API + per-server API credentials
 - 🚦 Global/per-user/per-command rate limiting
 - 🛡️ Anti-spam and anti-raid detection
@@ -93,12 +89,9 @@ action_code
 set_prefix
 set_twitch_api
 set_youtube_api
-set_instagram_api
 api_status
 clear_api twitch
 clear_api yt
-clear_api instagram
-clear_api instagram
 ```
 
 `status` reports the version, platform, owner configuration, bot state, PID, uptime, CPU/RAM usage, and current Git commit.
@@ -118,6 +111,18 @@ The panel asks which action the code is intended for. Codes expire after **60 se
 
 Codes are stored only as SHA-256 hashes with their intended action and expiration time. They are consumed atomically and removed after successful use or expiration. The plaintext code is never written to the security log.
 
+## 📝 Warm reports
+
+Moderators with **Moderate Members** (and authorized owners) can use these prefix commands:
+
+```text
+v!warm @user [reason]
+v!lst_warm @user
+v!delete_warm @user #number
+```
+
+The reason is optional. Reports are saved persistently and scoped to the current server; each record includes the target, reporter, UTC timestamp, and reason. Use the numbered entries shown by `v!lst_warm @user` with `v!delete_warm @user #number` to remove one report (the `#` is optional). These commands are restricted to moderation staff. A report is a moderation note, not proof by itself.
+
 ## 👑 Owners and permissions
 
 There is a maximum of **1 primary owner** and **5 secondary owners**:
@@ -133,7 +138,11 @@ Temporary authorizations are scoped to a guild and automatically expire.
 
 ## 📢 Twitch / YouTube / Instagram announcements
 
-Twitch and YouTube announcements can be configured and managed from Discord. Instagram supports automatic announcements for video/Reel media only; photo posts are ignored. Instagram requires an eligible professional account and the official Graph API. Configure Instagram through `v!set_api instagram` to store an isolated token and professional-account ID for that server. Servers authorized to use the primary API use `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID` from `.env` (configure them with the panel's `set_instagram_api` command); other servers use their own credentials in `api_credentials.json`. The first poll establishes a baseline, so existing videos are not reposted. `v!api_status` shows whether Instagram credentials are configured, and `v!clear_api instagram` removes the server-specific credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
+Instagram video/Reel announcements are supported on the `feat/instagram-video-announcements` branch. Photo posts are ignored. Use an eligible professional Instagram account with the official Graph API. Configure server-specific credentials with `v!set_api instagram`; the primary credentials use `INSTAGRAM_ACCESS_TOKEN` and `INSTAGRAM_USER_ID`. The first poll establishes a baseline, so existing videos are not reposted. Use `v!api_status` to check configuration and `v!clear_api instagram` to remove server-specific credentials.
+
+Twitch / YouTube announcements
+
+Announcements can be configured and managed from Discord. The bot supports a primary API configuration plus isolated per-server credentials. Twitch and YouTube announcement messages suppress automatic Discord mentions, so text such as `@everyone` in a stream or video title does not trigger unwanted pings.
 
 YouTube API usage is optimized with shared caching across servers: channel resolution is cached for 24 hours, latest-video results for 90 seconds, and repeated lookups for the same API key and channel are reused. The polling loop backs off after HTTP 403/429 responses to help avoid repeatedly hitting API limits.
 
@@ -210,6 +219,8 @@ CI runs:
 - `pytest` for automated tests
 - Gitleaks for secret scanning
 - **GitHub CodeQL** with the `security-extended` query suite for Python security analysis
+
+Warm-report storage tests cover persistence, server/user isolation, deletion, per-server limits, and corrupt JSON handling.
 
 CodeQL runs on pushes to `main`, `dev`, and `dev-panel`, pull requests targeting `main`, and weekly on the scheduled workflow.
 
