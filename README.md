@@ -20,7 +20,7 @@ The project targets Windows, Linux, and macOS. The `dev-panel` branch provides a
 - 🧩 Modular Cogs and application modules
 - 📚 Interactive, permission-aware help system with category buttons and direct category commands
 - 💬 Permission-aware bot mention responses
-- 🖥️ Cross-platform local control panel
+- 🌐 Local web control panel (`dev-panel` branch)
 
 ## 🚀 Installation
 
@@ -68,7 +68,9 @@ The launcher prepares the Python environment and starts the Discord bot and loca
 
 ## 🌐 Web control panel
 
-The `dev-panel` branch contains the web panel under `panel_web/`. It is designed for local access and includes bot status, recent logs, and action-specific one-time security-code generation. The current panel is an active-development feature; consult [`panel_web/README.md`](panel_web/README.md) for branch-specific details. Do not expose it publicly or through port forwarding.
+The `dev-panel` branch contains the web panel under `panel_web/`. It is designed for local access and includes bot status, recent logs, action-specific one-time security-code generation, owner configuration, prefix configuration, API credentials, and server management. The panel is an active-development feature; consult [`panel_web/README.md`](panel_web/README.md) for routes and setup. Do not expose it publicly or through port forwarding.
+
+Default local URL: `http://127.0.0.1:8765/panel_web/signin`.
 
 ### Security codes
 
