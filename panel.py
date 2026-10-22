@@ -224,10 +224,22 @@ def cmd_start() -> bool:
     env["PYTHONUTF8"] = "1"
     command = [str(PYTHON_EXE), str(main_file)]
     try:
+        # Keep the bot's stdout/stderr away from the interactive panel terminal.
+        # The bot already writes structured logs to bot.log via RotatingFileHandler.
+        popen_options = {
+            "cwd": str(ROOT),
+            "env": env,
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+        }
         if IS_WINDOWS:
-            process = subprocess.Popen(command, cwd=str(ROOT), creationflags=subprocess.CREATE_NEW_CONSOLE, env=env)
+            # No separate console is needed: use the panel's "logs" command instead.
+            popen_options["creationflags"] = subprocess.CREATE_NO_WINDOW
         else:
-            process = subprocess.Popen(command, cwd=str(ROOT), env=env, start_new_session=True)
+            # Detach the bot from the panel's terminal/session on Unix.
+            popen_options["start_new_session"] = True
+        process = subprocess.Popen(command, **popen_options)
         _write_process_metadata(process.pid)
         BOT_PID_FILE.write_text(str(process.pid), encoding="utf-8")
     except (OSError, psutil.Error) as exc:
