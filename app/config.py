@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 import version
 
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger("v-bot")
 VERSION = version.VERSION
 MAX_SECONDARY_OWNERS = 5
