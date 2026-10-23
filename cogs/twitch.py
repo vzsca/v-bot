@@ -161,11 +161,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
         try:
             return await channel.send(
                 self._format_message(template, stream_data),
-                # Permit explicit user/role pings configured in the announcement,
-                # but never allow @everyone/@here to ping the whole server.
-                allowed_mentions=discord.AllowedMentions(
-                    everyone=False, users=True, roles=True, replied_user=False
-                ),
+                # Twitch metadata is external input; never allow announcement mentions.
+                allowed_mentions=discord.AllowedMentions.none(),
             )
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             logger.warning("Failed to send Twitch announcement for guild %s.", guild_id)
@@ -195,11 +192,8 @@ class TwitchCog(commands.Cog, name="Twitch"):
             message = await channel.fetch_message(int(message_id))
             await message.edit(
                 content=self._format_message(announcement["message"], stream_data),
-                # Permit explicit user/role pings configured in the announcement,
-                # but never allow @everyone/@here to ping the whole server.
-                allowed_mentions=discord.AllowedMentions(
-                    everyone=False, users=True, roles=True, replied_user=False
-                ),
+                # Twitch metadata is external input; never allow announcement mentions.
+                allowed_mentions=discord.AllowedMentions.none(),
             )
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
