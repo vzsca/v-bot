@@ -52,10 +52,10 @@ def test_twitch_announcement_message_is_edited_when_title_changes():
     assert updated is True
     message.edit.assert_awaited_once()
     assert message.edit.await_args.kwargs["content"] == "Live: New title"
-    assert message.edit.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
+    assert message.edit.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions(everyone=True, roles=True, users=True).to_dict()
 
 
-def test_twitch_announcement_disables_mentions():
+def test_twitch_announcement_allows_template_mentions():
     sent_message = object()
     channel = SimpleNamespace(
         guild=SimpleNamespace(id=123),
@@ -78,7 +78,7 @@ def test_twitch_announcement_disables_mentions():
     assert result is sent_message
     channel.send.assert_awaited_once()
     assert channel.send.await_args.args == ("Live: @everyone",)
-    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
+    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions(everyone=True, roles=True, users=True).to_dict()
 
 
 def test_twitch_announcement_message_is_not_edited_without_title_placeholder():
