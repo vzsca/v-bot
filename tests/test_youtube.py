@@ -37,7 +37,7 @@ def test_latest_video_lookup_cache_is_shared_by_api_key_and_channel():
     cog._api_get.assert_awaited_once()
 
 
-def test_youtube_announcement_disables_mentions():
+def test_youtube_announcement_allows_template_mentions():
     channel = SimpleNamespace(
         guild=SimpleNamespace(id=123),
         send=AsyncMock(),
@@ -59,7 +59,7 @@ def test_youtube_announcement_disables_mentions():
     assert result is True
     channel.send.assert_awaited_once()
     assert channel.send.await_args.args == ("New video: @everyone",)
-    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions.none().to_dict()
+    assert channel.send.await_args.kwargs["allowed_mentions"].to_dict() == discord.AllowedMentions(everyone=True, roles=True, users=True).to_dict()
 
 
 def test_youtube_poll_fetches_same_channel_once_for_multiple_guilds(monkeypatch):
