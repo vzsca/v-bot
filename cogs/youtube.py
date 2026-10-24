@@ -243,7 +243,7 @@ class YouTubeCog(commands.Cog, name="YouTube"):
         try:
             await channel.send(
                 self._format_message(message, video_data),
-                allowed_mentions=discord.AllowedMentions.none(),
+                allowed_mentions=discord.AllowedMentions(everyone=True, roles=True, users=True),
             )
             return True
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
