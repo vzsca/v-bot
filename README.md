@@ -7,7 +7,6 @@ The project includes a cross-platform local control panel and targets Windows, L
 ## 🌐 Official Discord servers
 
 - [v-bot | Official Server](https://discord.gg/vgvFA7NJHg) — support, announcements, and community.
-- [0x00.exe | Official Server](https://discord.gg/XCWKSnFMcU) — community and support for the `.exe` project.
 - [Noscape | Official Group](https://discord.gg/7VvdbZn224) — the collective behind v-bot and its other projects.
 
 ## ✨ Features
