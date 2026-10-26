@@ -4,6 +4,12 @@ A Discord bot built with **Python and discord.py**, focused on moderation, serve
 
 The project includes a cross-platform local control panel and targets Windows, Linux, and macOS.
 
+## 🌐 Official Discord servers
+
+- [v-bot | Official Server](https://discord.gg/vgvFA7NJHg) — support, announcements, and community.
+- [0x00.exe | Official Server](https://discord.gg/XCWKSnFMcU) — community and support for the `.exe` project.
+- [Noscape | Official Group](https://discord.gg/7VvdbZn224) — the collective behind v-bot and its other projects.
+
 ## ✨ Features
 
 - 🛡️ Moderation and server-management commands, including persistent warm reports
